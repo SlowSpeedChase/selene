@@ -1,0 +1,24 @@
+Machine Learning Project Meeting - January 13, 2025
+
+Attendees: Sarah (PM), Mike (ML Engineer), Lisa (Data Scientist), Tom (Backend)
+
+Key Discussion Points:
+- Current model accuracy is 82% on validation set
+- Need to improve data preprocessing pipeline
+- Dataset has quality issues - missing values in 15% of records
+- Training time is too long (8 hours on current hardware)
+- Model interpretability is a concern for stakeholders
+
+Action Items:
+1. Lisa to clean dataset and handle missing values by next week
+2. Mike to experiment with feature selection to reduce training time
+3. Tom to optimize data loading pipeline
+4. Sarah to schedule stakeholder meeting for model explanation
+
+Technical Details:
+- Using Random Forest with 100 trees
+- Features: 45 numerical, 12 categorical
+- Target: binary classification (churn prediction)
+- Current precision: 0.78, recall: 0.85
+
+Next Meeting: January 20, 2025
