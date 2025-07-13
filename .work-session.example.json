@@ -1,0 +1,14 @@
+{
+  "current_ticket": "SMS-13",
+  "current_branch": "feature/sms-13",
+  "start_time": "2025-01-13T10:30:00",
+  "time_entries": [
+    {
+      "start": "2025-01-13T09:00:00",
+      "end": "2025-01-13T10:30:00",
+      "duration_minutes": 90,
+      "description": "Implemented project setup and JIRA integration",
+      "ticket": "SMS-13"
+    }
+  ]
+}

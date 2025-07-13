@@ -144,3 +144,9 @@ logs/
 *.db
 chroma_db/
 vector_store/
+
+# JIRA configuration (contains sensitive credentials)
+.jira-config.yaml
+
+# Work session state
+.work-session.json

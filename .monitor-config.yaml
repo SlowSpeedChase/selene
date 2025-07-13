@@ -1,0 +1,34 @@
+batch_size: 5
+debounce_seconds: 2.0
+default_processor: ollama
+ignore_patterns:
+- '*.tmp'
+- '*.temp'
+- .*
+- __pycache__
+- '*.pyc'
+- .DS_Store
+max_concurrent_jobs: 3
+processing_enabled: true
+queue_max_size: 100
+supported_extensions:
+- .txt
+- .md
+- .pdf
+- .docx
+- .doc
+- .rtf
+- .odt
+vector_db_path: ./chroma_db
+watched_directories:
+- auto_process: true
+  metadata: {}
+  path: /Users/chaseeasterling/git/selene/test_monitor
+  patterns:
+  - '*.txt'
+  - '*.md'
+  processing_tasks:
+  - summarize
+  - extract_insights
+  recursive: true
+  store_in_vector_db: true
