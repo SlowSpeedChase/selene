@@ -9,6 +9,10 @@ loguru>=0.7.0
 typer>=0.9.0
 rich>=13.0.0
 
+# Web framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
 # JIRA integration
 jira>=3.0.0
 pyyaml>=6.0

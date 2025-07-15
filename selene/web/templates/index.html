@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selene - Second Brain Processing System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1><i class="fas fa-brain"></i> Selene</h1>
+            <p>Second Brain Processing System - Local AI-Powered Note Processing</p>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="container">
+            <ul class="nav-tabs">
+                <li><button class="nav-tab active" data-tab="dashboard">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </button></li>
+                <li><button class="nav-tab" data-tab="process">
+                    <i class="fas fa-magic"></i> Process Content
+                </button></li>
+                <li><button class="nav-tab" data-tab="search">
+                    <i class="fas fa-search"></i> Vector Search
+                </button></li>
+                <li><button class="nav-tab" data-tab="monitor">
+                    <i class="fas fa-eye"></i> File Monitor
+                </button></li>
+                <li><button class="nav-tab" data-tab="config">
+                    <i class="fas fa-cog"></i> Configuration
+                </button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab" class="tab-content active">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="monitor-status">—</div>
+                    <div class="stat-label">Monitor Status</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="watched-dirs">—</div>
+                    <div class="stat-label">Watched Directories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="queue-size">—</div>
+                    <div class="stat-label">Queue Size</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="processed-files">—</div>
+                    <div class="stat-label">Files Processed</div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">System Status</h3>
+                    </div>
+                    <div id="system-status">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading system status...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Activity</h3>
+                    </div>
+                    <div id="recent-activity">
+                        <p class="text-center">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Process Content Tab -->
+        <div id="process-tab" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">AI Content Processing</h3>
+                </div>
+                
+                <form id="process-form">
+                    <div class="grid grid-2">
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Input Method</label>
+                                <select class="form-select" id="input-method">
+                                    <option value="content">Direct Content</option>
+                                    <option value="file">File Path</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="content-group">
+                                <label class="form-label">Content</label>
+                                <textarea class="form-textarea" id="content-input" placeholder="Enter your content here..."></textarea>
+                            </div>
+
+                            <div class="form-group hidden" id="file-group">
+                                <label class="form-label">File Path</label>
+                                <input type="text" class="form-input" id="file-input" placeholder="/path/to/your/file.txt">
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Processing Task</label>
+                                <select class="form-select" id="task-select">
+                                    <option value="enhance">Enhance</option>
+                                    <option value="summarize">Summarize</option>
+                                    <option value="extract_insights">Extract Insights</option>
+                                    <option value="questions">Generate Questions</option>
+                                    <option value="classify">Classify</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Processor</label>
+                                <select class="form-select" id="processor-select">
+                                    <option value="ollama">Ollama (Local)</option>
+                                    <option value="openai">OpenAI (Cloud)</option>
+                                    <option value="vector">Vector Database</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Model</label>
+                                <select class="form-select" id="model-select">
+                                    <option value="llama3.2">llama3.2</option>
+                                    <option value="mistral">mistral</option>
+                                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-magic"></i> Process Content
+                        </button>
+                    </div>
+                </form>
+
+                <div id="process-result" class="hidden">
+                    <div class="card-header">
+                        <h4 class="card-title">Processing Result</h4>
+                    </div>
+                    <div id="process-output"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vector Search Tab -->
+        <div id="search-tab" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Vector Database Search</h3>
+                </div>
+                
+                <form id="search-form">
+                    <div class="grid grid-3">
+                        <div class="form-group">
+                            <label class="form-label">Search Query</label>
+                            <input type="text" class="form-input" id="search-query" placeholder="Search your knowledge base...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Number of Results</label>
+                            <select class="form-select" id="search-results">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="search-results-container" class="hidden">
+                    <div class="card-header">
+                        <h4 class="card-title">Search Results</h4>
+                    </div>
+                    <div id="search-results-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Monitor Tab -->
+        <div id="monitor-tab" class="tab-content hidden">
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Monitor Control</h3>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button id="start-monitor" class="btn btn-secondary">
+                            <i class="fas fa-play"></i> Start Monitoring
+                        </button>
+                        <button id="stop-monitor" class="btn btn-danger">
+                            <i class="fas fa-stop"></i> Stop Monitoring
+                        </button>
+                    </div>
+
+                    <div id="monitor-status-display">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading monitor status...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Watched Directories</h3>
+                    </div>
+                    
+                    <div id="watched-directories-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading directories...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="config-tab" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Add Watched Directory</h3>
+                </div>
+                
+                <form id="add-directory-form">
+                    <div class="grid grid-2">
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Directory Path</label>
+                                <input type="text" class="form-input" id="directory-path" placeholder="/path/to/watch" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">File Patterns (comma-separated)</label>
+                                <input type="text" class="form-input" id="file-patterns" placeholder="*.txt,*.md,*.pdf" value="*.txt,*.md,*.pdf">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input type="checkbox" id="recursive-watch" checked> Recursive (watch subdirectories)
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input type="checkbox" id="auto-process" checked> Auto-process files
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Processing Tasks</label>
+                                <div>
+                                    <label><input type="checkbox" value="summarize" checked> Summarize</label><br>
+                                    <label><input type="checkbox" value="extract_insights" checked> Extract Insights</label><br>
+                                    <label><input type="checkbox" value="enhance"> Enhance</label><br>
+                                    <label><input type="checkbox" value="questions"> Generate Questions</label><br>
+                                    <label><input type="checkbox" value="classify"> Classify</label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <input type="checkbox" id="store-vector" checked> Store in Vector Database
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="fas fa-plus"></i> Add Directory
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Current Configuration</h3>
+                </div>
+                
+                <div id="current-config">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading configuration...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Success/Error Messages -->
+    <div id="message-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

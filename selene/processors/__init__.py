@@ -10,4 +10,10 @@ from .llm_processor import LLMProcessor
 from .ollama_processor import OllamaProcessor
 from .vector_processor import VectorProcessor
 
-__all__ = ["BaseProcessor", "ProcessorResult", "LLMProcessor", "OllamaProcessor", "VectorProcessor"]
+__all__ = [
+    "BaseProcessor",
+    "ProcessorResult",
+    "LLMProcessor",
+    "OllamaProcessor",
+    "VectorProcessor",
+]
