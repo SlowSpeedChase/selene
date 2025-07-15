@@ -194,7 +194,7 @@ class SeleneDemo:
         try:
             self.ollama_processor = OllamaProcessor({
                 "base_url": "http://localhost:11434",
-                "model": "llama3.2",
+                "model": "llama3.2:1b",
                 "validate_on_init": False
             })
             self.console.print("  ✅ Ollama processor initialized")

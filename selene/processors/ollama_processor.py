@@ -94,11 +94,16 @@ class OllamaProcessor(BaseProcessor):
                     used_template_id = template_id
                 else:
                     # Fallback if template not found
-                    full_prompt = self.get_prompt_for_task(task, content, **kwargs)
+                    template_vars = {k: v for k, v in kwargs.items() 
+                                   if k not in ["task", "prompt", "model", "template_id", "template_variables"]}
+                    full_prompt = self.get_prompt_for_task(task, content, **template_vars)
                     used_template_id = None
             else:
                 # Use default template for task
-                full_prompt = self.get_prompt_for_task(task, content, **kwargs)
+                # Filter out conflicting parameters
+                template_vars = {k: v for k, v in kwargs.items() 
+                               if k not in ["task", "prompt", "model", "template_id", "template_variables"]}
+                full_prompt = self.get_prompt_for_task(task, content, **template_vars)
                 template_name = get_template_for_task(task)
                 template = self.prompt_manager.get_template_by_name(template_name)
                 used_template_id = template.id if template else None
