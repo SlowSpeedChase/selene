@@ -1,0 +1,38 @@
+{
+  "id": "b4135e2b-49dc-4226-9849-ac3f32c632e1",
+  "name": "Insight Extraction",
+  "description": "Extract key insights and patterns from content",
+  "category": "analysis",
+  "template": "Please analyze the following content and extract key insights:\n\nContent to Analyze:\n{content}\n\nAnalysis Requirements:\n- Identify main themes and patterns\n- Extract actionable insights\n- Highlight important trends or connections\n- Focus on: {analysis_focus}\n- Provide supporting evidence for each insight\n\nKey Insights:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to analyze for insights",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "analysis_focus",
+      "description": "Specific aspect to focus the analysis on",
+      "required": false,
+      "default_value": "strategic implications and actionable opportunities",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "analysis",
+    "insights",
+    "patterns",
+    "trends"
+  ],
+  "created_at": "2025-07-14T22:00:36.468244",
+  "updated_at": "2025-07-14T22:00:36.468245",
+  "usage_count": 0,
+  "last_used": null,
+  "avg_quality_score": null,
+  "success_rate": null,
+  "model_optimizations": {}
+}

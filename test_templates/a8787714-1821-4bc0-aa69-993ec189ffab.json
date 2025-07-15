@@ -1,0 +1,38 @@
+{
+  "id": "a8787714-1821-4bc0-aa69-993ec189ffab",
+  "name": "Action Item Extraction",
+  "description": "Extract actionable items and tasks from content",
+  "category": "extraction",
+  "template": "Please extract all action items and tasks from the following content:\n\nContent:\n{content}\n\nAction Item Extraction Requirements:\n- Identify specific, actionable tasks\n- Include responsible parties if mentioned\n- Extract deadlines and timelines\n- Note priority or urgency indicators\n- Format as: [Action] - [Owner] - [Deadline] - [Priority]\n- Focus on: {focus_type}\n\nAction Items:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to extract action items from",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "focus_type",
+      "description": "Type of actions to focus on",
+      "required": false,
+      "default_value": "immediate next steps and concrete deliverables",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "extraction",
+    "action items",
+    "tasks",
+    "project management"
+  ],
+  "created_at": "2025-07-14T22:00:36.468302",
+  "updated_at": "2025-07-14T22:00:36.468303",
+  "usage_count": 0,
+  "last_used": null,
+  "avg_quality_score": null,
+  "success_rate": null,
+  "model_optimizations": {}
+}

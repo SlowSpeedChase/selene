@@ -54,6 +54,15 @@ class PromptTemplateManager:
                 with open(template_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
+                # Convert ISO strings back to datetime objects
+                from datetime import datetime
+                if 'created_at' in data and isinstance(data['created_at'], str):
+                    data['created_at'] = datetime.fromisoformat(data['created_at'])
+                if 'updated_at' in data and isinstance(data['updated_at'], str):
+                    data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+                if 'last_used' in data and data['last_used'] and isinstance(data['last_used'], str):
+                    data['last_used'] = datetime.fromisoformat(data['last_used'])
+                
                 template = PromptTemplate.from_dict(data)
                 self._templates[template.id] = template
                 
@@ -65,7 +74,15 @@ class PromptTemplateManager:
         try:
             file_path = self.storage_path / f"{template.id}.json"
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(template.to_dict(), f, indent=2, ensure_ascii=False)
+                data = template.to_dict()
+                # Convert datetime objects to ISO strings
+                if 'created_at' in data and hasattr(data['created_at'], 'isoformat'):
+                    data['created_at'] = data['created_at'].isoformat()
+                if 'updated_at' in data and hasattr(data['updated_at'], 'isoformat'):
+                    data['updated_at'] = data['updated_at'].isoformat()
+                if 'last_used' in data and data['last_used'] and hasattr(data['last_used'], 'isoformat'):
+                    data['last_used'] = data['last_used'].isoformat()
+                json.dump(data, f, indent=2, ensure_ascii=False)
             
             logger.debug(f"Saved template {template.name} ({template.id})")
             return True

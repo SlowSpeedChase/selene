@@ -1,0 +1,38 @@
+{
+  "id": "31c75822-b92a-41fd-8dbc-04d0c36ca042",
+  "name": "Executive Summary",
+  "description": "Create an executive-level summary with key insights",
+  "category": "summarization",
+  "template": "Please create an executive summary of the following content:\n\n{content}\n\nExecutive Summary Requirements:\n- Focus on strategic insights and key takeaways\n- Include actionable recommendations if applicable\n- Use executive-level language\n- Structure: Key Points, Insights, Recommendations\n- Target audience: {audience}\n\nExecutive Summary:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to summarize",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "audience",
+      "description": "Target audience for the summary",
+      "required": false,
+      "default_value": "business executives",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "summary",
+    "executive",
+    "business",
+    "insights"
+  ],
+  "created_at": "2025-07-14T22:00:36.468213",
+  "updated_at": "2025-07-14T22:00:36.468214",
+  "usage_count": 0,
+  "last_used": null,
+  "avg_quality_score": null,
+  "success_rate": null,
+  "model_optimizations": {}
+}

@@ -1,0 +1,52 @@
+{
+  "id": "487a63ea-0b8f-41f6-9e86-ea50a3d642c9",
+  "name": "Creative Expansion",
+  "description": "Expand content with creative additions and perspectives",
+  "category": "generation",
+  "template": "Please creatively expand on the following content:\n\nOriginal Content:\n{content}\n\nCreative Expansion Requirements:\n- Add {expansion_type} perspectives\n- Maintain consistency with original tone\n- Include creative examples or analogies\n- Expand length by approximately {expansion_factor}\n- Focus on: {creative_focus}\n\nExpanded Content:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to expand creatively",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "expansion_type",
+      "description": "Type of creative expansion",
+      "required": false,
+      "default_value": "innovative and insightful",
+      "validation_pattern": null
+    },
+    {
+      "name": "expansion_factor",
+      "description": "How much to expand the content",
+      "required": false,
+      "default_value": "50-100%",
+      "validation_pattern": null
+    },
+    {
+      "name": "creative_focus",
+      "description": "Area to focus creative expansion",
+      "required": false,
+      "default_value": "practical applications and real-world examples",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "generation",
+    "creativity",
+    "expansion",
+    "development"
+  ],
+  "created_at": "2025-07-14T22:00:36.468315",
+  "updated_at": "2025-07-14T22:00:36.468315",
+  "usage_count": 0,
+  "last_used": null,
+  "avg_quality_score": null,
+  "success_rate": null,
+  "model_optimizations": {}
+}

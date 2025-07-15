@@ -1,0 +1,38 @@
+{
+  "id": "b87fcc26-7ba8-4f99-9827-1c515d8236f9",
+  "name": "Content Enhancement",
+  "description": "Improve clarity, structure, and readability of content",
+  "category": "enhancement",
+  "template": "Please enhance the following content by improving its clarity, structure, and readability:\n\nOriginal Content:\n{content}\n\nEnhancement Requirements:\n- Improve clarity and flow\n- Fix grammar and style issues\n- Maintain the original meaning and tone\n- {enhancement_focus}\n- Keep the enhanced version at similar length\n\nEnhanced Content:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to enhance",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "enhancement_focus",
+      "description": "Specific area to focus enhancement on",
+      "required": false,
+      "default_value": "Ensure professional tone and clear structure",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "enhancement",
+    "clarity",
+    "writing",
+    "improvement"
+  ],
+  "created_at": "2025-07-14T22:00:36.468225",
+  "updated_at": "2025-07-14T22:00:36.468225",
+  "usage_count": 0,
+  "last_used": null,
+  "avg_quality_score": null,
+  "success_rate": null,
+  "model_optimizations": {}
+}
