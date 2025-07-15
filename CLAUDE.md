@@ -82,6 +82,11 @@ selene vector list --results 20
 selene vector stats
 selene vector delete --id old-doc-id
 
+# PROMPT TEMPLATE SYSTEM (NEW in SMS-33)
+# Advanced AI processing with customizable prompt templates
+selene process --content "text" --task summarize --template-id custom-template-uuid
+selene process --file note.txt --template-variables '{"focus":"key insights","length":"brief"}'
+
 # Cloud AI fallback (requires API key)
 selene process --file note.txt --processor openai --api-key sk-...
 selene process --content "text" --processor openai --model gpt-4
@@ -130,19 +135,50 @@ python project-manager.py tickets  # List available tickets
 python scripts/setup_jira.py
 ```
 
+### Interactive Demo
+```bash
+# Comprehensive demonstration of all Selene features
+python3 demo_selene.py
+
+# Features demonstrated:
+# - SMS-33 prompt template system with 11 built-in templates
+# - Local AI processing with multiple tasks (summarize, enhance, analyze)
+# - Vector database operations with semantic search
+# - Web interface overview and API examples
+# - System health checks and prerequisites validation
+# - Interactive content selection and real-time processing
+```
+
 ## Architecture Overview
 
 ### Core Structure
 - **selene/**: Main Python package containing the CLI application
   - `main.py`: Entry point with Typer CLI, note processing commands
   - `processors/`: Note processing pipeline with AI integration
-    - `base.py`: Abstract base processor and result classes
+    - `base.py`: Abstract base processor and result classes with template support
     - `llm_processor.py`: OpenAI LLM-powered note processor
+    - `ollama_processor.py`: Local Ollama processor with template integration
+    - `vector_processor.py`: ChromaDB vector database processor
+  - `prompts/`: SMS-33 Prompt template system (NEW)
+    - `models.py`: Template data models with variables and validation
+    - `manager.py`: Template CRUD operations and analytics
+    - `builtin_templates.py`: 11 professional built-in templates
+  - `vector/`: Local vector database integration
+    - `chroma_store.py`: ChromaDB storage and retrieval
+    - `embedding_service.py`: Text embedding generation
+  - `web/`: FastAPI web interface (SMS-18)
+    - `app.py`: REST API with template management endpoints
+    - `models.py`: Pydantic models for web requests/responses
+  - `monitoring/`: File system monitoring and processing
+  - `queue/`: Processing queue and background task management
+  - `jira/`: JIRA integration for project management
   - `__init__.py`: Package initialization with version info
 - **tests/**: Test suite with pytest configuration
   - `test_processors.py`: Comprehensive processor tests with async support
+  - `test_vector.py`: Vector database and embedding tests
 - **scripts/**: Utility scripts for JIRA integration and project setup
 - **project-manager.py**: Standalone JIRA-integrated workflow manager
+- **demo_selene.py**: Interactive demonstration of all features (NEW)
 
 ### Key Dependencies & Technologies
 - **CLI Framework**: Typer for command-line interface
@@ -205,12 +241,25 @@ Configuration files:
 - **Rich Output**: Beautiful terminal formatting with metadata tables
 - **Environment Configuration**: API key via environment or CLI parameter
 
+### Prompt Template System Features (SMS-33)
+- **Built-in Templates**: 11 professional templates for all processing tasks
+- **Custom Templates**: Create and manage custom prompt templates with variables
+- **Template Variables**: Support for required/optional variables with validation
+- **Category Organization**: Templates organized by category (analysis, enhancement, etc.)
+- **Usage Analytics**: Track template performance, quality scores, and success rates
+- **Model Optimizations**: Per-model parameter overrides and configurations
+- **Web Management**: Full CRUD operations via REST API and web interface
+- **Template Rendering**: Variable substitution with fallback mechanisms
+- **Search & Filtering**: Find templates by name, tags, category, or content
+- **Version Tracking**: Template versioning with author and timestamp metadata
+
 ### Web Interface Features (SMS-18)
 - **Modern Dashboard**: Real-time system monitoring and statistics
 - **Content Processing**: Web-based AI content processing interface
 - **Vector Search**: Interactive search interface for knowledge base
 - **File Monitoring**: Web control for file monitoring system
 - **Configuration Management**: Add/remove watched directories via web UI
+- **Template Management**: Full prompt template CRUD operations (NEW)
 - **REST API**: Comprehensive API endpoints for all functionality
 - **Responsive Design**: Works on desktop and mobile devices
 - **Real-time Updates**: Live status monitoring and progress tracking
@@ -222,6 +271,7 @@ Configuration files:
 - ✅ SMS-16: JIRA Integration (Production ready)
 - ✅ SMS-17: File Monitoring System (Architecture validated)
 - ✅ SMS-18: Web UI (FastAPI + Modern Dashboard complete)
+- ✅ SMS-33: Prompt Template System (Advanced AI prompt management complete)
 - 🔄 Next: SMS-19 (Advanced AI Features) or SMS-20 (Mobile Interface)
 
 ### Hardware Requirements
