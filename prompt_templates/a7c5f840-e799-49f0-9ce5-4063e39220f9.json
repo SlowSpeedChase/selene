@@ -1,0 +1,44 @@
+{
+  "id": "a7c5f840-e799-49f0-9ce5-4063e39220f9",
+  "name": "Content Classification",
+  "description": "Classify content into categories with reasoning",
+  "category": "classification",
+  "template": "Please classify the following content into appropriate categories:\n\nContent to Classify:\n{content}\n\nClassification Requirements:\n- Available categories: {categories}\n- Provide the most relevant category\n- Include confidence level (1-10)\n- Explain your reasoning\n- Consider: {classification_criteria}\n\nClassification Result:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to classify",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "categories",
+      "description": "Available categories for classification",
+      "required": false,
+      "default_value": "Research, Analysis, Documentation, Communication, Planning, Meeting Notes",
+      "validation_pattern": null
+    },
+    {
+      "name": "classification_criteria",
+      "description": "Specific criteria to consider during classification",
+      "required": false,
+      "default_value": "content type, purpose, audience, and format",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "classification",
+    "categorization",
+    "organization"
+  ],
+  "created_at": "2025-07-15T07:33:22.033033",
+  "updated_at": "2025-07-15T07:33:22.033033",
+  "usage_count": 0,
+  "last_used": null,
+  "avg_quality_score": null,
+  "success_rate": null,
+  "model_optimizations": {}
+}

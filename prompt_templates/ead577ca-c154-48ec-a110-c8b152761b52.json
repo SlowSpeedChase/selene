@@ -1,0 +1,52 @@
+{
+  "id": "ead577ca-c154-48ec-a110-c8b152761b52",
+  "name": "Question Generation",
+  "description": "Generate thought-provoking questions based on content",
+  "category": "analysis",
+  "template": "Based on the following content, generate thoughtful questions that encourage deeper thinking:\n\nContent:\n{content}\n\nQuestion Generation Requirements:\n- Create {num_questions} questions\n- Mix of analytical, critical thinking, and exploratory questions\n- Questions should be {question_type}\n- Encourage deeper understanding and reflection\n- Focus area: {focus_area}\n\nGenerated Questions:",
+  "variables": [
+    {
+      "name": "content",
+      "description": "The content to generate questions from",
+      "required": true,
+      "default_value": null,
+      "validation_pattern": null
+    },
+    {
+      "name": "num_questions",
+      "description": "Number of questions to generate",
+      "required": false,
+      "default_value": "5-7",
+      "validation_pattern": null
+    },
+    {
+      "name": "question_type",
+      "description": "Type of questions to focus on",
+      "required": false,
+      "default_value": "open-ended and thought-provoking",
+      "validation_pattern": null
+    },
+    {
+      "name": "focus_area",
+      "description": "Specific area to focus questions on",
+      "required": false,
+      "default_value": "practical applications and implications",
+      "validation_pattern": null
+    }
+  ],
+  "author": "Selene System",
+  "version": "1.0.0",
+  "tags": [
+    "analysis",
+    "questions",
+    "critical thinking",
+    "exploration"
+  ],
+  "created_at": "2025-07-15T07:33:22.033023",
+  "updated_at": "2025-07-15T17:47:17.699602",
+  "usage_count": 2,
+  "last_used": "2025-07-15T17:47:17.699597",
+  "avg_quality_score": null,
+  "success_rate": 100.0,
+  "model_optimizations": {}
+}

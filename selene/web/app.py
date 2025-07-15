@@ -14,6 +14,8 @@ from loguru import logger
 
 from ..monitoring import FileWatcher, MonitorConfig
 from ..processors import LLMProcessor, OllamaProcessor, VectorProcessor
+from ..processors.multi_model_processor import MultiModelProcessor
+from ..processors.chain_processor import ProcessingChain, ChainStep, ChainExecutionMode
 from ..prompts.manager import PromptTemplateManager
 from ..prompts.models import PromptCategory, TemplateVariable
 from ..prompts.builtin_templates import register_builtin_templates
@@ -695,6 +697,228 @@ def create_app() -> FastAPI:
             logger.error(f"Get template analytics failed: {str(e)}")
             raise HTTPException(500, f"Get template analytics failed: {str(e)}")
 
+    # Multi-Model Processor Endpoints
+    
+    @app.post("/api/multi-model/compare")
+    async def compare_models(request: ProcessRequest):
+        """Compare multiple models on the same task."""
+        try:
+            if not request.content and not request.file_path:
+                raise HTTPException(400, "Either content or file_path must be provided")
+
+            # Get content from file if needed
+            content = request.content
+            if request.file_path:
+                file_path = Path(request.file_path)
+                if not file_path.exists():
+                    raise HTTPException(404, f"File not found: {request.file_path}")
+                content = file_path.read_text(encoding="utf-8")
+
+            # Initialize multi-model processor
+            multi_processor = await _get_processor("multi_model", "")
+            
+            # Get available models
+            available_models = multi_processor.get_available_models()
+            
+            # Process with model comparison
+            result = await multi_processor.process(
+                content,
+                task=request.task,
+                compare_models=available_models
+            )
+
+            return ProcessResponse(
+                success=result.success,
+                content=result.content if result.success else None,
+                error=result.error if not result.success else None,
+                processing_time=result.processing_time,
+                metadata=result.metadata,
+            )
+
+        except Exception as e:
+            logger.error(f"Multi-model comparison failed: {e}")
+            raise HTTPException(500, f"Multi-model comparison failed: {str(e)}")
+
+    @app.get("/api/multi-model/info")
+    async def get_multi_model_info():
+        """Get information about the multi-model processor."""
+        try:
+            multi_processor = await _get_processor("multi_model", "")
+            info = multi_processor.get_processor_info()
+            
+            return {
+                "processor_info": info,
+                "available_models": multi_processor.get_available_models(),
+                "model_stats": multi_processor.get_model_stats()
+            }
+
+        except Exception as e:
+            logger.error(f"Get multi-model info failed: {e}")
+            raise HTTPException(500, f"Get multi-model info failed: {str(e)}")
+
+    @app.post("/api/multi-model/test-fallback")
+    async def test_fallback_processing(request: ProcessRequest):
+        """Test fallback processing with primary model failure simulation."""
+        try:
+            if not request.content and not request.file_path:
+                raise HTTPException(400, "Either content or file_path must be provided")
+
+            # Get content from file if needed
+            content = request.content
+            if request.file_path:
+                file_path = Path(request.file_path)
+                if not file_path.exists():
+                    raise HTTPException(404, f"File not found: {request.file_path}")
+                content = file_path.read_text(encoding="utf-8")
+
+            # Initialize multi-model processor
+            multi_processor = await _get_processor("multi_model", "")
+            
+            # Process with fallback enabled
+            result = await multi_processor.process(
+                content,
+                task=request.task,
+                fallback=True
+            )
+
+            return ProcessResponse(
+                success=result.success,
+                content=result.content if result.success else None,
+                error=result.error if not result.success else None,
+                processing_time=result.processing_time,
+                metadata=result.metadata,
+            )
+
+        except Exception as e:
+            logger.error(f"Fallback processing test failed: {e}")
+            raise HTTPException(500, f"Fallback processing test failed: {str(e)}")
+
+    # Chain Processing Endpoints
+    
+    @app.post("/api/chain/execute")
+    async def execute_processing_chain(request: dict):
+        """Execute a processing chain with multiple steps."""
+        try:
+            # Extract chain configuration
+            initial_content = request.get("content", "")
+            chain_steps = request.get("steps", [])
+            chain_id = request.get("chain_id", f"api_chain_{int(time.time())}")
+            
+            if not initial_content:
+                raise HTTPException(400, "Content is required")
+            
+            if not chain_steps:
+                raise HTTPException(400, "Chain steps are required")
+            
+            # Create chain steps
+            steps = []
+            for step_config in chain_steps:
+                step = ChainStep(
+                    task=step_config.get("task"),
+                    step_id=step_config.get("step_id"),
+                    model=step_config.get("model"),
+                    description=step_config.get("description"),
+                    execution_mode=ChainExecutionMode(step_config.get("execution_mode", "sequential")),
+                    parallel_group=step_config.get("parallel_group"),
+                    retry_count=step_config.get("retry_count", 0),
+                    skip_on_failure=step_config.get("skip_on_failure", False),
+                    parameters=step_config.get("parameters", {})
+                )
+                steps.append(step)
+            
+            # Create and execute chain
+            chain = ProcessingChain(steps, chain_id=chain_id)
+            result = await chain.execute(initial_content)
+            
+            return {
+                "success": result.success,
+                "chain_id": result.chain_id,
+                "final_content": result.final_content,
+                "total_execution_time": result.total_execution_time,
+                "total_steps": result.total_steps,
+                "successful_steps": result.successful_steps,
+                "failed_steps": result.failed_steps,
+                "skipped_steps": result.skipped_steps,
+                "error": result.error,
+                "failed_step": result.failed_step,
+                "step_results": [
+                    {
+                        "step_id": sr.step_id,
+                        "success": sr.result.success,
+                        "content": sr.result.content,
+                        "execution_time": sr.execution_time,
+                        "retry_attempts": sr.retry_attempts,
+                        "skipped": sr.skipped,
+                        "error": sr.result.error
+                    }
+                    for sr in result.step_results
+                ]
+            }
+
+        except Exception as e:
+            logger.error(f"Chain processing failed: {e}")
+            raise HTTPException(500, f"Chain processing failed: {str(e)}")
+
+    @app.post("/api/chain/create-example")
+    async def create_example_chain():
+        """Create an example processing chain for demonstration."""
+        try:
+            # Create example chain steps
+            steps = [
+                ChainStep(
+                    task="summarize",
+                    step_id="step1",
+                    description="Summarize the content",
+                    retry_count=1
+                ),
+                ChainStep(
+                    task="extract_insights",
+                    step_id="step2",
+                    description="Extract key insights",
+                    model="llama3.2:3b"
+                ),
+                ChainStep(
+                    task="questions",
+                    step_id="step3",
+                    description="Generate questions",
+                    execution_mode=ChainExecutionMode.CONDITIONAL
+                )
+            ]
+            
+            chain = ProcessingChain(steps, chain_id="example_chain")
+            info = chain.get_chain_info()
+            
+            return {
+                "message": "Example chain created successfully",
+                "chain_info": info,
+                "usage_example": {
+                    "endpoint": "/api/chain/execute",
+                    "method": "POST",
+                    "body": {
+                        "content": "Your content here",
+                        "chain_id": "example_chain",
+                        "steps": [
+                            {
+                                "task": "summarize",
+                                "step_id": "step1",
+                                "description": "Summarize the content",
+                                "retry_count": 1
+                            },
+                            {
+                                "task": "extract_insights",
+                                "step_id": "step2",
+                                "description": "Extract key insights",
+                                "model": "llama3.2:3b"
+                            }
+                        ]
+                    }
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Create example chain failed: {e}")
+            raise HTTPException(500, f"Create example chain failed: {str(e)}")
+
     return app
 
 
@@ -707,6 +931,33 @@ async def _get_processor(processor_type: str, model: str):
         if not api_key:
             raise HTTPException(400, "OpenAI API key required")
         return LLMProcessor({"openai_api_key": api_key, "model": model})
+    elif processor_type == "multi_model":
+        return MultiModelProcessor({
+            "models": [
+                {
+                    "name": "llama3.2:1b",
+                    "type": "ollama",
+                    "config": {
+                        "base_url": "http://localhost:11434",
+                        "model": "llama3.2:1b",
+                        "validate_on_init": False
+                    },
+                    "tasks": ["summarize", "classify"],
+                    "priority": 1
+                },
+                {
+                    "name": "llama3.2:3b",
+                    "type": "ollama",
+                    "config": {
+                        "base_url": "http://localhost:11434",
+                        "model": "llama3.2:3b",
+                        "validate_on_init": False
+                    },
+                    "tasks": ["enhance", "extract_insights"],
+                    "priority": 2
+                }
+            ]
+        })
     elif processor_type == "vector":
         return VectorProcessor(
             {"db_path": "./chroma_db", "collection_name": "selene_notes"}

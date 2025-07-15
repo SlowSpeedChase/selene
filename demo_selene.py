@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 try:
     from selene.processors.ollama_processor import OllamaProcessor
     from selene.processors.vector_processor import VectorProcessor
+    from selene.processors.multi_model_processor import MultiModelProcessor
     from selene.prompts.manager import PromptTemplateManager
     from selene.prompts.builtin_templates import register_builtin_templates
     from selene.vector.chroma_store import ChromaStore
@@ -56,6 +57,7 @@ class SeleneDemo:
         self.interactive = interactive
         self.ollama_processor = None
         self.vector_processor = None
+        self.multi_model_processor = None
         self.prompt_manager = None
         self.demo_content = {
             "meeting_notes": """
@@ -212,6 +214,39 @@ class SeleneDemo:
             self.console.print(f"  ❌ Vector processor failed: {e}")
             return False
         
+        # Initialize multi-model processor (SMS-19 Advanced AI)
+        try:
+            self.multi_model_processor = MultiModelProcessor({
+                "models": [
+                    {
+                        "name": "llama3.2:1b",
+                        "type": "ollama",
+                        "config": {
+                            "base_url": "http://localhost:11434",
+                            "model": "llama3.2:1b",
+                            "validate_on_init": False
+                        },
+                        "tasks": ["summarize", "classify"],
+                        "priority": 1
+                    },
+                    {
+                        "name": "llama3.2:3b",
+                        "type": "ollama",
+                        "config": {
+                            "base_url": "http://localhost:11434",
+                            "model": "llama3.2:3b",
+                            "validate_on_init": False
+                        },
+                        "tasks": ["enhance", "extract_insights"],
+                        "priority": 2
+                    }
+                ]
+            })
+            self.console.print("  ✅ Multi-model processor initialized (SMS-19 Advanced AI)")
+        except Exception as e:
+            self.console.print(f"  ❌ Multi-model processor failed: {e}")
+            return False
+        
         # Initialize prompt template system
         try:
             self.prompt_manager = PromptTemplateManager(storage_path="demo_prompt_templates")
@@ -333,6 +368,129 @@ class SeleneDemo:
                 time.sleep(1)  # Brief pause between tasks
         
         self.console.print("✅ [green]AI processing demo complete![/green]")
+        if self.interactive:
+            input("\n⏸️  Press Enter to continue...")
+        else:
+            self.console.print("\n⏸️  [Non-interactive mode] Continuing...")
+    
+    async def demo_multi_model_processing(self):
+        """Demonstrate SMS-19 Advanced AI - Multi-Model Processing."""
+        self.console.print(Panel.fit("🚀 SMS-19: Advanced AI - Multi-Model Processing", style="bold magenta"))
+        
+        # Show multi-model processor info
+        info = self.multi_model_processor.get_processor_info()
+        self.console.print(f"🤖 [bold]Multi-Model Processor v{info['version']}[/bold]")
+        
+        # Show configured models
+        table = Table(title="Configured AI Models")
+        table.add_column("Model", style="cyan")
+        table.add_column("Type", style="green")
+        table.add_column("Tasks", style="yellow")
+        table.add_column("Priority", style="blue")
+        
+        for model_name, model_info in info["models"].items():
+            table.add_row(
+                model_name,
+                model_info["type"],
+                ", ".join(model_info["tasks"]),
+                str(model_info["priority"])
+            )
+        
+        self.console.print(table)
+        
+        # Demonstrate task routing
+        self.console.print("\n🎯 [bold]Task Routing Demo:[/bold]")
+        routing_rules = info["routing_rules"]
+        for task, model in routing_rules.items():
+            self.console.print(f"  • {task} → {model}")
+        
+        # Demonstrate model comparison
+        self.console.print("\n🔄 [bold]Model Comparison Demo:[/bold]")
+        test_content = self.demo_content["meeting_notes"]
+        
+        try:
+            # Get available models for comparison
+            available_models = self.multi_model_processor.get_available_models()
+            
+            self.console.print(f"🔍 Comparing {len(available_models)} models on 'summarize' task...")
+            
+            result = await self.multi_model_processor.process(
+                test_content,
+                task="summarize",
+                compare_models=available_models
+            )
+            
+            if result.success:
+                self.console.print(Panel(
+                    result.content,
+                    title=f"✅ Best Result (Model: {result.metadata.get('best_model', 'unknown')})",
+                    border_style="green"
+                ))
+                
+                # Show comparison metadata
+                if "comparison_result" in result.metadata:
+                    comp_result = result.metadata["comparison_result"]
+                    self.console.print(f"📊 Comparison: {comp_result.successful_models}/{comp_result.total_models} models succeeded")
+                    self.console.print(f"⏱️  Total processing time: {comp_result.processing_time:.2f}s")
+            else:
+                self.console.print(f"❌ Model comparison failed: {result.error}")
+                
+        except Exception as e:
+            self.console.print(f"❌ Model comparison error: {e}")
+        
+        # Demonstrate fallback processing
+        self.console.print("\n🔄 [bold]Fallback Processing Demo:[/bold]")
+        
+        try:
+            result = await self.multi_model_processor.process(
+                test_content,
+                task="enhance",
+                fallback=True
+            )
+            
+            if result.success:
+                self.console.print(Panel(
+                    result.content,
+                    title=f"✅ Enhanced Content (Model: {result.metadata.get('selected_model', 'unknown')})",
+                    border_style="blue"
+                ))
+                
+                # Show fallback metadata
+                if result.metadata.get("fallback_used"):
+                    self.console.print(f"🔄 Fallback used: {result.metadata.get('failed_model')} → {result.metadata.get('fallback_model')}")
+                else:
+                    self.console.print("✅ Primary model succeeded, no fallback needed")
+            else:
+                self.console.print(f"❌ Fallback processing failed: {result.error}")
+                
+        except Exception as e:
+            self.console.print(f"❌ Fallback processing error: {e}")
+        
+        # Show model statistics
+        self.console.print("\n📈 [bold]Model Statistics:[/bold]")
+        stats = self.multi_model_processor.get_model_stats()
+        
+        stats_table = Table(title="Model Performance Statistics")
+        stats_table.add_column("Model", style="cyan")
+        stats_table.add_column("Requests", style="green")
+        stats_table.add_column("Success Rate", style="yellow")
+        stats_table.add_column("Avg Time", style="blue")
+        
+        for model_name, model_stats in stats.items():
+            total_requests = model_stats["total_requests"]
+            success_rate = (model_stats["successful_requests"] / total_requests * 100) if total_requests > 0 else 0
+            avg_time = model_stats["avg_processing_time"]
+            
+            stats_table.add_row(
+                model_name,
+                str(total_requests),
+                f"{success_rate:.1f}%",
+                f"{avg_time:.2f}s"
+            )
+        
+        self.console.print(stats_table)
+        
+        self.console.print("\n✅ [green]Multi-model processing demo complete![/green]")
         if self.interactive:
             input("\n⏸️  Press Enter to continue...")
         else:
@@ -521,6 +679,13 @@ Code Review:""",
                 "Multiple processing tasks (summarize, enhance, analyze)",
                 "Template-based prompts with variables"
             ],
+            "🚀 Advanced AI (SMS-19)": [
+                "Multi-model processing with automatic routing",
+                "Model comparison and benchmarking",
+                "Intelligent fallback chains for reliability",
+                "Performance monitoring and statistics",
+                "Task-specific model optimization"
+            ],
             "🎯 Prompt Templates (SMS-33)": [
                 "11 built-in professional templates",
                 "Custom template creation and management",
@@ -535,7 +700,7 @@ Code Review:""",
             ],
             "🌐 Web Interface": [
                 "Modern responsive dashboard",
-                "Complete REST API",
+                "Complete REST API with multi-model support",
                 "Real-time monitoring",
                 "Template management UI"
             ],
@@ -597,6 +762,7 @@ Code Review:""",
         try:
             self.demo_prompt_templates()
             await self.demo_ai_processing()
+            await self.demo_multi_model_processing()
             await self.demo_vector_database()
             self.demo_web_interface_info()
             self.show_feature_summary()
