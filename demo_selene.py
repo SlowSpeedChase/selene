@@ -380,25 +380,28 @@ class SeleneDemo:
             try:
                 result = await self.vector_processor.process(
                     query,
-                    operation="search",
-                    max_results=2
+                    task="search",
+                    n_results=2
                 )
                 
-                if result.success and result.content:
-                    results = json.loads(result.content)
+                if result.success and result.metadata.get('results'):
+                    results = result.metadata['results']
                     
                     table = Table(title=f"Search Results for '{query}'")
-                    table.add_column("Score", style="cyan")
+                    table.add_column("Rank", style="cyan")
+                    table.add_column("Score", style="green")
                     table.add_column("Content Preview", style="white")
                     table.add_column("Metadata", style="dim")
                     
                     for res in results:
-                        score = f"{res.get('score', 0):.3f}"
-                        content_preview = res.get('content', '')[:80] + "..."
+                        rank = str(res.get('rank', 0))
+                        score = f"{res.get('similarity_score', 0):.3f}"
+                        content_preview = res.get('content_preview', '')[:60] + "..."
                         metadata = str(res.get('metadata', {}))
-                        table.add_row(score, content_preview, metadata)
+                        table.add_row(rank, score, content_preview, metadata)
                     
                     self.console.print(table)
+                    self.console.print(f"  ✅ Found {len(results)} results")
                 else:
                     self.console.print("  ❌ No results found")
                     
