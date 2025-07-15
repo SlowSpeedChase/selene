@@ -14,15 +14,26 @@ from loguru import logger
 
 from ..monitoring import FileWatcher, MonitorConfig
 from ..processors import LLMProcessor, OllamaProcessor, VectorProcessor
+from ..prompts.manager import PromptTemplateManager
+from ..prompts.models import PromptCategory, TemplateVariable
+from ..prompts.builtin_templates import register_builtin_templates
 from ..queue import ProcessingQueue, QueueManager
 from .models import (
     AddDirectoryRequest,
     ConfigurationResponse,
+    CreateTemplateRequest,
     MonitorStatusResponse,
     ProcessRequest,
     ProcessResponse,
     RemoveDirectoryRequest,
+    RenderTemplateRequest,
+    RenderTemplateResponse,
     SuccessResponse,
+    TemplateAnalyticsResponse,
+    TemplateListRequest,
+    TemplateListResponse,
+    TemplateResponse,
+    UpdateTemplateRequest,
     VectorSearchRequest,
     VectorSearchResponse,
     VectorStoreRequest,
@@ -49,6 +60,7 @@ def create_app() -> FastAPI:
     app.state.file_watcher = None
     app.state.queue_manager = None
     app.state.processing_queue = None
+    app.state.prompt_manager = None
 
     @app.on_event("startup")
     async def startup_event():
@@ -61,6 +73,11 @@ def create_app() -> FastAPI:
             app.state.queue_manager = QueueManager(
                 app.state.processing_queue, max_workers=3
             )
+            
+            # Initialize prompt template manager
+            app.state.prompt_manager = PromptTemplateManager()
+            register_builtin_templates(app.state.prompt_manager)
+            
             logger.info("Selene web application started successfully")
         except Exception as e:
             logger.error(f"Failed to start web application: {e}")
@@ -412,6 +429,271 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"Stop monitoring failed: {e}")
             raise HTTPException(500, f"Stop monitoring failed: {str(e)}")
+
+    # Prompt Template Management Endpoints
+    
+    @app.get("/api/templates", response_model=TemplateListResponse)
+    async def list_templates(
+        category: Optional[PromptCategory] = None,
+        tags: Optional[str] = None,
+        sort_by: str = "name",
+        search: Optional[str] = None
+    ):
+        """List all prompt templates with optional filtering."""
+        try:
+            tag_list = tags.split(",") if tags else None
+            
+            if search:
+                templates = app.state.prompt_manager.search_templates(search)
+            else:
+                templates = app.state.prompt_manager.list_templates(
+                    category=category,
+                    tags=tag_list,
+                    sort_by=sort_by
+                )
+            
+            # Convert to response format
+            template_responses = []
+            for template in templates:
+                template_responses.append(TemplateResponse(
+                    id=template.id,
+                    name=template.name,
+                    description=template.description,
+                    category=template.category,
+                    template=template.template,
+                    variables=[var.dict() for var in template.variables],
+                    tags=template.tags,
+                    author=template.author,
+                    version=template.version,
+                    created_at=template.created_at.isoformat(),
+                    updated_at=template.updated_at.isoformat(),
+                    usage_count=template.usage_count,
+                    last_used=template.last_used.isoformat() if template.last_used else None,
+                    avg_quality_score=template.avg_quality_score,
+                    success_rate=template.success_rate
+                ))
+            
+            # Get category counts
+            all_templates = app.state.prompt_manager.list_templates()
+            categories = {}
+            for cat in PromptCategory:
+                categories[cat.value] = len([t for t in all_templates if t.category == cat])
+            
+            return TemplateListResponse(
+                templates=template_responses,
+                total=len(template_responses),
+                categories=categories
+            )
+            
+        except Exception as e:
+            logger.error(f"List templates failed: {str(e)}")
+            raise HTTPException(500, f"List templates failed: {str(e)}")
+    
+    @app.get("/api/templates/{template_id}", response_model=TemplateResponse)
+    async def get_template(template_id: str):
+        """Get a specific template by ID."""
+        try:
+            template = app.state.prompt_manager.get_template(template_id)
+            if not template:
+                raise HTTPException(404, f"Template not found: {template_id}")
+            
+            return TemplateResponse(
+                id=template.id,
+                name=template.name,
+                description=template.description,
+                category=template.category,
+                template=template.template,
+                variables=[var.dict() for var in template.variables],
+                tags=template.tags,
+                author=template.author,
+                version=template.version,
+                created_at=template.created_at.isoformat(),
+                updated_at=template.updated_at.isoformat(),
+                usage_count=template.usage_count,
+                last_used=template.last_used.isoformat() if template.last_used else None,
+                avg_quality_score=template.avg_quality_score,
+                success_rate=template.success_rate
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Get template failed: {str(e)}")
+            raise HTTPException(500, f"Get template failed: {str(e)}")
+    
+    @app.post("/api/templates", response_model=TemplateResponse)
+    async def create_template(request: CreateTemplateRequest):
+        """Create a new prompt template."""
+        try:
+            # Convert variable requests to TemplateVariable objects
+            variables = []
+            for var_req in request.variables:
+                variables.append({
+                    "name": var_req.name,
+                    "description": var_req.description,
+                    "required": var_req.required,
+                    "default_value": var_req.default_value,
+                    "validation_pattern": var_req.validation_pattern
+                })
+            
+            template = app.state.prompt_manager.create_template(
+                name=request.name,
+                description=request.description,
+                category=request.category,
+                template=request.template,
+                variables=variables,
+                tags=request.tags,
+                author=request.author
+            )
+            
+            if not template:
+                raise HTTPException(400, "Failed to create template")
+            
+            return TemplateResponse(
+                id=template.id,
+                name=template.name,
+                description=template.description,
+                category=template.category,
+                template=template.template,
+                variables=[var.dict() for var in template.variables],
+                tags=template.tags,
+                author=template.author,
+                version=template.version,
+                created_at=template.created_at.isoformat(),
+                updated_at=template.updated_at.isoformat(),
+                usage_count=template.usage_count,
+                last_used=template.last_used.isoformat() if template.last_used else None,
+                avg_quality_score=template.avg_quality_score,
+                success_rate=template.success_rate
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Create template failed: {str(e)}")
+            raise HTTPException(500, f"Create template failed: {str(e)}")
+    
+    @app.put("/api/templates/{template_id}", response_model=TemplateResponse)
+    async def update_template(template_id: str, request: UpdateTemplateRequest):
+        """Update an existing template."""
+        try:
+            # Prepare updates dict
+            updates = {}
+            if request.name is not None:
+                updates["name"] = request.name
+            if request.description is not None:
+                updates["description"] = request.description
+            if request.category is not None:
+                updates["category"] = request.category
+            if request.template is not None:
+                updates["template"] = request.template
+            if request.tags is not None:
+                updates["tags"] = request.tags
+            if request.variables is not None:
+                variables = []
+                for var_req in request.variables:
+                    variables.append(TemplateVariable(
+                        name=var_req.name,
+                        description=var_req.description,
+                        required=var_req.required,
+                        default_value=var_req.default_value,
+                        validation_pattern=var_req.validation_pattern
+                    ))
+                updates["variables"] = variables
+            
+            success = app.state.prompt_manager.update_template(template_id, **updates)
+            if not success:
+                raise HTTPException(400, f"Failed to update template: {template_id}")
+            
+            # Return updated template
+            template = app.state.prompt_manager.get_template(template_id)
+            return TemplateResponse(
+                id=template.id,
+                name=template.name,
+                description=template.description,
+                category=template.category,
+                template=template.template,
+                variables=[var.dict() for var in template.variables],
+                tags=template.tags,
+                author=template.author,
+                version=template.version,
+                created_at=template.created_at.isoformat(),
+                updated_at=template.updated_at.isoformat(),
+                usage_count=template.usage_count,
+                last_used=template.last_used.isoformat() if template.last_used else None,
+                avg_quality_score=template.avg_quality_score,
+                success_rate=template.success_rate
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Update template failed: {str(e)}")
+            raise HTTPException(500, f"Update template failed: {str(e)}")
+    
+    @app.delete("/api/templates/{template_id}", response_model=SuccessResponse)
+    async def delete_template(template_id: str):
+        """Delete a template."""
+        try:
+            success = app.state.prompt_manager.delete_template(template_id)
+            if not success:
+                raise HTTPException(404, f"Template not found: {template_id}")
+            
+            return SuccessResponse(
+                success=True,
+                message=f"Template {template_id} deleted successfully"
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Delete template failed: {str(e)}")
+            raise HTTPException(500, f"Delete template failed: {str(e)}")
+    
+    @app.post("/api/templates/render", response_model=RenderTemplateResponse)
+    async def render_template(request: RenderTemplateRequest):
+        """Render a template with variables."""
+        try:
+            template = app.state.prompt_manager.get_template(request.template_id)
+            if not template:
+                raise HTTPException(404, f"Template not found: {request.template_id}")
+            
+            rendered = app.state.prompt_manager.render_template(
+                request.template_id,
+                request.variables,
+                request.model_name
+            )
+            
+            if rendered is None:
+                raise HTTPException(400, "Failed to render template")
+            
+            return RenderTemplateResponse(
+                rendered_prompt=rendered,
+                template_name=template.name,
+                variables_used=request.variables
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Render template failed: {str(e)}")
+            raise HTTPException(500, f"Render template failed: {str(e)}")
+    
+    @app.get("/api/templates/{template_id}/analytics", response_model=TemplateAnalyticsResponse)
+    async def get_template_analytics(template_id: str):
+        """Get analytics for a specific template."""
+        try:
+            analytics = app.state.prompt_manager.get_template_analytics(template_id)
+            if not analytics:
+                raise HTTPException(404, f"Template not found: {template_id}")
+            
+            return TemplateAnalyticsResponse(**analytics)
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Get template analytics failed: {str(e)}")
+            raise HTTPException(500, f"Get template analytics failed: {str(e)}")
 
     return app
 

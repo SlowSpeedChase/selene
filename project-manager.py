@@ -178,30 +178,35 @@ class ProjectManager:
             sys.exit(1)
     
     def get_current_sprint_tickets(self) -> List[Any]:
-        """Get tickets from current sprint."""
+        """Get tickets from current sprint or fallback to project tickets."""
         try:
             current_work = self.config.get('current_work', {})
             board_id = current_work.get('board_id')
+            epic_prefix = current_work.get('epic', 'SMS')
             
-            if not board_id:
-                # Fallback: search by epic or assignee
-                epic_prefix = current_work.get('epic', 'SMS')
-                jql = f'project = {epic_prefix} AND assignee = currentUser() AND resolution = Unresolved ORDER BY priority DESC'
+            if board_id:
+                try:
+                    # Try to get active sprint
+                    sprints = self.jira.sprints(board_id, state='active')
+                    if sprints:
+                        sprint = sprints[0]
+                        jql = f'sprint = {sprint.id} AND assignee = currentUser() AND resolution = Unresolved ORDER BY priority DESC'
+                    else:
+                        self.console.print("⚠️  No active sprint found, using project search", style="yellow")
+                        jql = f'project = {epic_prefix} AND assignee = currentUser() AND resolution = Unresolved ORDER BY priority DESC'
+                except Exception as sprint_error:
+                    # Board doesn't support sprints, use project search
+                    self.console.print("⚠️  Board doesn't support sprints, using project search", style="yellow")
+                    jql = f'project = {epic_prefix} AND assignee = currentUser() AND resolution = Unresolved ORDER BY priority DESC'
             else:
-                # Get active sprint
-                sprints = self.jira.sprints(board_id, state='active')
-                if not sprints:
-                    self.console.print("⚠️  No active sprint found", style="yellow")
-                    return []
-                
-                sprint = sprints[0]
-                jql = f'sprint = {sprint.id} AND assignee = currentUser() AND resolution = Unresolved ORDER BY priority DESC'
+                # Fallback: search by epic or assignee
+                jql = f'project = {epic_prefix} AND assignee = currentUser() AND resolution = Unresolved ORDER BY priority DESC'
             
             tickets = self.jira.search_issues(jql, maxResults=50)
             return tickets
             
         except Exception as e:
-            logger.error(f"Failed to get sprint tickets: {e}")
+            logger.error(f"Failed to get tickets: {e}")
             self.console.print(f"❌ Error fetching tickets: {e}", style="red")
             return []
     
