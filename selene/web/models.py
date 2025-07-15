@@ -5,6 +5,7 @@ Pydantic models for web API requests and responses.
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from ..prompts.models import PromptCategory
 
 
 class ProcessRequest(BaseModel):
@@ -104,3 +105,104 @@ class SuccessResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Dict[str, Any]] = None
+
+
+# Prompt Template Models
+
+class TemplateVariableRequest(BaseModel):
+    """Template variable definition."""
+    
+    name: str = Field(..., description="Variable name")
+    description: str = Field(..., description="Variable description")
+    required: bool = Field(True, description="Whether variable is required")
+    default_value: Optional[str] = Field(None, description="Default value")
+    validation_pattern: Optional[str] = Field(None, description="Regex validation pattern")
+
+
+class CreateTemplateRequest(BaseModel):
+    """Request model for creating a prompt template."""
+    
+    name: str = Field(..., description="Template name")
+    description: str = Field(..., description="Template description")
+    category: PromptCategory = Field(..., description="Template category")
+    template: str = Field(..., description="Prompt template with {variables}")
+    variables: List[TemplateVariableRequest] = Field(default_factory=list, description="Template variables")
+    tags: List[str] = Field(default_factory=list, description="Searchable tags")
+    author: Optional[str] = Field(None, description="Template author")
+
+
+class UpdateTemplateRequest(BaseModel):
+    """Request model for updating a prompt template."""
+    
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[PromptCategory] = None
+    template: Optional[str] = None
+    variables: Optional[List[TemplateVariableRequest]] = None
+    tags: Optional[List[str]] = None
+
+
+class RenderTemplateRequest(BaseModel):
+    """Request model for rendering a template."""
+    
+    template_id: str = Field(..., description="Template ID to render")
+    variables: Dict[str, str] = Field(..., description="Variable values")
+    model_name: Optional[str] = Field(None, description="Model name for optimizations")
+
+
+class TemplateListRequest(BaseModel):
+    """Request model for listing templates."""
+    
+    category: Optional[PromptCategory] = None
+    tags: Optional[List[str]] = None
+    sort_by: str = Field("name", description="Sort field")
+    search: Optional[str] = None
+
+
+class TemplateResponse(BaseModel):
+    """Response model for prompt template data."""
+    
+    id: str
+    name: str
+    description: str
+    category: PromptCategory
+    template: str
+    variables: List[Dict[str, Any]]
+    tags: List[str]
+    author: Optional[str]
+    version: str
+    created_at: str
+    updated_at: str
+    usage_count: int
+    last_used: Optional[str]
+    avg_quality_score: Optional[float]
+    success_rate: Optional[float]
+
+
+class TemplateListResponse(BaseModel):
+    """Response model for template list."""
+    
+    templates: List[TemplateResponse]
+    total: int
+    categories: Dict[str, int]
+
+
+class TemplateAnalyticsResponse(BaseModel):
+    """Response model for template analytics."""
+    
+    template_id: str
+    name: str
+    usage_count: int
+    success_rate: Optional[float]
+    avg_quality_score: Optional[float]
+    last_used: Optional[str]
+    recent_executions: int
+    avg_execution_time: Optional[float]
+
+
+class RenderTemplateResponse(BaseModel):
+    """Response model for template rendering."""
+    
+    rendered_prompt: str
+    template_name: str
+    variables_used: Dict[str, str]

@@ -9,6 +9,7 @@ import httpx
 from loguru import logger
 
 from .base import BaseProcessor, ProcessorResult
+from ..prompts.builtin_templates import get_template_for_task
 
 
 class OllamaProcessor(BaseProcessor):
@@ -75,16 +76,32 @@ class OllamaProcessor(BaseProcessor):
         try:
             task = kwargs.get("task", "enhance")
             custom_prompt = kwargs.get("prompt")
+            template_id = kwargs.get("template_id")
             # Use self.model (which may have been updated by validation) unless explicitly overridden
             model = kwargs.get("model", self.model)
 
+            # Get prompt using template system or fallback
             if custom_prompt:
-                prompt = custom_prompt
+                full_prompt = custom_prompt
+                used_template_id = None
+            elif template_id:
+                # Use specific template
+                template = self.prompt_manager.get_template(template_id)
+                if template:
+                    template_vars = {"content": content}
+                    template_vars.update(kwargs.get("template_variables", {}))
+                    full_prompt = template.render(template_vars, strict=False)
+                    used_template_id = template_id
+                else:
+                    # Fallback if template not found
+                    full_prompt = self.get_prompt_for_task(task, content, **kwargs)
+                    used_template_id = None
             else:
-                prompt = self._get_task_prompt(task)
-
-            # Construct the full prompt for local processing
-            full_prompt = f"{prompt}\n\nContent to process:\n{content}\n\nResponse:"
+                # Use default template for task
+                full_prompt = self.get_prompt_for_task(task, content, **kwargs)
+                template_name = get_template_for_task(task)
+                template = self.prompt_manager.get_template_by_name(template_name)
+                used_template_id = template.id if template else None
 
             # Make request to Ollama
             payload = {
@@ -130,6 +147,20 @@ class OllamaProcessor(BaseProcessor):
             logger.info(
                 f"Ollama processing completed: {task} task, {processing_time:.2f}s, ~{total_tokens} tokens, model: {model}"
             )
+
+            # Log template usage for analytics
+            if used_template_id:
+                template_vars = {"content": content}
+                template_vars.update(kwargs.get("template_variables", {}))
+                self.log_template_usage(
+                    template_id=used_template_id,
+                    model_name=model,
+                    processor_type="ollama",
+                    variables=template_vars,
+                    execution_time=processing_time,
+                    success=True,
+                    output_length=len(processed_content)
+                )
 
             return ProcessorResult(
                 success=True,
