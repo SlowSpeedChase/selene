@@ -3,8 +3,9 @@ Ollama-based note processor for local AI processing.
 """
 
 import time
+from typing import Any, Dict, List, Optional
+
 import httpx
-from typing import Dict, Any, Optional, List
 from loguru import logger
 
 from .base import BaseProcessor, ProcessorResult
@@ -13,80 +14,78 @@ from .base import BaseProcessor, ProcessorResult
 class OllamaProcessor(BaseProcessor):
     """
     Note processor that uses Ollama for local LLM processing.
-    
+
     Features:
     - Completely local processing (no API keys needed)
     - Privacy-focused (data never leaves your machine)
     - Supports multiple local models (llama3.2, mistral, etc.)
     - No usage costs or rate limits
     """
-    
+
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         """Initialize Ollama processor with local configuration."""
         super().__init__(config)
-        
+
         self.base_url = self.config.get("base_url", "http://localhost:11434")
         self.model = self.config.get("model", "llama3.2")
         self.max_tokens = self.config.get("max_tokens", 1000)
         self.temperature = self.config.get("temperature", 0.7)
-        self.timeout = self.config.get("timeout", 120.0)  # Longer timeout for local processing
+        self.timeout = self.config.get(
+            "timeout", 120.0
+        )  # Longer timeout for local processing
         self.validate_on_init = self.config.get("validate_on_init", True)
-        
+
         # Create HTTP client for Ollama API (will be created when needed)
         self._client = None
-        
+
         # Validate connection and setup if requested
         if self.validate_on_init:
             self._validate_ollama_setup()
-    
+
     @property
     def client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
         if self._client is None:
             self._client = httpx.AsyncClient(
-                base_url=self.base_url,
-                timeout=httpx.Timeout(self.timeout)
+                base_url=self.base_url, timeout=httpx.Timeout(self.timeout)
             )
         return self._client
-    
+
     async def process(self, content: str, **kwargs) -> ProcessorResult:
         """
         Process note content using local Ollama LLM.
-        
+
         Args:
             content: The note content to process
             **kwargs: Processing parameters:
                 - task: Processing task ("summarize", "enhance", "extract_insights", "questions")
                 - prompt: Custom prompt override
                 - model: Model override
-                
+
         Returns:
             ProcessorResult with LLM-processed content
         """
         start_time = time.time()
-        
+
         if not self.validate_input(content):
             return ProcessorResult(
-                success=False,
-                content="",
-                metadata={},
-                error="Invalid or empty content"
+                success=False, content="", metadata={}, error="Invalid or empty content"
             )
-        
+
         try:
             task = kwargs.get("task", "enhance")
             custom_prompt = kwargs.get("prompt")
             # Use self.model (which may have been updated by validation) unless explicitly overridden
             model = kwargs.get("model", self.model)
-            
+
             if custom_prompt:
                 prompt = custom_prompt
             else:
                 prompt = self._get_task_prompt(task)
-            
+
             # Construct the full prompt for local processing
             full_prompt = f"{prompt}\n\nContent to process:\n{content}\n\nResponse:"
-            
+
             # Make request to Ollama
             payload = {
                 "model": model,
@@ -94,23 +93,23 @@ class OllamaProcessor(BaseProcessor):
                 "stream": False,
                 "options": {
                     "temperature": self.temperature,
-                    "num_predict": self.max_tokens
-                }
+                    "num_predict": self.max_tokens,
+                },
             }
-            
+
             response = await self.client.post("/api/generate", json=payload)
             response.raise_for_status()
-            
+
             result_data = response.json()
             processed_content = result_data.get("response", "").strip()
-            
+
             processing_time = time.time() - start_time
-            
+
             # Calculate approximate token usage (rough estimate)
             input_tokens = len(full_prompt.split())
             output_tokens = len(processed_content.split())
             total_tokens = input_tokens + output_tokens
-            
+
             metadata = {
                 "task": task,
                 "model": model,
@@ -121,18 +120,24 @@ class OllamaProcessor(BaseProcessor):
                 "processed_length": len(processed_content),
                 "base_url": self.base_url,
                 "processor_type": "ollama_local",
-                **{k: v for k, v in kwargs.items() if k not in ["task", "prompt", "model"]}
+                **{
+                    k: v
+                    for k, v in kwargs.items()
+                    if k not in ["task", "prompt", "model"]
+                },
             }
-            
-            logger.info(f"Ollama processing completed: {task} task, {processing_time:.2f}s, ~{total_tokens} tokens, model: {model}")
-            
+
+            logger.info(
+                f"Ollama processing completed: {task} task, {processing_time:.2f}s, ~{total_tokens} tokens, model: {model}"
+            )
+
             return ProcessorResult(
                 success=True,
                 content=processed_content,
                 metadata=metadata,
-                processing_time=processing_time
+                processing_time=processing_time,
             )
-            
+
         except httpx.ConnectError:
             processing_time = time.time() - start_time
             error_msg = (
@@ -140,41 +145,52 @@ class OllamaProcessor(BaseProcessor):
                 "Make sure Ollama is running: 'ollama serve'"
             )
             logger.error(error_msg)
-            
+
             return ProcessorResult(
                 success=False,
                 content="",
-                metadata={"task": kwargs.get("task", "enhance"), "processor_type": "ollama_local"},
+                metadata={
+                    "task": kwargs.get("task", "enhance"),
+                    "processor_type": "ollama_local",
+                },
                 error=error_msg,
-                processing_time=processing_time
+                processing_time=processing_time,
             )
-            
+
         except httpx.HTTPStatusError as e:
             processing_time = time.time() - start_time
-            error_msg = f"Ollama HTTP error: {e.response.status_code} - {e.response.text}"
+            error_msg = (
+                f"Ollama HTTP error: {e.response.status_code} - {e.response.text}"
+            )
             logger.error(error_msg)
-            
+
             return ProcessorResult(
                 success=False,
                 content="",
-                metadata={"task": kwargs.get("task", "enhance"), "processor_type": "ollama_local"},
+                metadata={
+                    "task": kwargs.get("task", "enhance"),
+                    "processor_type": "ollama_local",
+                },
                 error=error_msg,
-                processing_time=processing_time
+                processing_time=processing_time,
             )
-            
+
         except Exception as e:
             processing_time = time.time() - start_time
             error_msg = f"Ollama processing failed: {str(e)}"
             logger.error(error_msg)
-            
+
             return ProcessorResult(
                 success=False,
                 content="",
-                metadata={"task": kwargs.get("task", "enhance"), "processor_type": "ollama_local"},
+                metadata={
+                    "task": kwargs.get("task", "enhance"),
+                    "processor_type": "ollama_local",
+                },
                 error=error_msg,
-                processing_time=processing_time
+                processing_time=processing_time,
             )
-    
+
     def _get_task_prompt(self, task: str) -> str:
         """Get system prompt for specific processing task (optimized for local models)."""
         prompts = {
@@ -215,76 +231,83 @@ class OllamaProcessor(BaseProcessor):
                 "3. Key themes "
                 "4. Suggested tags "
                 "Present the classification clearly."
-            )
+            ),
         }
-        
+
         return prompts.get(task, prompts["enhance"])
-    
+
     def _validate_ollama_setup(self) -> None:
         """
         Validate Ollama setup during initialization.
         Provides helpful error messages if setup is incomplete.
         """
         import asyncio
-        
+
         try:
             # Check if we can connect to Ollama
             # Use a temporary client for validation
             async def validate():
                 temp_client = httpx.AsyncClient(
-                    base_url=self.base_url,
-                    timeout=httpx.Timeout(self.timeout)
+                    base_url=self.base_url, timeout=httpx.Timeout(self.timeout)
                 )
                 try:
                     response = await temp_client.get("/api/tags")
                     response.raise_for_status()
-                    
+
                     models = response.json().get("models", [])
                     available_models = [model["name"] for model in models]
-                    
+
                     return {
                         "connected": True,
                         "base_url": self.base_url,
                         "available_models": available_models,
                         "current_model": self.model,
-                        "model_available": self.model in available_models
+                        "model_available": self.model in available_models,
                     }
                 except Exception as e:
                     return {
                         "connected": False,
                         "base_url": self.base_url,
                         "error": str(e),
-                        "suggestion": "Run 'ollama serve' to start Ollama"
+                        "suggestion": "Run 'ollama serve' to start Ollama",
                     }
                 finally:
                     await temp_client.aclose()
-            
+
             connection_info = asyncio.run(validate())
-            
+
             if not connection_info.get("connected"):
                 error_msg = connection_info.get("error", "Unknown connection error")
                 self._raise_setup_error("connection", error_msg)
-            
+
             # Check if the default model is available, or select best alternative
             available_models = connection_info.get("available_models", [])
             if available_models and self.model not in available_models:
                 # Try to find a good alternative
                 fallback_model = self._find_best_available_model(available_models)
                 if fallback_model:
-                    logger.warning(f"⚠️  Model '{self.model}' not found, using '{fallback_model}' instead")
+                    logger.warning(
+                        f"⚠️  Model '{self.model}' not found, using '{fallback_model}' instead"
+                    )
                     self.model = fallback_model
                 else:
-                    self._raise_setup_error("model", f"Model '{self.model}' not found", available_models)
-                
-            logger.info(f"✅ Ollama validation successful: {len(available_models)} models available, using {self.model}")
-            
+                    self._raise_setup_error(
+                        "model", f"Model '{self.model}' not found", available_models
+                    )
+
+            logger.info(
+                f"✅ Ollama validation successful: {len(available_models)} models available, using {self.model}"
+            )
+
         except Exception as e:
             # If validation fails completely, provide helpful guidance
             self._raise_setup_error("validation", str(e))
-    
-    def _raise_setup_error(self, error_type: str, details: str, available_models: list = None) -> None:
+
+    def _raise_setup_error(
+        self, error_type: str, details: str, available_models: list = None
+    ) -> None:
         """Raise a helpful setup error with actionable instructions."""
-        
+
         if error_type == "connection":
             message = f"""
 ❌ Cannot connect to Ollama at {self.base_url}
@@ -299,7 +322,7 @@ class OllamaProcessor(BaseProcessor):
 
 Details: {details}
             """.strip()
-            
+
         elif error_type == "model":
             available_str = ", ".join(available_models) if available_models else "none"
             message = f"""
@@ -314,7 +337,7 @@ Details: {details}
 
 💡 Recommended models: llama3.2 (fast), mistral (high quality)
             """.strip()
-            
+
         else:  # validation error
             message = f"""
 ❌ Ollama setup validation failed
@@ -329,9 +352,9 @@ Details: {details}
 
 Error details: {details}
             """.strip()
-        
+
         raise RuntimeError(message)
-    
+
     def _find_best_available_model(self, available_models: List[str]) -> Optional[str]:
         """
         Find the best available model from the available list.
@@ -340,31 +363,45 @@ Error details: {details}
         # Model preference order (best to fallback)
         preference_order = [
             # Llama family (recommended)
-            "llama3.2", "llama3.2:3b", "llama3.1", "llama3.1:8b", "llama3", 
-            "llama3.2:1b", "llama2",
-            
+            "llama3.2",
+            "llama3.2:3b",
+            "llama3.1",
+            "llama3.1:8b",
+            "llama3",
+            "llama3.2:1b",
+            "llama2",
             # Other good models
-            "mistral", "mistral:7b", "mixtral", "phi3", "phi3:mini",
-            "qwen2", "gemma", "codellama",
-            
+            "mistral",
+            "mistral:7b",
+            "mixtral",
+            "phi3",
+            "phi3:mini",
+            "qwen2",
+            "gemma",
+            "codellama",
             # Lightweight fallbacks
-            "tinyllama", "phi", "orca-mini"
+            "tinyllama",
+            "phi",
+            "orca-mini",
         ]
-        
+
         # First try exact matches
         for preferred in preference_order:
             if preferred in available_models:
                 return preferred
-        
+
         # Then try partial matches (e.g., llama3.2:latest matches llama3.2)
         for preferred in preference_order:
             for available in available_models:
-                if available.startswith(preferred + ":") or preferred in available.lower():
+                if (
+                    available.startswith(preferred + ":")
+                    or preferred in available.lower()
+                ):
                     return available
-        
+
         # If no preferred models, return the first available
         return available_models[0] if available_models else None
-    
+
     def get_processor_info(self) -> Dict[str, Any]:
         """Get information about this Ollama processor."""
         return {
@@ -375,66 +412,62 @@ Error details: {details}
             "processor_type": "local",
             "capabilities": [
                 "content_summarization",
-                "content_enhancement", 
+                "content_enhancement",
                 "insight_extraction",
                 "question_generation",
-                "topic_classification"
+                "topic_classification",
             ],
             "supported_tasks": [
                 "summarize",
-                "enhance", 
+                "enhance",
                 "extract_insights",
                 "questions",
-                "classify"
+                "classify",
             ],
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "privacy": "local_only",
             "cost": "free",
-            "requires_internet": False
+            "requires_internet": False,
         }
-    
+
     async def check_connection(self) -> Dict[str, Any]:
         """Check if Ollama is running and accessible."""
         try:
             response = await self.client.get("/api/tags")
             response.raise_for_status()
-            
+
             models = response.json().get("models", [])
             available_models = [model["name"] for model in models]
-            
+
             return {
                 "connected": True,
                 "base_url": self.base_url,
                 "available_models": available_models,
                 "current_model": self.model,
-                "model_available": self.model in available_models
+                "model_available": self.model in available_models,
             }
-            
+
         except Exception as e:
             return {
                 "connected": False,
                 "base_url": self.base_url,
                 "error": str(e),
-                "suggestion": "Run 'ollama serve' to start Ollama"
+                "suggestion": "Run 'ollama serve' to start Ollama",
             }
-    
+
     async def pull_model(self, model_name: str) -> Dict[str, Any]:
         """Pull/download a model if not available locally."""
         try:
             payload = {"name": model_name}
             response = await self.client.post("/api/pull", json=payload)
             response.raise_for_status()
-            
+
             return {
                 "success": True,
                 "model": model_name,
-                "message": f"Successfully pulled model {model_name}"
+                "message": f"Successfully pulled model {model_name}",
             }
-            
+
         except Exception as e:
-            return {
-                "success": False,
-                "model": model_name,
-                "error": str(e)
-            }
+            return {"success": False, "model": model_name, "error": str(e)}

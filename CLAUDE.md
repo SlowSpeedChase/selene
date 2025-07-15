@@ -89,6 +89,11 @@ selene process --content "text" --processor openai --model gpt-4
 # Processor management
 selene processor-info    # Show available processors and capabilities
 
+# Web Interface (NEW in SMS-18)
+selene web                          # Start web interface at http://127.0.0.1:8000
+selene web --host 0.0.0.0 --port 8080  # Custom host and port
+selene web --reload                 # Development mode with auto-reload
+
 # Alternative direct execution
 python -m selene.main start
 python -m selene.main process --help
@@ -141,13 +146,16 @@ python scripts/setup_jira.py
 
 ### Key Dependencies & Technologies
 - **CLI Framework**: Typer for command-line interface
+- **Web Framework**: FastAPI for REST API and web interface
 - **UI/Output**: Rich library for beautiful terminal output and formatting
+- **Web UI**: Modern HTML/CSS/JS dashboard with real-time monitoring
 - **Logging**: Loguru for structured logging with rotation
-- **Future Integrations**: 
-  - OpenAI for LLM-powered note processing
+- **Core Integrations**: 
+  - OpenAI & Ollama for LLM-powered note processing
   - ChromaDB for vector database and semantic search
   - Watchdog for file system monitoring
   - Pydantic for data validation
+  - Uvicorn for ASGI web server
 
 ### Project Manager Integration
 The project includes a comprehensive JIRA-integrated development workflow manager (`project-manager.py`) that handles:
@@ -197,11 +205,24 @@ Configuration files:
 - **Rich Output**: Beautiful terminal formatting with metadata tables
 - **Environment Configuration**: API key via environment or CLI parameter
 
+### Web Interface Features (SMS-18)
+- **Modern Dashboard**: Real-time system monitoring and statistics
+- **Content Processing**: Web-based AI content processing interface
+- **Vector Search**: Interactive search interface for knowledge base
+- **File Monitoring**: Web control for file monitoring system
+- **Configuration Management**: Add/remove watched directories via web UI
+- **REST API**: Comprehensive API endpoints for all functionality
+- **Responsive Design**: Works on desktop and mobile devices
+- **Real-time Updates**: Live status monitoring and progress tracking
+
 ### Development Status
 - ✅ SMS-13: Project Setup (Foundation complete)
 - ✅ SMS-14: LOCAL AI Note Processing Pipeline (Ollama + OpenAI fallback complete)
 - ✅ SMS-15: LOCAL Vector Database (ChromaDB with embeddings complete - 20/20 tests PASS)
-- 🔄 Next: SMS-16 (Local File Monitoring) or SMS-17 (Local API Development)
+- ✅ SMS-16: JIRA Integration (Production ready)
+- ✅ SMS-17: File Monitoring System (Architecture validated)
+- ✅ SMS-18: Web UI (FastAPI + Modern Dashboard complete)
+- 🔄 Next: SMS-19 (Advanced AI Features) or SMS-20 (Mobile Interface)
 
 ### Hardware Requirements
 - **Minimum**: 8GB RAM, 4GB free disk space
