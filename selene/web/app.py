@@ -127,6 +127,94 @@ def create_app() -> FastAPI:
         """Health check endpoint."""
         return {"status": "healthy", "message": "Selene Second Brain Processing System"}
 
+    # PWA endpoints
+    @app.get("/manifest.json")
+    async def get_manifest():
+        """Serve PWA manifest."""
+        manifest_path = Path(__file__).parent / "static" / "manifest.json"
+        if manifest_path.exists():
+            return FileResponse(str(manifest_path), media_type="application/json")
+        else:
+            raise HTTPException(404, "Manifest not found")
+
+    @app.get("/sw.js")
+    async def get_service_worker():
+        """Serve service worker."""
+        sw_path = Path(__file__).parent / "static" / "sw.js"
+        if sw_path.exists():
+            return FileResponse(str(sw_path), media_type="application/javascript")
+        else:
+            raise HTTPException(404, "Service worker not found")
+
+    @app.get("/favicon.ico")
+    async def get_favicon():
+        """Serve favicon."""
+        favicon_path = Path(__file__).parent / "static" / "icons" / "favicon.ico"
+        if favicon_path.exists():
+            return FileResponse(str(favicon_path), media_type="image/x-icon")
+        else:
+            raise HTTPException(404, "Favicon not found")
+
+    @app.get("/offline")
+    async def offline_page():
+        """Serve offline page."""
+        return HTMLResponse("""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Selene - Offline</title>
+            <style>
+                body { 
+                    font-family: system-ui, -apple-system, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    margin: 0;
+                    background: #f5f5f5;
+                    color: #333;
+                }
+                .offline-container {
+                    text-align: center;
+                    padding: 2rem;
+                    max-width: 500px;
+                }
+                .icon {
+                    font-size: 4rem;
+                    margin-bottom: 1rem;
+                    color: #4CAF50;
+                }
+                h1 { color: #4CAF50; }
+                .btn {
+                    background: #4CAF50;
+                    color: white;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    margin-top: 1rem;
+                }
+                .btn:hover { background: #45a049; }
+            </style>
+        </head>
+        <body>
+            <div class="offline-container">
+                <div class="icon">🧠</div>
+                <h1>Selene is Offline</h1>
+                <p>You're currently offline. Some features may not be available.</p>
+                <p>Your local AI processing will continue to work when you're back online.</p>
+                <button class="btn" onclick="window.location.reload()">
+                    Try Again
+                </button>
+            </div>
+        </body>
+        </html>
+        """)
+
     @app.post("/api/process", response_model=ProcessResponse)
     async def process_content(request: ProcessRequest):
         """Process content using AI processors."""
