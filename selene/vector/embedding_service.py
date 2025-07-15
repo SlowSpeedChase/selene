@@ -76,7 +76,8 @@ class EmbeddingService:
             try:
                 models_response = ollama.list()
                 available_models = [
-                    model["name"] for model in models_response.get("models", [])
+                    getattr(model, 'model', model.get("name", str(model))) 
+                    for model in models_response.get("models", [])
                 ]
             except Exception as e:
                 logger.warning(f"Could not list Ollama models: {e}")

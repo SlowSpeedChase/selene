@@ -51,8 +51,9 @@ except ImportError as e:
 class SeleneDemo:
     """Interactive demo of Selene Second Brain Processing System."""
     
-    def __init__(self):
+    def __init__(self, interactive: bool = True):
         self.console = Console()
+        self.interactive = interactive
         self.ollama_processor = None
         self.vector_processor = None
         self.prompt_manager = None
@@ -266,7 +267,10 @@ class SeleneDemo:
         self.console.print(f"  • Total templates: {analytics['total_templates']}")
         self.console.print(f"  • Categories: {', '.join(analytics['categories'].keys())}")
         
-        input("\n⏸️  Press Enter to continue...")
+        if self.interactive:
+            input("\n⏸️  Press Enter to continue...")
+        else:
+            self.console.print("\n⏸️  [Non-interactive mode] Continuing...")
     
     async def demo_ai_processing(self):
         """Demonstrate AI processing with different tasks."""
@@ -279,7 +283,12 @@ class SeleneDemo:
             self.console.print(f"  {i}. {name.replace('_', ' ').title()}: {preview}")
         
         # Let user choose content
-        choice = Prompt.ask("\n🔢 Choose content to process", choices=["1", "2", "3"], default="1")
+        if self.interactive:
+            choice = Prompt.ask("\n🔢 Choose content to process", choices=["1", "2", "3"], default="1")
+        else:
+            choice = "1"  # Default to first option in non-interactive mode
+            self.console.print("\n🔢 [Non-interactive mode] Using default content: Meeting Notes")
+        
         content_names = list(self.demo_content.keys())
         chosen_content = self.demo_content[content_names[int(choice) - 1]]
         
@@ -324,7 +333,10 @@ class SeleneDemo:
                 time.sleep(1)  # Brief pause between tasks
         
         self.console.print("✅ [green]AI processing demo complete![/green]")
-        input("\n⏸️  Press Enter to continue...")
+        if self.interactive:
+            input("\n⏸️  Press Enter to continue...")
+        else:
+            self.console.print("\n⏸️  [Non-interactive mode] Continuing...")
     
     async def demo_vector_database(self):
         """Demonstrate vector database operations."""
@@ -394,7 +406,10 @@ class SeleneDemo:
                 self.console.print(f"  ❌ Search error: {e}")
         
         self.console.print("\n✅ [green]Vector database demo complete![/green]")
-        input("\n⏸️  Press Enter to continue...")
+        if self.interactive:
+            input("\n⏸️  Press Enter to continue...")
+        else:
+            self.console.print("\n⏸️  [Non-interactive mode] Continuing...")
     
     def demo_web_interface_info(self):
         """Show information about the web interface."""
@@ -422,10 +437,17 @@ class SeleneDemo:
         self.console.print("\n📖 [bold]API Documentation:[/bold]")
         self.console.print("  http://127.0.0.1:8000/api/docs")
         
-        if Confirm.ask("\n🚀 Would you like to see a template management example?"):
+        if self.interactive:
+            if Confirm.ask("\n🚀 Would you like to see a template management example?"):
+                self.demo_template_api_example()
+        else:
+            self.console.print("\n🚀 [Non-interactive mode] Showing template management example...")
             self.demo_template_api_example()
         
-        input("\n⏸️  Press Enter to continue...")
+        if self.interactive:
+            input("\n⏸️  Press Enter to continue...")
+        else:
+            self.console.print("\n⏸️  [Non-interactive mode] Continuing...")
     
     def demo_template_api_example(self):
         """Show example of template API usage."""
@@ -581,7 +603,11 @@ Code Review:""",
         except Exception as e:
             self.console.print(f"\n\n❌ Demo error: {e}")
         finally:
-            if Confirm.ask("\n🧹 Clean up demo files?", default=True):
+            if self.interactive:
+                if Confirm.ask("\n🧹 Clean up demo files?", default=True):
+                    self.cleanup()
+            else:
+                self.console.print("\n🧹 [Non-interactive mode] Cleaning up demo files...")
                 self.cleanup()
         
         # Final message
@@ -601,7 +627,9 @@ def main():
         print(__doc__)
         return
     
-    demo = SeleneDemo()
+    # Check for non-interactive mode
+    interactive = not ("--non-interactive" in sys.argv or os.getenv("SELENE_DEMO_NON_INTERACTIVE"))
+    demo = SeleneDemo(interactive=interactive)
     
     try:
         asyncio.run(demo.run_demo())

@@ -459,13 +459,17 @@ class PromptTemplateManager:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get overall template manager statistics."""
+        # Calculate average quality score safely
+        templates_with_scores = [t for t in self._templates.values() if t.avg_quality_score]
+        avg_quality_score = 0
+        if templates_with_scores:
+            avg_quality_score = sum(t.avg_quality_score for t in templates_with_scores) / len(templates_with_scores)
+        
         return {
             'total_templates': len(self._templates),
             'categories': {cat.value: len([t for t in self._templates.values() if t.category == cat]) 
                           for cat in PromptCategory},
             'total_executions': len(self._execution_log),
-            'avg_quality_score': sum(t.avg_quality_score for t in self._templates.values() 
-                                   if t.avg_quality_score) / len([t for t in self._templates.values() 
-                                                                if t.avg_quality_score]) if self._templates else 0,
+            'avg_quality_score': avg_quality_score,
             'most_used_template': max(self._templates.values(), key=lambda t: t.usage_count).name if self._templates else None
         }
