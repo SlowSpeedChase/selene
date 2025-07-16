@@ -11,6 +11,7 @@ from loguru import logger
 from .base import BaseProcessor, ProcessorResult
 from ..prompts.builtin_templates import get_template_for_task
 from .monitoring import ProcessingStage
+from ..connection.ollama_manager import OllamaConnectionManager, OllamaConfig
 
 
 class OllamaProcessor(BaseProcessor):
@@ -25,33 +26,45 @@ class OllamaProcessor(BaseProcessor):
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """Initialize Ollama processor with local configuration."""
+        """Initialize Ollama processor with connection manager."""
         super().__init__(config)
 
-        self.base_url = self.config.get("base_url", "http://localhost:11434")
         self.model = self.config.get("model", "llama3.2")
         self.max_tokens = self.config.get("max_tokens", 1000)
         self.temperature = self.config.get("temperature", 0.7)
-        self.timeout = self.config.get(
-            "timeout", 120.0
-        )  # Longer timeout for local processing
         self.validate_on_init = self.config.get("validate_on_init", True)
 
-        # Create HTTP client for Ollama API (will be created when needed)
-        self._client = None
+        # Create connection manager configuration
+        ollama_config = OllamaConfig(
+            base_url=self.config.get("base_url", "http://localhost:11434"),
+            timeout=self.config.get("timeout", 120.0),
+            max_connections=self.config.get("max_connections", 10),
+            health_check_interval=self.config.get("health_check_interval", 30),
+            max_retries=self.config.get("max_retries", 3),
+            retry_delay=self.config.get("retry_delay", 1.0),
+            connection_timeout=self.config.get("connection_timeout", 10.0),
+            read_timeout=self.config.get("read_timeout", 60.0),
+            validate_on_init=self.validate_on_init
+        )
 
-        # Validate connection and setup if requested
-        if self.validate_on_init:
-            self._validate_ollama_setup()
+        # Initialize connection manager
+        self.connection_manager = OllamaConnectionManager(ollama_config)
+        self._manager_started = False
 
-    @property
-    def client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
-        if self._client is None:
-            self._client = httpx.AsyncClient(
-                base_url=self.base_url, timeout=httpx.Timeout(self.timeout)
-            )
-        return self._client
+        # For backward compatibility
+        self.base_url = ollama_config.base_url
+        self.timeout = ollama_config.timeout
+
+    async def _ensure_connection_manager(self):
+        """Ensure connection manager is started."""
+        if not self._manager_started:
+            await self.connection_manager.start()
+            self._manager_started = True
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """Get HTTP client from connection manager."""
+        await self._ensure_connection_manager()
+        return await self.connection_manager.get_client()
 
     async def process(self, content: str, **kwargs) -> ProcessorResult:
         """
@@ -146,7 +159,8 @@ class OllamaProcessor(BaseProcessor):
             self.emit_stage(session_id, ProcessingStage.SENDING_REQUEST, 
                           f"Sending request to {model}")
             
-            response = await self.client.post("/api/generate", json=payload)
+            client = await self.get_client()
+            response = await client.post("/api/generate", json=payload)
             response.raise_for_status()
 
             # Emit response processing stage
@@ -220,6 +234,12 @@ class OllamaProcessor(BaseProcessor):
                 "Make sure Ollama is running: 'ollama serve'"
             )
             logger.error(error_msg)
+            
+            # Mark connection as unhealthy in manager
+            try:
+                await self.connection_manager._handle_connection_error("default", error_msg)
+            except Exception:
+                pass  # Don't let connection manager errors affect main error handling
 
             self.finish_monitoring_session(session_id, success=False)
             return ProcessorResult(
@@ -325,26 +345,33 @@ class OllamaProcessor(BaseProcessor):
         import asyncio
 
         try:
-            # Check if we can connect to Ollama
-            # Use a temporary client for validation
+            # Check if we can connect to Ollama using connection manager
             async def validate():
-                temp_client = httpx.AsyncClient(
-                    base_url=self.base_url, timeout=httpx.Timeout(self.timeout)
-                )
                 try:
-                    response = await temp_client.get("/api/tags")
-                    response.raise_for_status()
-
-                    models = response.json().get("models", [])
-                    available_models = [model["name"] for model in models]
-
-                    return {
-                        "connected": True,
-                        "base_url": self.base_url,
-                        "available_models": available_models,
-                        "current_model": self.model,
-                        "model_available": self.model in available_models,
-                    }
+                    await self._ensure_connection_manager()
+                    
+                    # Use connection manager for health check
+                    health_check_result = await self.connection_manager.health_check()
+                    
+                    if health_check_result:
+                        available_models = await self.connection_manager.get_available_models()
+                        return {
+                            "connected": True,
+                            "base_url": self.base_url,
+                            "available_models": available_models,
+                            "current_model": self.model,
+                            "model_available": self.model in available_models,
+                        }
+                    else:
+                        connection_info = await self.connection_manager.get_connection_info()
+                        default_info = connection_info.get("default", {})
+                        return {
+                            "connected": False,
+                            "base_url": self.base_url,
+                            "error": default_info.get("last_error", "Unknown error"),
+                            "suggestion": "Run 'ollama serve' to start Ollama",
+                        }
+                        
                 except Exception as e:
                     return {
                         "connected": False,
@@ -352,8 +379,6 @@ class OllamaProcessor(BaseProcessor):
                         "error": str(e),
                         "suggestion": "Run 'ollama serve' to start Ollama",
                     }
-                finally:
-                    await temp_client.aclose()
 
             # Check if we're in an event loop already
             try:
@@ -523,19 +548,29 @@ Error details: {details}
     async def check_connection(self) -> Dict[str, Any]:
         """Check if Ollama is running and accessible."""
         try:
-            response = await self.client.get("/api/tags")
-            response.raise_for_status()
-
-            models = response.json().get("models", [])
-            available_models = [model["name"] for model in models]
-
-            return {
-                "connected": True,
-                "base_url": self.base_url,
-                "available_models": available_models,
-                "current_model": self.model,
-                "model_available": self.model in available_models,
-            }
+            await self._ensure_connection_manager()
+            
+            # Use connection manager for health check
+            health_check_result = await self.connection_manager.health_check()
+            
+            if health_check_result:
+                available_models = await self.connection_manager.get_available_models()
+                return {
+                    "connected": True,
+                    "base_url": self.base_url,
+                    "available_models": available_models,
+                    "current_model": self.model,
+                    "model_available": self.model in available_models,
+                }
+            else:
+                connection_info = await self.connection_manager.get_connection_info()
+                default_info = connection_info.get("default", {})
+                return {
+                    "connected": False,
+                    "base_url": self.base_url,
+                    "error": default_info.get("last_error", "Unknown error"),
+                    "suggestion": "Run 'ollama serve' to start Ollama",
+                }
 
         except Exception as e:
             return {
@@ -548,8 +583,9 @@ Error details: {details}
     async def pull_model(self, model_name: str) -> Dict[str, Any]:
         """Pull/download a model if not available locally."""
         try:
+            client = await self.get_client()
             payload = {"name": model_name}
-            response = await self.client.post("/api/pull", json=payload)
+            response = await client.post("/api/pull", json=payload)
             response.raise_for_status()
 
             return {
@@ -560,3 +596,9 @@ Error details: {details}
 
         except Exception as e:
             return {"success": False, "model": model_name, "error": str(e)}
+    
+    async def cleanup(self):
+        """Clean up resources when processor is destroyed."""
+        if self._manager_started:
+            await self.connection_manager.stop()
+            self._manager_started = False

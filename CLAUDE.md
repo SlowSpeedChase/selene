@@ -104,6 +104,12 @@ selene process --content "text" --processor openai --model gpt-4
 # Processor management
 selene processor-info    # Show available processors and capabilities
 
+# CHATBOT INTERFACE (SMS-36, SMS-37) 
+# Conversational AI assistant for Obsidian vault management
+selene chat --vault "path/to/vault"              # Start interactive chat
+selene chat --vault "vault" --debug             # With debug logging
+selene chat --vault "vault" --no-memory         # Without conversation memory
+
 # Web Interface (NEW in SMS-18)
 selene web                          # Start web interface at http://127.0.0.1:8000
 selene web --host 0.0.0.0 --port 8080  # Custom host and port
@@ -247,6 +253,12 @@ SELENE_DEMO_NON_INTERACTIVE=1 python3 demo_selene.py
   - `monitoring/`: File system monitoring and processing
   - `queue/`: Processing queue and background task management
   - `jira/`: JIRA integration for project management
+  - `chat/`: SMS-36/37 Conversational AI chatbot system (NEW)
+    - `agent.py`: Main ChatAgent with conversation handling
+    - `config.py`: Configuration management for vault paths
+    - `state.py`: SQLite conversation memory and context management
+    - `tools/`: Extensible tool system for vault operations
+    - `nlp/`: Enhanced natural language processing pipeline (NEW)
   - `__init__.py`: Package initialization with version info
 - **tests/**: Test suite with pytest configuration
   - `test_processors.py`: Comprehensive processor tests with async support
@@ -382,7 +394,17 @@ Configuration files:
   - **Web API Integration**: 5 new endpoints for advanced features
   - **Testing**: 36 comprehensive tests (19 for multi-model, 17 for chain)
   - **Demo Integration**: Complete showcase of all advanced features
-- 🔄 Next: SMS-20 (Mobile Interface) or SMS-21 (Plugin System)
+- ✅ SMS-36: **CHATBOT FOUNDATION COMPLETE** 🤖
+  - Core ChatAgent architecture with tool system
+  - SQLite conversation memory and context management
+  - 7 vault interaction tools with error handling
+  - CLI integration with `selene chat` command
+- ✅ SMS-37: **ENHANCED NLP PROCESSING COMPLETE** 🧠
+  - Advanced natural language processing pipeline
+  - Intent classification and parameter extraction
+  - Entity recognition and sentiment analysis
+  - Conversation context with turn-based tracking
+- 🔄 Next: SMS-38 (Advanced Chat Features) or SMS-20 (Mobile Interface)
 
 ### Hardware Requirements
 - **Minimum**: 8GB RAM, 4GB free disk space
@@ -561,7 +583,33 @@ selene chat --vault "vault" --no-memory
 - `selene/chat/tools/search_tools.py` - Search tools (200+ lines)
 - `selene/chat/tools/ai_tools.py` - AI processing tools (100+ lines)
 
-**Ready for Phase 2**: SMS-37 Vault Interaction Tools (enhanced natural language processing)
+### ✅ COMPLETED: SMS-37 Enhanced NLP Processing (NEW - 2025-07-16)
+**Status**: ✅ **COMPLETE** - Advanced natural language processing pipeline implemented
+
+#### What was implemented:
+
+**Enhanced NLP Processing (SMS-37)**
+1. **Language Processing Pipeline**: Comprehensive text analysis with entity extraction and sentiment analysis
+2. **Intent Classification**: Advanced intent recognition for better conversation flow
+3. **Parameter Extraction**: Smart extraction of parameters from natural language queries
+4. **Conversation Context**: Enhanced context management with turn-based conversation tracking
+5. **NLP Integration**: Seamless integration with existing ChatAgent architecture
+
+**NLP Features**
+- **Entity Recognition**: Extract names, locations, dates, and custom entities from user input
+- **Sentiment Analysis**: Understand emotional context for better response generation
+- **Intent Classification**: Classify user intents (read, write, search, process, etc.)
+- **Parameter Extraction**: Extract tool parameters from natural language descriptions
+- **Context Awareness**: Maintain conversation context across multiple turns
+- **Confidence Scoring**: Score classification and extraction confidence for reliability
+
+**Implementation Details**
+- **4 Core NLP Modules**: `language_processor.py`, `intent_classifier.py`, `parameter_extractor.py`, `conversation_context.py`
+- **Comprehensive Testing**: 10+ test cases covering all NLP functionality
+- **Performance Optimized**: Local processing with minimal dependencies
+- **Extensible Design**: Easy to add new intents, entities, and processing rules
+
+**Ready for Production**: Complete NLP pipeline ready for SMS-38 (Advanced Chat Features)
 
 ## 🎯 PROJECT STATUS UPDATE (2025-07-16)
 
