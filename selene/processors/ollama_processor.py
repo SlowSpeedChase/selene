@@ -355,7 +355,15 @@ class OllamaProcessor(BaseProcessor):
                 finally:
                     await temp_client.aclose()
 
-            connection_info = asyncio.run(validate())
+            # Check if we're in an event loop already
+            try:
+                loop = asyncio.get_running_loop()
+                # We're already in an event loop, skip validation to avoid conflicts
+                logger.warning("Skipping Ollama validation (running in event loop context)")
+                return
+            except RuntimeError:
+                # No event loop running, safe to use asyncio.run
+                connection_info = asyncio.run(validate())
 
             if not connection_info.get("connected"):
                 error_msg = connection_info.get("error", "Unknown connection error")

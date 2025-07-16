@@ -110,8 +110,9 @@ selene web --host 0.0.0.0 --port 8080  # Custom host and port
 selene web --reload                 # Development mode with auto-reload
 
 # Alternative direct execution
-python -m selene.main start
-python -m selene.main process --help
+python3 -m selene.main start
+python3 -m selene.main process --help
+python3 -m selene.main web    # Start web interface
 ```
 
 ### Local AI Setup (Ollama)
@@ -136,13 +137,13 @@ selene process --content "Test note" --task summarize
 ### Project Manager Tool
 ```bash
 # JIRA-integrated development workflow manager
-python project-manager.py start    # Start daily workflow
-python project-manager.py status   # Check current work status  
-python project-manager.py finish   # Finish current work session
-python project-manager.py tickets  # List available tickets
+python3 project-manager.py start    # Start daily workflow
+python3 project-manager.py status   # Check current work status  
+python3 project-manager.py finish   # Finish current work session
+python3 project-manager.py tickets  # List available tickets
 
 # Setup JIRA integration (run once)
-python scripts/setup_jira.py
+python3 scripts/setup_jira.py
 ```
 
 ### Interactive Demo
