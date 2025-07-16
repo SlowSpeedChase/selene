@@ -6,10 +6,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import time
 
 from ..prompts.manager import PromptTemplateManager
 from ..prompts.builtin_templates import get_template_for_task, register_builtin_templates
 from ..prompts.models import PromptExecutionContext
+from .monitoring import get_monitor, auto_emit_stage, ProcessingStage
 
 
 @dataclass
@@ -21,6 +23,7 @@ class ProcessorResult:
     metadata: Dict[str, Any]
     error: Optional[str] = None
     processing_time: Optional[float] = None
+    session_id: Optional[str] = None  # For monitoring
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary."""
@@ -30,6 +33,7 @@ class ProcessorResult:
             "metadata": self.metadata,
             "error": self.error,
             "processing_time": self.processing_time,
+            "session_id": self.session_id,
         }
 
 
@@ -47,6 +51,10 @@ class BaseProcessor(ABC):
         
         # Register built-in templates if not already present
         register_builtin_templates(self.prompt_manager)
+        
+        # Monitoring setup
+        self.monitor = get_monitor()
+        self.enable_monitoring = self.config.get("enable_monitoring", True)
 
     @abstractmethod
     async def process(self, content: str, **kwargs) -> ProcessorResult:
@@ -212,3 +220,46 @@ class BaseProcessor(ABC):
         )
         
         self.prompt_manager.log_execution(context)
+    
+    def start_monitoring_session(self, content: str, task: str, model: str) -> Optional[str]:
+        """Start a monitoring session for processing."""
+        if not self.enable_monitoring:
+            return None
+        
+        processor_type = self.__class__.__name__.replace("Processor", "").lower()
+        return self.monitor.start_session(content, task, model, processor_type)
+    
+    def emit_stage(self, session_id: Optional[str], stage: ProcessingStage, 
+                  message: str, metadata: Optional[Dict[str, Any]] = None):
+        """Emit a processing stage event."""
+        if not self.enable_monitoring or not session_id:
+            return
+        
+        auto_emit_stage(session_id, stage, message, metadata)
+    
+    def emit_streaming_token(self, session_id: Optional[str], token: str, 
+                           token_count: int, is_final: bool = False,
+                           total_tokens: Optional[int] = None,
+                           tokens_per_second: Optional[float] = None):
+        """Emit a streaming token event."""
+        if not self.enable_monitoring or not session_id:
+            return
+        
+        from .monitoring import StreamingToken
+        streaming_token = StreamingToken(
+            token=token,
+            is_final=is_final,
+            token_count=token_count,
+            total_tokens=total_tokens,
+            tokens_per_second=tokens_per_second
+        )
+        
+        self.monitor.emit_streaming_token(session_id, streaming_token)
+    
+    def finish_monitoring_session(self, session_id: Optional[str], success: bool = True,
+                                final_result: Optional[str] = None):
+        """Finish a monitoring session."""
+        if not self.enable_monitoring or not session_id:
+            return
+        
+        self.monitor.finish_session(session_id, success, final_result)

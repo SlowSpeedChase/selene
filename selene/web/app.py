@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
@@ -16,6 +16,7 @@ from ..monitoring import FileWatcher, MonitorConfig
 from ..processors import LLMProcessor, OllamaProcessor, VectorProcessor
 from ..processors.multi_model_processor import MultiModelProcessor
 from ..processors.chain_processor import ProcessingChain, ChainStep, ChainExecutionMode
+from ..processors.monitoring import get_monitor
 from ..prompts.manager import PromptTemplateManager
 from ..prompts.models import PromptCategory, TemplateVariable
 from ..prompts.builtin_templates import register_builtin_templates
@@ -1006,6 +1007,120 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"Create example chain failed: {e}")
             raise HTTPException(500, f"Create example chain failed: {str(e)}")
+
+    # WebSocket endpoint for real-time monitoring
+    @app.websocket("/ws/monitoring")
+    async def websocket_monitoring(websocket: WebSocket):
+        """WebSocket endpoint for real-time processing monitoring."""
+        await websocket.accept()
+        
+        # Get monitor instance
+        monitor = get_monitor()
+        
+        # Add WebSocket to monitor
+        monitor.add_websocket_connection(websocket)
+        
+        try:
+            # Send initial statistics
+            await websocket.send_json({
+                "type": "statistics",
+                "data": monitor.get_statistics()
+            })
+            
+            # Send active sessions
+            active_sessions = monitor.get_active_sessions()
+            await websocket.send_json({
+                "type": "active_sessions",
+                "data": [session.to_dict() for session in active_sessions]
+            })
+            
+            # Keep connection alive and handle messages
+            while True:
+                try:
+                    message = await websocket.receive_json()
+                    message_type = message.get("type")
+                    
+                    if message_type == "get_session":
+                        session_id = message.get("session_id")
+                        session = monitor.get_session(session_id)
+                        if session:
+                            await websocket.send_json({
+                                "type": "session_details",
+                                "data": session.to_dict()
+                            })
+                        else:
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": f"Session {session_id} not found"
+                            })
+                    
+                    elif message_type == "get_statistics":
+                        await websocket.send_json({
+                            "type": "statistics",
+                            "data": monitor.get_statistics()
+                        })
+                    
+                    elif message_type == "get_active_sessions":
+                        active_sessions = monitor.get_active_sessions()
+                        await websocket.send_json({
+                            "type": "active_sessions",
+                            "data": [session.to_dict() for session in active_sessions]
+                        })
+                    
+                    elif message_type == "get_recent_sessions":
+                        limit = message.get("limit", 10)
+                        recent_sessions = monitor.get_recent_sessions(limit)
+                        await websocket.send_json({
+                            "type": "recent_sessions",
+                            "data": [session.to_dict() for session in recent_sessions]
+                        })
+                
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.error(f"WebSocket error: {e}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": str(e)
+                    })
+                    
+        except WebSocketDisconnect:
+            logger.info("WebSocket connection closed")
+        except Exception as e:
+            logger.error(f"WebSocket error: {e}")
+        finally:
+            # Remove WebSocket from monitor
+            monitor.remove_websocket_connection(websocket)
+
+    # Monitoring API endpoints
+    @app.get("/api/monitoring/statistics")
+    async def get_monitoring_statistics():
+        """Get processing statistics."""
+        monitor = get_monitor()
+        return monitor.get_statistics()
+
+    @app.get("/api/monitoring/sessions/active")
+    async def get_active_sessions():
+        """Get active processing sessions."""
+        monitor = get_monitor()
+        active_sessions = monitor.get_active_sessions()
+        return [session.to_dict() for session in active_sessions]
+
+    @app.get("/api/monitoring/sessions/recent")
+    async def get_recent_sessions(limit: int = 10):
+        """Get recent processing sessions."""
+        monitor = get_monitor()
+        recent_sessions = monitor.get_recent_sessions(limit)
+        return [session.to_dict() for session in recent_sessions]
+
+    @app.get("/api/monitoring/sessions/{session_id}")
+    async def get_session_details(session_id: str):
+        """Get details for a specific processing session."""
+        monitor = get_monitor()
+        session = monitor.get_session(session_id)
+        if not session:
+            raise HTTPException(404, f"Session {session_id} not found")
+        return session.to_dict()
 
     return app
 

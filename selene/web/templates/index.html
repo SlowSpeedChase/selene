@@ -33,6 +33,7 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/mobile.css">
+    <link rel="stylesheet" href="/static/css/monitoring.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- Preload critical resources -->
@@ -66,6 +67,9 @@
                 </button></li>
                 <li><button class="nav-tab" data-tab="config">
                     <i class="fas fa-cog"></i> Configuration
+                </button></li>
+                <li><button class="nav-tab" data-tab="monitoring">
+                    <i class="fas fa-chart-pulse"></i> Processing Monitor
                 </button></li>
             </ul>
         </div>
@@ -348,6 +352,53 @@
                 </div>
             </div>
         </div>
+
+        <!-- Processing Monitor Tab -->
+        <div id="monitoring-tab" class="tab-content hidden">
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Processing Statistics</h3>
+                    </div>
+                    <div id="monitoring-stats">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading statistics...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Active Sessions</h3>
+                    </div>
+                    <div id="active-sessions">
+                        <p class="text-center">No active sessions</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Session Details</h3>
+                </div>
+                <div id="session-details">
+                    <p class="text-center">Select a session to view details</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Sessions</h3>
+                </div>
+                <div id="recent-sessions">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading recent sessions...
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Success/Error Messages -->
@@ -355,5 +406,6 @@
 
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile.js"></script>
+    <script src="/static/js/monitoring.js"></script>
 </body>
 </html>

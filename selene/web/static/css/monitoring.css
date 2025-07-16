@@ -1,0 +1,423 @@
+/* Real-time Processing Monitor Styles */
+
+/* Statistics Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Session Lists */
+.session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.session-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.session-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.session-card.selected {
+    border-color: var(--primary-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.session-card.active {
+    border-left: 4px solid var(--primary-color);
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.session-title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.task-badge, .model-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.task-badge {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196F3;
+}
+
+.model-badge {
+    background: rgba(156, 39, 176, 0.2);
+    color: #9C27B0;
+}
+
+.session-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+/* Status Colors */
+.status-initializing { background: #E3F2FD; color: #1976D2; }
+.status-validating { background: #F3E5F5; color: #7B1FA2; }
+.status-resolving { background: #E8F5E8; color: #388E3C; }
+.status-generating { background: #FFF3E0; color: #F57C00; }
+.status-selecting { background: #E0F2F1; color: #00796B; }
+.status-connecting { background: #E1F5FE; color: #0277BD; }
+.status-sending { background: #F1F8E9; color: #689F38; }
+.status-streaming { background: #FFF8E1; color: #FFA000; }
+.status-processing { background: #E8EAF6; color: #3F51B5; }
+.status-collecting { background: #FCE4EC; color: #C2185B; }
+.status-finalizing { background: #EFEBE9; color: #5D4037; }
+.status-completed { background: #E8F5E8; color: #2E7D32; }
+.status-failed { background: #FFEBEE; color: #C62828; }
+.status-unknown { background: #F5F5F5; color: #757575; }
+
+/* Progress Bar */
+.session-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), #66BB6A);
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.progress-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    min-width: 40px;
+}
+
+/* Session Meta */
+.session-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.content-preview {
+    flex: 1;
+    margin-right: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.elapsed-time {
+    font-weight: 500;
+    color: var(--primary-color);
+}
+
+/* Session Details */
+.session-detail {
+    padding: 20px;
+}
+
+.session-info h4 {
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-item label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.info-item span {
+    color: var(--text-primary);
+}
+
+/* Content Preview */
+.session-content {
+    margin-bottom: 20px;
+}
+
+.session-content h5 {
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.session-content .content-preview {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* Live Output */
+.session-output {
+    margin-bottom: 20px;
+}
+
+.session-output h5 {
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.streaming-output {
+    background: #1e1e1e;
+    color: #00ff00;
+    padding: 15px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #333;
+}
+
+/* Events Timeline */
+.session-events {
+    margin-bottom: 20px;
+}
+
+.session-events h5 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.events-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.event-item {
+    display: grid;
+    grid-template-columns: 80px 150px 1fr 60px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border-left: 3px solid var(--border-color);
+    background: var(--bg-secondary);
+    font-size: 0.85rem;
+}
+
+.event-item.status-completed {
+    border-left-color: #4CAF50;
+}
+
+.event-item.status-failed {
+    border-left-color: #f44336;
+}
+
+.event-item.status-streaming {
+    border-left-color: #ff9800;
+}
+
+.event-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.event-stage {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.event-message {
+    color: var(--text-secondary);
+}
+
+.event-progress {
+    font-weight: 500;
+    color: var(--primary-color);
+    text-align: right;
+}
+
+/* Connection Status */
+.connection-status {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    z-index: 1000;
+}
+
+.connection-status.connected {
+    background: #4CAF50;
+    color: white;
+}
+
+.connection-status.disconnected {
+    background: #f44336;
+    color: white;
+}
+
+/* Error Message */
+.error-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.error-message i {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    color: #ff9800;
+}
+
+.error-message p {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+/* Refresh Button */
+.refresh-monitoring {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .event-item {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    .session-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .session-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .streaming-output {
+        background: #0a0a0a;
+        border-color: #333;
+    }
+    
+    .session-card {
+        background: #1a1a1a;
+        border-color: #333;
+    }
+    
+    .stat-item {
+        background: #1a1a1a;
+        border-color: #333;
+    }
+}
+
+/* Animation for streaming text */
+@keyframes typing {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.streaming-output::after {
+    content: '▌';
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}

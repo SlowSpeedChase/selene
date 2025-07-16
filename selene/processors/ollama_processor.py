@@ -10,6 +10,7 @@ from loguru import logger
 
 from .base import BaseProcessor, ProcessorResult
 from ..prompts.builtin_templates import get_template_for_task
+from .monitoring import ProcessingStage
 
 
 class OllamaProcessor(BaseProcessor):
@@ -67,18 +68,31 @@ class OllamaProcessor(BaseProcessor):
             ProcessorResult with LLM-processed content
         """
         start_time = time.time()
-
+        
+        # Start monitoring session
+        task = kwargs.get("task", "enhance")
+        model = kwargs.get("model", self.model)
+        session_id = self.start_monitoring_session(content, task, model)
+        
+        # Emit validation stage
+        self.emit_stage(session_id, ProcessingStage.VALIDATING_INPUT, "Validating input content")
+        
         if not self.validate_input(content):
+            self.emit_stage(session_id, ProcessingStage.FAILED, "Input validation failed", 
+                          error="Invalid or empty content")
             return ProcessorResult(
-                success=False, content="", metadata={}, error="Invalid or empty content"
+                success=False, content="", metadata={}, error="Invalid or empty content",
+                session_id=session_id
             )
 
         try:
-            task = kwargs.get("task", "enhance")
             custom_prompt = kwargs.get("prompt")
             template_id = kwargs.get("template_id")
             # Use self.model (which may have been updated by validation) unless explicitly overridden
             model = kwargs.get("model", self.model)
+            
+            # Emit template resolution stage
+            self.emit_stage(session_id, ProcessingStage.RESOLVING_TEMPLATE, "Resolving prompt template")
 
             # Get prompt using template system or fallback
             if custom_prompt:
@@ -108,6 +122,15 @@ class OllamaProcessor(BaseProcessor):
                 template = self.prompt_manager.get_template_by_name(template_name)
                 used_template_id = template.id if template else None
 
+            # Emit prompt generation stage
+            self.emit_stage(session_id, ProcessingStage.GENERATING_PROMPT, 
+                          f"Generated prompt ({len(full_prompt)} characters)",
+                          {"prompt_length": len(full_prompt), "template_id": used_template_id})
+            
+            # Emit connection stage
+            self.emit_stage(session_id, ProcessingStage.CONNECTING_TO_MODEL, 
+                          f"Connecting to Ollama model: {model}")
+
             # Make request to Ollama
             payload = {
                 "model": model,
@@ -119,9 +142,17 @@ class OllamaProcessor(BaseProcessor):
                 },
             }
 
+            # Emit request sending stage
+            self.emit_stage(session_id, ProcessingStage.SENDING_REQUEST, 
+                          f"Sending request to {model}")
+            
             response = await self.client.post("/api/generate", json=payload)
             response.raise_for_status()
 
+            # Emit response processing stage
+            self.emit_stage(session_id, ProcessingStage.PROCESSING_RESPONSE, 
+                          "Processing LLM response")
+            
             result_data = response.json()
             processed_content = result_data.get("response", "").strip()
 
@@ -149,6 +180,10 @@ class OllamaProcessor(BaseProcessor):
                 },
             }
 
+            # Emit final metadata collection stage
+            self.emit_stage(session_id, ProcessingStage.COLLECTING_METADATA, 
+                          f"Collected metadata: {total_tokens} tokens, {processing_time:.2f}s")
+            
             logger.info(
                 f"Ollama processing completed: {task} task, {processing_time:.2f}s, ~{total_tokens} tokens, model: {model}"
             )
@@ -167,11 +202,15 @@ class OllamaProcessor(BaseProcessor):
                     output_length=len(processed_content)
                 )
 
+            # Finish monitoring session
+            self.finish_monitoring_session(session_id, success=True, final_result=processed_content)
+
             return ProcessorResult(
                 success=True,
                 content=processed_content,
                 metadata=metadata,
                 processing_time=processing_time,
+                session_id=session_id,
             )
 
         except httpx.ConnectError:
@@ -182,6 +221,7 @@ class OllamaProcessor(BaseProcessor):
             )
             logger.error(error_msg)
 
+            self.finish_monitoring_session(session_id, success=False)
             return ProcessorResult(
                 success=False,
                 content="",
@@ -191,6 +231,7 @@ class OllamaProcessor(BaseProcessor):
                 },
                 error=error_msg,
                 processing_time=processing_time,
+                session_id=session_id,
             )
 
         except httpx.HTTPStatusError as e:
@@ -200,6 +241,7 @@ class OllamaProcessor(BaseProcessor):
             )
             logger.error(error_msg)
 
+            self.finish_monitoring_session(session_id, success=False)
             return ProcessorResult(
                 success=False,
                 content="",
@@ -209,6 +251,7 @@ class OllamaProcessor(BaseProcessor):
                 },
                 error=error_msg,
                 processing_time=processing_time,
+                session_id=session_id,
             )
 
         except Exception as e:
@@ -216,6 +259,7 @@ class OllamaProcessor(BaseProcessor):
             error_msg = f"Ollama processing failed: {str(e)}"
             logger.error(error_msg)
 
+            self.finish_monitoring_session(session_id, success=False)
             return ProcessorResult(
                 success=False,
                 content="",
@@ -225,6 +269,7 @@ class OllamaProcessor(BaseProcessor):
                 },
                 error=error_msg,
                 processing_time=processing_time,
+                session_id=session_id,
             )
 
     def _get_task_prompt(self, task: str) -> str:
