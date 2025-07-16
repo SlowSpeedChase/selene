@@ -1225,5 +1225,94 @@ def monitor(
     asyncio.run(run_monitor_action())
 
 
+@app.command()
+def chat(
+    vault: Optional[str] = typer.Option(
+        None, "--vault", "-v", help="Path to Obsidian vault directory"
+    ),
+    config_file: Optional[str] = typer.Option(
+        None, "--config", "-c", help="Path to chat configuration file"
+    ),
+    no_memory: bool = typer.Option(
+        False, "--no-memory", help="Disable conversation memory"
+    ),
+    debug: bool = typer.Option(
+        False, "--debug", help="Enable debug logging"
+    )
+) -> None:
+    """Start interactive chat with your Obsidian vault."""
+    setup_logging()
+    
+    if debug:
+        logger.remove()
+        logger.add(
+            lambda msg: console.print(msg, end=""),
+            level="DEBUG",
+            format="<green>{time:HH:mm:ss}</green> | <level>{level}</level> | {message}",
+        )
+    
+    async def run_chat():
+        """Run the chat interface."""
+        try:
+            from selene.chat import ChatAgent, ChatConfig
+            
+            # Load configuration
+            if config_file:
+                config = ChatConfig.from_file(config_file)
+            else:
+                config = ChatConfig.from_file()
+                
+            # Override config with command line options
+            if vault:
+                config.vault_path = vault
+            if no_memory:
+                config.conversation_memory = False
+                
+            # Initialize agent
+            agent = ChatAgent(config)
+            
+            if not await agent.initialize():
+                console.print("[red]❌ Failed to initialize chat agent[/red]")
+                raise typer.Exit(1)
+                
+            # Start interactive chat loop
+            console.print("\n🤖 SELENE Chat Agent Ready!")
+            console.print("Type 'help' for commands, 'exit' to quit.\n")
+            
+            try:
+                while True:
+                    # Get user input
+                    try:
+                        user_input = input("You: ").strip()
+                    except (EOFError, KeyboardInterrupt):
+                        break
+                        
+                    if not user_input:
+                        continue
+                        
+                    if user_input.lower() in ['exit', 'quit', '/exit', '/quit']:
+                        break
+                        
+                    # Process message
+                    response = await agent.chat(user_input)
+                    console.print(f"\nSELENE: {response}\n")
+                    
+            except KeyboardInterrupt:
+                pass
+                
+            # Shutdown
+            await agent.shutdown()
+            console.print("\n👋 Chat session ended. Goodbye!")
+            
+        except Exception as e:
+            console.print(f"[red]❌ Chat failed: {e}[/red]")
+            if debug:
+                import traceback
+                console.print(traceback.format_exc())
+            raise typer.Exit(1)
+    
+    asyncio.run(run_chat())
+
+
 if __name__ == "__main__":
     app()
