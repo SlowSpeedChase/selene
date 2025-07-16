@@ -138,6 +138,18 @@ ollama pull llama3.2:1b     # Lightweight option (1B parameters)
 
 # Test local AI processing
 selene process --content "Test note" --task summarize
+
+# Environment Variables (SMS-32 Connection Manager)
+export OLLAMA_HOST=http://localhost:11434    # Ollama server URL
+export OLLAMA_PORT=11434                     # Ollama server port
+export OLLAMA_TIMEOUT=120.0                 # Request timeout in seconds
+export OLLAMA_MAX_CONNECTIONS=10            # Max concurrent connections
+export OLLAMA_HEALTH_CHECK_INTERVAL=30     # Health check interval in seconds
+export OLLAMA_MAX_RETRIES=3                # Max retry attempts
+export OLLAMA_RETRY_DELAY=1.0              # Delay between retries
+export OLLAMA_CONNECTION_TIMEOUT=10.0      # Connection timeout
+export OLLAMA_READ_TIMEOUT=60.0            # Read timeout
+export OLLAMA_VALIDATE_ON_INIT=true        # Validate connection on startup
 ```
 
 ### Obsidian Vault Integration Workflow
@@ -259,6 +271,9 @@ SELENE_DEMO_NON_INTERACTIVE=1 python3 demo_selene.py
     - `state.py`: SQLite conversation memory and context management
     - `tools/`: Extensible tool system for vault operations
     - `nlp/`: Enhanced natural language processing pipeline (NEW)
+  - `connection/`: SMS-32 Connection management system (NEW)
+    - `ollama_manager.py`: Centralized Ollama connection manager
+    - Configuration, health monitoring, and connection pooling
   - `__init__.py`: Package initialization with version info
 - **tests/**: Test suite with pytest configuration
   - `test_processors.py`: Comprehensive processor tests with async support
@@ -404,6 +419,11 @@ Configuration files:
   - Intent classification and parameter extraction
   - Entity recognition and sentiment analysis
   - Conversation context with turn-based tracking
+- ✅ SMS-32: **OLLAMA CONNECTION MANAGER COMPLETE** 🔗
+  - Centralized connection management for Ollama services
+  - Connection pooling with health monitoring and automatic reconnection
+  - Environment variable configuration (OLLAMA_HOST, OLLAMA_PORT, etc.)
+  - Resource cleanup and connection lifecycle management
 - 🔄 Next: SMS-38 (Advanced Chat Features) or SMS-20 (Mobile Interface)
 
 ### Hardware Requirements
@@ -610,6 +630,41 @@ selene chat --vault "vault" --no-memory
 - **Extensible Design**: Easy to add new intents, entities, and processing rules
 
 **Ready for Production**: Complete NLP pipeline ready for SMS-38 (Advanced Chat Features)
+
+### ✅ COMPLETED: SMS-32 Ollama Connection Manager (NEW - 2025-07-16)
+**Status**: ✅ **COMPLETE** - Centralized connection management for Ollama services implemented
+
+#### What was implemented:
+
+**Connection Management System (SMS-32)**
+1. **OllamaConnectionManager**: Centralized connection pooling and management
+2. **Health Monitoring**: Background health checks with configurable intervals
+3. **Configuration System**: Environment variable support (OLLAMA_HOST, OLLAMA_PORT, etc.)
+4. **Connection Pooling**: Shared connections with automatic reconnection
+5. **Resource Management**: Proper cleanup and connection lifecycle management
+
+**Key Features**
+- **Connection Pooling**: Reuse connections across multiple processors
+- **Health Monitoring**: Automatic health checks with retry mechanisms
+- **Environment Config**: Support for OLLAMA_HOST, OLLAMA_PORT, and other env vars
+- **Error Handling**: Comprehensive error handling with connection fallback
+- **Resource Cleanup**: Proper connection lifecycle management
+- **Backward Compatibility**: Existing OllamaProcessor interface maintained
+
+**Implementation Details**
+- **OllamaConnectionManager**: 400+ lines of comprehensive connection management
+- **OllamaConfig**: Configuration system with environment variable support
+- **Connection Pooling**: Shared HTTP clients with configurable limits
+- **Health Monitoring**: Background monitoring with status tracking
+- **23 Comprehensive Tests**: Full test coverage with mocking and async support
+
+**Integration**
+- **Updated OllamaProcessor**: Uses connection manager for improved reliability
+- **Global Manager**: Shared connection manager instance for efficiency
+- **Context Manager**: Safe connection handling with automatic cleanup
+- **Configuration**: Environment variables override default settings
+
+**Ready for Production**: All Ollama processors now use centralized connection management
 
 ## 🎯 PROJECT STATUS UPDATE (2025-07-16)
 
