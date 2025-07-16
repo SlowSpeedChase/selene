@@ -36,6 +36,14 @@ A completely local AI-powered Second Brain system for processing and managing no
 - **Background Sync**: Queue requests and process when back online
 - **Native Experience**: Full-screen app with custom icons and splash screens
 
+### Real-Time Processing Monitor (NEW)
+- **10 Processing Stages**: Detailed visibility from validation to completion
+- **Live Progress Tracking**: Real-time progress bars and stage updates
+- **WebSocket Updates**: Instant notifications of processing events
+- **Session Management**: Track individual processing requests with unique IDs
+- **Performance Metrics**: Token counts, processing times, success rates
+- **Web Dashboard**: Dedicated monitoring tab with statistics and timelines
+
 ### File Monitoring & Automation
 - **Intelligent File Monitoring**: Real-time file system watching with automated processing
 - **Queue Management**: Background processing with task queuing
@@ -131,6 +139,9 @@ selene web                   # Start at http://127.0.0.1:8000
 
 # Mobile PWA demo
 python3 demo_mobile.py       # Mobile interface demonstration
+
+# Monitoring system demo
+python3 test_monitoring.py   # Real-time processing monitor test
 
 # Interactive demo
 python3 demo_selene.py       # Full system demonstration
