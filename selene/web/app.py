@@ -4,6 +4,7 @@ FastAPI application for Selene Second Brain Processing System.
 
 import asyncio
 import os
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -21,8 +22,17 @@ from ..prompts.manager import PromptTemplateManager
 from ..prompts.models import PromptCategory, TemplateVariable
 from ..prompts.builtin_templates import register_builtin_templates
 from ..queue import ProcessingQueue, QueueManager
+from .chat_manager import WebChatManager
 from .models import (
     AddDirectoryRequest,
+    ChatHistoryResponse,
+    ChatMessageRequest,
+    ChatMessageResponse,
+    ChatSessionListResponse,
+    ChatSessionRequest,
+    ChatSessionResponse,
+    ChatToolExecutionRequest,
+    ChatToolExecutionResponse,
     ConfigurationResponse,
     CreateTemplateRequest,
     MonitorStatusResponse,
@@ -64,6 +74,7 @@ def create_app() -> FastAPI:
     app.state.queue_manager = None
     app.state.processing_queue = None
     app.state.prompt_manager = None
+    app.state.chat_manager = None
 
     @app.on_event("startup")
     async def startup_event():
@@ -80,6 +91,9 @@ def create_app() -> FastAPI:
             # Initialize prompt template manager
             app.state.prompt_manager = PromptTemplateManager()
             register_builtin_templates(app.state.prompt_manager)
+            
+            # Initialize chat manager
+            app.state.chat_manager = WebChatManager()
             
             logger.info("Selene web application started successfully")
         except Exception as e:
@@ -1007,6 +1021,174 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"Create example chain failed: {e}")
             raise HTTPException(500, f"Create example chain failed: {str(e)}")
+
+    # Chat API Endpoints
+    
+    @app.post("/api/chat/sessions", response_model=ChatSessionResponse)
+    async def create_chat_session(request: ChatSessionRequest):
+        """Create a new chat session."""
+        try:
+            return await app.state.chat_manager.create_session(
+                vault_path=request.vault_path,
+                session_name=request.session_name,
+                enable_memory=request.enable_memory,
+                debug_mode=request.debug_mode,
+                use_enhanced_agent=request.use_enhanced_agent
+            )
+        except Exception as e:
+            logger.error(f"Failed to create chat session: {e}")
+            raise HTTPException(500, f"Failed to create chat session: {str(e)}")
+    
+    @app.get("/api/chat/sessions", response_model=ChatSessionListResponse)
+    async def list_chat_sessions():
+        """List all active chat sessions."""
+        try:
+            return await app.state.chat_manager.list_sessions()
+        except Exception as e:
+            logger.error(f"Failed to list chat sessions: {e}")
+            raise HTTPException(500, f"Failed to list chat sessions: {str(e)}")
+    
+    @app.get("/api/chat/sessions/{session_id}", response_model=ChatSessionResponse)
+    async def get_chat_session(session_id: str):
+        """Get details for a specific chat session."""
+        try:
+            session = await app.state.chat_manager.get_session(session_id)
+            if not session:
+                raise HTTPException(404, f"Chat session not found: {session_id}")
+            return session.to_response()
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get chat session: {e}")
+            raise HTTPException(500, f"Failed to get chat session: {str(e)}")
+    
+    @app.delete("/api/chat/sessions/{session_id}", response_model=SuccessResponse)
+    async def delete_chat_session(session_id: str):
+        """Delete a chat session."""
+        try:
+            success = await app.state.chat_manager.delete_session(session_id)
+            if not success:
+                raise HTTPException(404, f"Chat session not found: {session_id}")
+            return SuccessResponse(
+                success=True,
+                message=f"Chat session {session_id} deleted successfully"
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete chat session: {e}")
+            raise HTTPException(500, f"Failed to delete chat session: {str(e)}")
+    
+    @app.get("/api/chat/sessions/{session_id}/history", response_model=ChatHistoryResponse)
+    async def get_chat_history(session_id: str):
+        """Get conversation history for a chat session."""
+        try:
+            history = await app.state.chat_manager.get_conversation_history(session_id)
+            if not history:
+                raise HTTPException(404, f"Chat session not found: {session_id}")
+            return history
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get chat history: {e}")
+            raise HTTPException(500, f"Failed to get chat history: {str(e)}")
+    
+    @app.post("/api/chat/sessions/{session_id}/message", response_model=ChatMessageResponse)
+    async def send_chat_message(session_id: str, request: ChatMessageRequest):
+        """Send a message to a chat session."""
+        try:
+            response = await app.state.chat_manager.send_message(
+                session_id=session_id,
+                message=request.message
+            )
+            if not response:
+                raise HTTPException(404, f"Chat session not found: {session_id}")
+            return response
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to send chat message: {e}")
+            raise HTTPException(500, f"Failed to send chat message: {str(e)}")
+    
+    # WebSocket endpoint for chat
+    @app.websocket("/ws/chat/{session_id}")
+    async def websocket_chat(websocket: WebSocket, session_id: str):
+        """WebSocket endpoint for real-time chat."""
+        await websocket.accept()
+        
+        try:
+            # Add WebSocket to session
+            success = await app.state.chat_manager.add_websocket(session_id, websocket)
+            if not success:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Chat session not found: {session_id}"
+                })
+                await websocket.close()
+                return
+            
+            # Send welcome message
+            await websocket.send_json({
+                "type": "connected",
+                "message": f"Connected to chat session {session_id}",
+                "session_id": session_id
+            })
+            
+            # Get session info
+            session = await app.state.chat_manager.get_session(session_id)
+            if session:
+                await websocket.send_json({
+                    "type": "session_info",
+                    "data": session.to_response().dict()
+                })
+            
+            # Listen for messages
+            while True:
+                try:
+                    message = await websocket.receive_json()
+                    message_type = message.get("type", "message")
+                    
+                    if message_type == "message":
+                        user_message = message.get("message", "")
+                        if user_message.strip():
+                            # Send user message to session
+                            response = await app.state.chat_manager.send_message(
+                                session_id=session_id,
+                                message=user_message,
+                                message_type="user"
+                            )
+                            # Response is automatically broadcast to all session WebSockets
+                    
+                    elif message_type == "ping":
+                        await websocket.send_json({
+                            "type": "pong",
+                            "timestamp": time.time()
+                        })
+                    
+                    elif message_type == "get_history":
+                        history = await app.state.chat_manager.get_conversation_history(session_id)
+                        if history:
+                            await websocket.send_json({
+                                "type": "history",
+                                "data": history.dict()
+                            })
+                    
+                except WebSocketDisconnect:
+                    break
+                except Exception as e:
+                    logger.error(f"WebSocket chat error: {e}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": str(e)
+                    })
+                    
+        except WebSocketDisconnect:
+            logger.info(f"WebSocket chat disconnected from session {session_id}")
+        except Exception as e:
+            logger.error(f"WebSocket chat error: {e}")
+        finally:
+            # Remove WebSocket from session
+            await app.state.chat_manager.remove_websocket(session_id, websocket)
 
     # WebSocket endpoint for real-time monitoring
     @app.websocket("/ws/monitoring")
