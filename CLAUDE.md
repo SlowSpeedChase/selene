@@ -110,6 +110,25 @@ selene chat --vault "path/to/vault"              # Start interactive chat
 selene chat --vault "vault" --debug             # With debug logging
 selene chat --vault "vault" --no-memory         # Without conversation memory
 
+# BATCH IMPORT SYSTEM (SMS-27)
+# Import and process notes from various sources
+selene batch-import --source drafts --tag selene                    # Import from Drafts app
+selene batch-import --source text --path ~/notes --tag selene       # Import from text files
+selene batch-import --source obsidian --path ~/vault --tag inbox    # Import from Obsidian
+selene batch-import --source drafts --dry-run                       # Preview without processing
+selene batch-import --source text --path ~/notes --batch-size 10    # Custom batch size
+selene batch-import --source drafts --tasks "enhance,extract_insights,questions"  # Custom tasks
+selene batch-import --source drafts --output ~/processed --no-archive  # Custom output, no archive
+
+# VAULT ORGANIZATION SYSTEM (SMS-24)
+# Advanced vault organization and management tools
+# Available through chat interface - use natural language commands like:
+# "create folder projects/research" 
+# "move note1.md, note2.md to archived folder"
+# "organize notes by tags" 
+# "find duplicate notes"
+# "analyze folder structure"
+
 # Web Interface (NEW in SMS-18)
 selene web                          # Start web interface at http://127.0.0.1:8000
 selene web --host 0.0.0.0 --port 8080  # Custom host and port
@@ -232,6 +251,7 @@ python3 demo_selene.py --non-interactive
 SELENE_DEMO_NON_INTERACTIVE=1 python3 demo_selene.py
 
 # Features demonstrated:
+# ✅ SMS-27 batch import system (Drafts, text, Obsidian)
 # ✅ SMS-33 prompt template system (11 built-in templates)
 # ✅ Local AI processing (summarize, enhance, insights, questions) 
 # ✅ Vector database with semantic search (local embeddings)
@@ -252,6 +272,10 @@ SELENE_DEMO_NON_INTERACTIVE=1 python3 demo_selene.py
     - `vector_processor.py`: ChromaDB vector database processor
     - `multi_model_processor.py`: SMS-19 multi-model processing with routing (NEW)
     - `chain_processor.py`: SMS-19 chain processing for complex workflows (NEW)
+  - `batch/`: SMS-27 Batch import system (NEW)
+    - `importer.py`: Main BatchImporter class with progress tracking
+    - `sources.py`: Source implementations (Drafts, text files, Obsidian)
+    - `processors.py`: Batch processing utilities and concurrent execution
   - `prompts/`: SMS-33 Prompt template system (NEW)
     - `models.py`: Template data models with variables and validation
     - `manager.py`: Template CRUD operations and analytics
@@ -283,9 +307,15 @@ SELENE_DEMO_NON_INTERACTIVE=1 python3 demo_selene.py
   - `test_processors.py`: Comprehensive processor tests with async support
   - `test_vector.py`: Vector database and embedding tests
   - `test_notes.py`: Note formatting system tests with 23 comprehensive cases
-- **scripts/**: Utility scripts for JIRA integration and project setup
+  - `test_batch_import.py`: Batch import system tests with 4/4 passing
+- **scripts/**: Production deployment and management
+  - `production_setup.sh`: Automated production environment setup
+  - `deploy.sh`: Automated deployment with rollback capability
+  - `monitor.sh`: Comprehensive system monitoring and health checks
 - **project-manager.py**: Standalone JIRA-integrated workflow manager
 - **demo_selene.py**: Interactive demonstration of all features (NEW)
+- **demo_batch_import.py**: Batch import system demonstration (NEW)
+- **test_batch_import.py**: Batch import comprehensive tests (NEW)
 
 ### Key Dependencies & Technologies
 - **CLI Framework**: Typer for command-line interface
@@ -330,7 +360,9 @@ Configuration files:
 
 - The codebase is designed as a "Second Brain Processing System" for AI-powered note processing
 - **SMS-14 Note Processing Pipeline is now implemented** with full LLM integration
-- Core features include: content summarization, enhancement, insight extraction, question generation, and classification
+- **SMS-27 Batch Import System is now implemented** with full Drafts app integration
+- **Production deployment system is complete** with automated setup and monitoring
+- Core features include: batch import, content summarization, enhancement, insight extraction, question generation, and classification
 - Strong emphasis on code quality with comprehensive tooling setup
 - Modern Python practices: type hints, async support, proper packaging
 - JIRA integration provides robust project management capabilities for development workflow
