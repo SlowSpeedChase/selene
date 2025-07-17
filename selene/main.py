@@ -1320,5 +1320,140 @@ def chat(
     asyncio.run(run_chat())
 
 
+@app.command()
+def batch_import(
+    source_type: str = typer.Option(
+        "drafts", "--source", "-s", help="Source type: drafts, text, obsidian"
+    ),
+    source_path: Optional[str] = typer.Option(
+        None, "--path", "-p", help="Path to source directory/file"
+    ),
+    tag_filter: Optional[str] = typer.Option(
+        "selene", "--tag", "-t", help="Tag filter for notes to import"
+    ),
+    tasks: Optional[str] = typer.Option(
+        "enhance,extract_insights", "--tasks", help="Comma-separated list of processing tasks"
+    ),
+    batch_size: int = typer.Option(
+        5, "--batch-size", "-b", help="Number of notes to process concurrently"
+    ),
+    output_dir: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output directory for processed notes"
+    ),
+    archive: bool = typer.Option(
+        True, "--archive/--no-archive", help="Archive source notes after processing"
+    ),
+    model: str = typer.Option(
+        "llama3.2:1b", "--model", "-m", help="Model to use for processing"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be processed without actually processing"
+    )
+) -> None:
+    """Import and process notes in batches from various sources."""
+    setup_logging()
+    
+    async def run_batch_import():
+        try:
+            from selene.batch import BatchImporter, DraftsSource, TextFileSource, ObsidianSource
+            
+            # Parse tasks
+            task_list = [task.strip() for task in tasks.split(',')]
+            
+            # Create source based on type
+            if source_type == "drafts":
+                if not tag_filter:
+                    console.print("[red]Error: Tag filter required for Drafts source[/red]")
+                    raise typer.Exit(1)
+                source = DraftsSource(tag_filter=tag_filter)
+                
+            elif source_type == "text":
+                if not source_path:
+                    console.print("[red]Error: Source path required for text file source[/red]")
+                    raise typer.Exit(1)
+                source = TextFileSource(
+                    directory=source_path,
+                    tag_filter=tag_filter
+                )
+                
+            elif source_type == "obsidian":
+                if not source_path:
+                    console.print("[red]Error: Vault path required for Obsidian source[/red]")
+                    raise typer.Exit(1)
+                source = ObsidianSource(
+                    vault_path=source_path,
+                    tag_filter=tag_filter
+                )
+                
+            else:
+                console.print(f"[red]Error: Invalid source type '{source_type}'. Choose 'drafts', 'text', or 'obsidian'.[/red]")
+                raise typer.Exit(1)
+            
+            # Create output directory
+            if not output_dir:
+                output_dir = f"processed_notes_{source_type}"
+            
+            console.print(f"🚀 [bold]Starting batch import from {source_type}[/bold]")
+            console.print(f"📂 Output directory: {output_dir}")
+            console.print(f"🏷️  Tag filter: {tag_filter}")
+            console.print(f"🔧 Tasks: {', '.join(task_list)}")
+            console.print(f"📊 Batch size: {batch_size}")
+            console.print(f"🤖 Model: {model}")
+            
+            if dry_run:
+                console.print("\n🔍 [bold yellow]DRY RUN MODE[/bold yellow] - No actual processing will occur")
+                
+                # Get notes to show what would be processed
+                notes = await source.get_notes()
+                if notes:
+                    console.print(f"\n📋 Found {len(notes)} notes to process:")
+                    for note in notes[:10]:  # Show first 10
+                        console.print(f"  • {note.get('title', 'Untitled')} ({len(note.get('content', ''))} chars)")
+                    if len(notes) > 10:
+                        console.print(f"  ... and {len(notes) - 10} more notes")
+                else:
+                    console.print("📭 No notes found with the specified criteria")
+                return
+            
+            # Create batch importer
+            from selene.processors.ollama_processor import OllamaProcessor
+            processor = OllamaProcessor({"model": model})
+            
+            importer = BatchImporter(
+                processor=processor,
+                output_dir=output_dir
+            )
+            
+            # Import notes
+            results = await importer.import_from_source(
+                source=source,
+                tasks=task_list,
+                batch_size=batch_size,
+                archive_after_import=archive
+            )
+            
+            # Show results
+            if results.get('error'):
+                console.print(f"[red]❌ Import failed: {results['error']}[/red]")
+                raise typer.Exit(1)
+            
+            stats = results.get('stats', {})
+            console.print(f"\n🎉 [bold green]Batch import completed successfully![/bold green]")
+            console.print(f"📊 Total notes: {stats.get('total_notes', 0)}")
+            console.print(f"✅ Processed: {stats.get('processed_notes', 0)}")
+            console.print(f"❌ Failed: {stats.get('failed_notes', 0)}")
+            console.print(f"📁 Output: {results.get('output_dir', output_dir)}")
+            
+            if archive and stats.get('processed_notes', 0) > 0:
+                console.print(f"📦 Archived {stats.get('processed_notes', 0)} source notes")
+                
+        except Exception as e:
+            console.print(f"[red]❌ Batch import failed: {e}[/red]")
+            logger.error(f"Batch import error: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(run_batch_import())
+
+
 if __name__ == "__main__":
     app()
