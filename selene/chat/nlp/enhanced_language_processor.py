@@ -269,13 +269,28 @@ class EnhancedLanguageProcessor:
         """Generate alternative intent interpretations."""
         alternatives = []
         
-        # Get all possible intents with scores
-        all_classifications = self.intent_classifier.classify_all(message)
+        # Since classify_all doesn't exist, we'll generate alternatives by testing
+        # different variations of the message for other possible intents
         
-        # Filter out the primary intent and low-confidence alternatives
-        for intent, confidence in all_classifications:
-            if intent != intent_result.intent and confidence > 0.3:
-                alternatives.append((intent, confidence))
+        # Test other common intents with slightly modified queries
+        test_intents = [
+            (Intent.SEARCH_NOTES, "search"),
+            (Intent.READ_NOTE, "read"),
+            (Intent.VECTOR_SEARCH, "find"),
+            (Intent.LIST_NOTES, "list"),
+            (Intent.WRITE_NOTE, "write"),
+            (Intent.SUMMARIZE, "summarize"),
+            (Intent.ENHANCE, "enhance")
+        ]
+        
+        for test_intent, keyword in test_intents:
+            if test_intent != intent_result.intent:
+                # Create a test message that might trigger this intent
+                test_message = f"{keyword} {message}"
+                test_result = self.intent_classifier.classify(test_message)
+                
+                if test_result.intent == test_intent and test_result.confidence > 0.3:
+                    alternatives.append((test_intent, test_result.confidence * 0.8))  # Reduce confidence since it's alternative
                 
         # Sort by confidence and take top N
         alternatives.sort(key=lambda x: x[1], reverse=True)
@@ -320,23 +335,23 @@ class EnhancedLanguageProcessor:
         
         # File path inference
         if 'note_path' in parameter_result.missing_required:
-            inferred_path = self._infer_file_path(message, intent_result.intent)
+            inferred_path = self._infer_file_path(message, intent_result)
             if inferred_path:
                 inferred['note_path'] = inferred_path
                 self.enhanced_stats["parameter_inferences"] += 1
                 
         # Task inference for AI processing
-        if intent_result.intent in [Intent.SUMMARIZE, Intent.ENHANCE, Intent.EXTRACT_INSIGHTS]:
+        if intent_result in [Intent.SUMMARIZE, Intent.ENHANCE, Intent.EXTRACT_INSIGHTS]:
             task_map = {
                 Intent.SUMMARIZE: "summarize",
                 Intent.ENHANCE: "enhance", 
                 Intent.EXTRACT_INSIGHTS: "extract_insights",
                 Intent.GENERATE_QUESTIONS: "questions"
             }
-            inferred['task'] = task_map.get(intent_result.intent, "enhance")
+            inferred['task'] = task_map.get(intent_result, "enhance")
             
         # Query inference for search
-        if 'query' in parameter_result.missing_required and intent_result.intent in [Intent.SEARCH_NOTES, Intent.VECTOR_SEARCH]:
+        if 'query' in parameter_result.missing_required and intent_result in [Intent.SEARCH_NOTES, Intent.VECTOR_SEARCH]:
             query = self._extract_search_query(message)
             if query:
                 inferred['query'] = query
@@ -345,7 +360,7 @@ class EnhancedLanguageProcessor:
         
     def _infer_file_path(self, message: str, intent: Intent) -> Optional[str]:
         """Infer file path from message context."""
-        # Extract potential filenames
+        # Extract potential filenames (exact .md files)
         potential_files = re.findall(r'\b([\w\-_\.]+\.md)\b', message)
         if potential_files:
             return potential_files[0]
@@ -358,8 +373,33 @@ class EnhancedLanguageProcessor:
                 filename += '.md'
             return filename
             
+        # Smart inference from message content
+        # Look for keywords that suggest filenames
+        keywords = []
+        
+        # Extract meaningful words (skip common words)
+        words = re.findall(r'\b\w+\b', message.lower())
+        skip_words = {'read', 'my', 'the', 'show', 'me', 'get', 'open', 'file', 'note', 'notes'}
+        keywords = [word for word in words if word not in skip_words and len(word) > 2]
+        
+        # Try to match against actual files if vault exists
+        if self.vault_path and self.vault_path.exists() and keywords:
+            md_files = list(self.vault_path.glob("**/*.md"))
+            
+            # First try: exact keyword match
+            for keyword in keywords:
+                for file_path in md_files:
+                    if keyword.lower() in file_path.name.lower():
+                        return file_path.name
+                        
+            # Second try: construct filename from keywords
+            if keywords:
+                # Common patterns: daily-notes, meeting-notes, etc.
+                constructed_name = '-'.join(keywords[:2]) + '.md'  # Use first 2 keywords
+                return constructed_name
+                
         # Use recent files context
-        if self.recent_files and intent == Intent.READ_NOTE:
+        if hasattr(self, 'recent_files') and self.recent_files and intent == Intent.READ_NOTE:
             return self.recent_files[0]
             
         return None

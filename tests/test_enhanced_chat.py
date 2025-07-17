@@ -12,6 +12,7 @@ This test suite covers all new advanced chat capabilities:
 import asyncio
 import json
 import pytest
+import pytest_asyncio
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -186,7 +187,7 @@ class TestContextAwareResponseGenerator:
         assert response_type == "success"
         
         # Test clarification response
-        sample_processing_result.needs_clarification = True
+        sample_processing_result.requires_clarification = True
         response_type = response_generator._determine_response_type(
             sample_processing_result, None
         )
@@ -201,9 +202,10 @@ class TestContextAwareResponseGenerator:
             confidence=0.3,
             missing_parameters=["note_path"],
             suggestions=[],
-            needs_clarification=True,
-            clarification_question="Which file did you mean?",
-            context_used=False
+            needs_confirmation=False,
+            context_used=False,
+            requires_clarification=True,
+            clarification_question="Which file did you mean?"
         )
         
         response = response_generator._generate_clarification_response(
@@ -270,14 +272,40 @@ class TestSmartToolSelector:
     @pytest.fixture
     def tool_registry(self):
         """Create mock tool registry."""
+        from typing import List
+        from selene.chat.tools.base import BaseTool, ToolResult, ToolStatus
+        
+        # Create a proper mock tool that inherits from BaseTool
+        class MockReadNoteTool(BaseTool):
+            @property
+            def name(self) -> str:
+                return "read_note"
+            
+            @property
+            def description(self) -> str:
+                return "Read a note file"
+            
+            @property
+            def parameters(self) -> List:
+                from selene.chat.tools.base import ToolParameter
+                return [
+                    ToolParameter(
+                        name="note_path",
+                        type="string", 
+                        description="Path to note file",
+                        required=True
+                    )
+                ]
+            
+            async def execute(self, **kwargs) -> ToolResult:
+                note_path = kwargs.get("note_path", "unknown.md")
+                return ToolResult(
+                    status=ToolStatus.SUCCESS,
+                    content=f"Content of {note_path}"
+                )
+        
         registry = ToolRegistry()
-        
-        # Add mock tools
-        mock_tool = Mock()
-        mock_tool.name = "read_note"
-        mock_tool.description = "Read a note"
-        
-        registry.register(mock_tool)
+        registry.register(MockReadNoteTool())
         registry.enable_tool("read_note")
         
         return registry
@@ -331,7 +359,21 @@ class TestSmartToolSelector:
     def test_file_path_inference(self, tool_selector):
         """Test file path inference from messages."""
         message = "read my daily-notes.md file"
-        path = tool_selector._infer_file_path(message, Intent.READ_NOTE, {})
+        
+        # Create proper processing result
+        processing_result = EnhancedProcessingResult(
+            intent=Intent.READ_NOTE,
+            tool_name="read_note",
+            parameters={},
+            confidence=0.8,
+            missing_parameters=[],
+            suggestions=[],
+            needs_confirmation=False,
+            context_used=False,
+            file_matches=[]  # Empty for this test to test pattern matching
+        )
+        
+        path = tool_selector._infer_file_path(message, processing_result, {})
         
         assert path == "daily-notes.md"
         
@@ -562,7 +604,7 @@ class TestEnhancedChatAgent:
             rich_formatting=False
         )
         
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def enhanced_agent(self, chat_config):
         """Create enhanced chat agent."""
         agent = EnhancedChatAgent(chat_config)
