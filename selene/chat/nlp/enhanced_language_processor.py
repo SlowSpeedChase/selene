@@ -618,3 +618,9 @@ class EnhancedLanguageProcessor:
     def get_user_patterns(self, user_id: str) -> Dict[str, int]:
         """Get learned patterns for user."""
         return dict(self.user_patterns.get(user_id, {}))
+        
+    def set_vault_path(self, vault_path: Optional[Path]) -> None:
+        """Update vault path for all components."""
+        self.vault_path = vault_path
+        if hasattr(self.parameter_extractor, 'set_vault_path'):
+            self.parameter_extractor.set_vault_path(vault_path)
