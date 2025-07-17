@@ -77,6 +77,39 @@ class SeleneAPI {
             body: JSON.stringify({ path: path })
         });
     }
+
+    // Chat API methods
+    async createChatSession(data) {
+        return this.request('/chat/sessions', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async getChatSessions() {
+        return this.request('/chat/sessions');
+    }
+
+    async getChatSession(sessionId) {
+        return this.request(`/chat/sessions/${sessionId}`);
+    }
+
+    async deleteChatSession(sessionId) {
+        return this.request(`/chat/sessions/${sessionId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async getChatHistory(sessionId) {
+        return this.request(`/chat/sessions/${sessionId}/history`);
+    }
+
+    async sendChatMessage(sessionId, message) {
+        return this.request(`/chat/sessions/${sessionId}/message`, {
+            method: 'POST',
+            body: JSON.stringify({ message })
+        });
+    }
 }
 
 class SeleneUI {
@@ -85,6 +118,11 @@ class SeleneUI {
         this.currentTab = 'dashboard';
         this.statusInterval = null;
         
+        // Chat state
+        this.currentSession = null;
+        this.chatWebSocket = null;
+        this.chatSessions = [];
+        
         this.init();
     }
 
@@ -92,6 +130,7 @@ class SeleneUI {
         this.setupTabNavigation();
         this.setupForms();
         this.setupEventListeners();
+        this.setupChatInterface();
         this.loadDashboard();
         this.startStatusPolling();
     }
@@ -171,6 +210,9 @@ class SeleneUI {
         switch (tabName) {
             case 'dashboard':
                 await this.loadDashboard();
+                break;
+            case 'chat':
+                await this.loadChatSessions();
                 break;
             case 'monitor':
                 await this.loadMonitorStatus();
@@ -493,6 +535,359 @@ class SeleneUI {
                 await this.loadDashboard();
             }
         }, 30000);
+    }
+
+    // Chat Interface Methods
+    setupChatInterface() {
+        // New session button
+        document.getElementById('new-chat-session').addEventListener('click', async () => {
+            await this.createNewSession();
+        });
+
+        // Chat form submission
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.sendMessage();
+        });
+
+        // Chat input auto-resize and enter key handling
+        const chatInput = document.getElementById('chat-input');
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+
+        chatInput.addEventListener('input', (e) => {
+            this.autoResizeTextarea(e.target);
+        });
+
+        // Disconnect button
+        document.getElementById('chat-disconnect').addEventListener('click', () => {
+            this.disconnectFromSession();
+        });
+
+        // Clear history button
+        document.getElementById('chat-clear-history').addEventListener('click', () => {
+            this.clearChatHistory();
+        });
+    }
+
+    async loadChatSessions() {
+        try {
+            const response = await this.api.getChatSessions();
+            this.chatSessions = response.sessions;
+            this.renderChatSessions();
+        } catch (error) {
+            this.showError('Failed to load chat sessions: ' + error.message);
+        }
+    }
+
+    renderChatSessions() {
+        const container = document.getElementById('chat-sessions-list');
+        
+        if (this.chatSessions.length === 0) {
+            container.innerHTML = '<div class="text-center" style="padding: 2rem; color: #6b7280;">No chat sessions yet. Create one to get started!</div>';
+            return;
+        }
+
+        container.innerHTML = this.chatSessions.map(session => `
+            <div class="chat-session-item ${session.session_id === this.currentSession?.session_id ? 'active' : ''}" 
+                 data-session-id="${session.session_id}">
+                <div class="chat-session-name">${session.session_name}</div>
+                <div class="chat-session-meta">
+                    ${session.vault_path ? `📁 ${session.vault_path}` : '📝 No vault'} • 
+                    ${new Date(session.created_at).toLocaleDateString()}
+                </div>
+            </div>
+        `).join('');
+
+        // Add click handlers
+        container.querySelectorAll('.chat-session-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const sessionId = item.dataset.sessionId;
+                this.connectToSession(sessionId);
+            });
+        });
+    }
+
+    async createNewSession() {
+        const vaultPath = document.getElementById('chat-vault-path').value.trim();
+        const sessionName = document.getElementById('chat-session-name').value.trim() || 'New Session';
+        const enableMemory = document.getElementById('chat-enable-memory').checked;
+        const debugMode = document.getElementById('chat-debug-mode').checked;
+
+        try {
+            const session = await this.api.createChatSession({
+                vault_path: vaultPath || null,
+                session_name: sessionName,
+                enable_memory: enableMemory,
+                debug_mode: debugMode
+            });
+
+            await this.loadChatSessions();
+            await this.connectToSession(session.session_id);
+            
+            // Clear form
+            document.getElementById('chat-vault-path').value = '';
+            document.getElementById('chat-session-name').value = '';
+            
+            this.showSuccess(`Created session: ${session.session_name}`);
+        } catch (error) {
+            this.showError('Failed to create session: ' + error.message);
+        }
+    }
+
+    async connectToSession(sessionId) {
+        if (this.chatWebSocket) {
+            this.chatWebSocket.close();
+        }
+
+        try {
+            const session = await this.api.getChatSession(sessionId);
+            this.currentSession = session;
+
+            // Update UI
+            document.getElementById('current-session-name').textContent = session.session_name;
+            document.getElementById('current-session-status').textContent = 'Connecting...';
+            document.getElementById('current-session-status').className = 'status-indicator connecting';
+
+            // Enable chat controls
+            document.getElementById('chat-input').disabled = false;
+            document.getElementById('chat-send').disabled = false;
+            document.getElementById('chat-disconnect').disabled = false;
+            document.getElementById('chat-clear-history').disabled = false;
+
+            // Connect WebSocket
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${sessionId}`;
+            
+            this.chatWebSocket = new WebSocket(wsUrl);
+            
+            this.chatWebSocket.onopen = () => {
+                document.getElementById('current-session-status').textContent = 'Connected';
+                document.getElementById('current-session-status').className = 'status-indicator connected';
+                this.showSuccess(`Connected to ${session.session_name}`);
+            };
+
+            this.chatWebSocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                this.handleWebSocketMessage(data);
+            };
+
+            this.chatWebSocket.onclose = () => {
+                document.getElementById('current-session-status').textContent = 'Disconnected';
+                document.getElementById('current-session-status').className = 'status-indicator disconnected';
+            };
+
+            this.chatWebSocket.onerror = (error) => {
+                this.showError('WebSocket error: ' + error.message);
+            };
+
+            // Load chat history
+            await this.loadChatHistory(sessionId);
+
+            // Update session list
+            this.renderChatSessions();
+
+        } catch (error) {
+            this.showError('Failed to connect to session: ' + error.message);
+        }
+    }
+
+    async loadChatHistory(sessionId) {
+        try {
+            const history = await this.api.getChatHistory(sessionId);
+            this.renderChatMessages(history.messages);
+        } catch (error) {
+            console.error('Failed to load chat history:', error);
+        }
+    }
+
+    renderChatMessages(messages) {
+        const container = document.getElementById('chat-messages');
+        
+        if (messages.length === 0) {
+            container.innerHTML = `
+                <div class="chat-welcome">
+                    <div class="chat-welcome-icon">💬</div>
+                    <h4>Start your conversation</h4>
+                    <p>Ask me about your notes, or try commands like:</p>
+                    <ul style="text-align: left; display: inline-block; margin-top: 1rem;">
+                        <li>"list my notes"</li>
+                        <li>"search for machine learning"</li>
+                        <li>"summarize my meeting notes"</li>
+                    </ul>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = messages.map(msg => this.renderChatMessage(msg)).join('');
+        this.scrollToBottom();
+    }
+
+    renderChatMessage(message) {
+        const timestamp = new Date(message.timestamp).toLocaleTimeString();
+        const avatarText = message.message_type === 'user' ? 'U' : 'AI';
+        
+        return `
+            <div class="chat-message ${message.message_type}">
+                <div class="message-avatar ${message.message_type}">${avatarText}</div>
+                <div class="message-content">
+                    ${this.formatMessageContent(message.content)}
+                    <div class="message-meta">${timestamp}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    formatMessageContent(content) {
+        // Basic formatting for better readability
+        return content
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>');
+    }
+
+    async sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        
+        if (!message || !this.currentSession) return;
+
+        try {
+            // Clear input
+            input.value = '';
+            this.autoResizeTextarea(input);
+
+            // Add user message to UI immediately
+            this.addMessageToUI({
+                message_id: Date.now().toString(),
+                content: message,
+                timestamp: new Date().toISOString(),
+                message_type: 'user'
+            });
+
+            // Show typing indicator
+            this.showTypingIndicator();
+
+            // Send via WebSocket
+            if (this.chatWebSocket && this.chatWebSocket.readyState === WebSocket.OPEN) {
+                this.chatWebSocket.send(JSON.stringify({
+                    type: 'message',
+                    message: message
+                }));
+            } else {
+                throw new Error('Not connected to chat session');
+            }
+
+        } catch (error) {
+            this.hideTypingIndicator();
+            this.showError('Failed to send message: ' + error.message);
+        }
+    }
+
+    addMessageToUI(message) {
+        const container = document.getElementById('chat-messages');
+        
+        // Remove welcome message if it exists
+        const welcome = container.querySelector('.chat-welcome');
+        if (welcome) {
+            welcome.remove();
+        }
+
+        container.insertAdjacentHTML('beforeend', this.renderChatMessage(message));
+        this.scrollToBottom();
+    }
+
+    handleWebSocketMessage(data) {
+        switch (data.type) {
+            case 'message':
+                this.hideTypingIndicator();
+                this.addMessageToUI(data.data);
+                break;
+            case 'error':
+                this.hideTypingIndicator();
+                this.addMessageToUI({
+                    message_id: Date.now().toString(),
+                    content: data.message,
+                    timestamp: new Date().toISOString(),
+                    message_type: 'error'
+                });
+                break;
+            case 'connected':
+                console.log('Chat connected:', data.message);
+                break;
+            case 'session_info':
+                console.log('Session info:', data.data);
+                break;
+        }
+    }
+
+    showTypingIndicator() {
+        document.getElementById('chat-typing-indicator').innerHTML = 
+            '<span class="typing-indicator">AI is typing...</span>';
+    }
+
+    hideTypingIndicator() {
+        document.getElementById('chat-typing-indicator').innerHTML = '';
+    }
+
+    disconnectFromSession() {
+        if (this.chatWebSocket) {
+            this.chatWebSocket.close();
+        }
+
+        this.currentSession = null;
+        
+        // Update UI
+        document.getElementById('current-session-name').textContent = 'No Session Selected';
+        document.getElementById('current-session-status').textContent = 'Disconnected';
+        document.getElementById('current-session-status').className = 'status-indicator disconnected';
+        
+        // Disable chat controls
+        document.getElementById('chat-input').disabled = true;
+        document.getElementById('chat-send').disabled = true;
+        document.getElementById('chat-disconnect').disabled = true;
+        document.getElementById('chat-clear-history').disabled = true;
+
+        // Clear messages
+        document.getElementById('chat-messages').innerHTML = `
+            <div class="chat-welcome">
+                <div class="chat-welcome-icon">🤖</div>
+                <h4>Welcome to SELENE Chat Assistant</h4>
+                <p>Create a new session or select an existing one to start chatting with your vault.</p>
+                <p>Your AI assistant can help you read, write, search, and organize your notes.</p>
+            </div>
+        `;
+
+        // Update session list
+        this.renderChatSessions();
+    }
+
+    clearChatHistory() {
+        if (confirm('Clear all messages in this chat session?')) {
+            document.getElementById('chat-messages').innerHTML = `
+                <div class="chat-welcome">
+                    <div class="chat-welcome-icon">💬</div>
+                    <h4>Chat history cleared</h4>
+                    <p>Start a new conversation!</p>
+                </div>
+            `;
+        }
+    }
+
+    autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    scrollToBottom() {
+        const container = document.getElementById('chat-messages');
+        container.scrollTop = container.scrollHeight;
     }
 
     showMessage(message, type = 'info') {

@@ -1254,7 +1254,8 @@ def chat(
     async def run_chat():
         """Run the chat interface."""
         try:
-            from selene.chat import ChatAgent, ChatConfig
+            from selene.chat.enhanced_agent import EnhancedChatAgent
+            from selene.chat import ChatConfig
             
             # Load configuration
             if config_file:
@@ -1268,16 +1269,21 @@ def chat(
             if no_memory:
                 config.conversation_memory = False
                 
-            # Initialize agent
-            agent = ChatAgent(config)
+            # Initialize enhanced agent
+            agent = EnhancedChatAgent(config)
             
-            if not await agent.initialize():
-                console.print("[red]❌ Failed to initialize chat agent[/red]")
+            # Generate user ID for personalization
+            import uuid
+            user_id = f"cli_user_{uuid.uuid4().hex[:8]}"
+            
+            if not await agent.initialize(user_id=user_id):
+                console.print("[red]❌ Failed to initialize enhanced chat agent[/red]")
                 raise typer.Exit(1)
                 
             # Start interactive chat loop
-            console.print("\n🤖 SELENE Chat Agent Ready!")
-            console.print("Type 'help' for commands, 'exit' to quit.\n")
+            console.print("\n🚀 Enhanced SELENE Chat Agent Ready!")
+            console.print("✨ Advanced features: smart suggestions, context awareness, conversation flows")
+            console.print("Type 'help' for commands, 'features' for capabilities, 'exit' to quit.\n")
             
             try:
                 while True:

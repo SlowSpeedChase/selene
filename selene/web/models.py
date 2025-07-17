@@ -99,6 +99,83 @@ class RemoveDirectoryRequest(BaseModel):
     path: str = Field(..., description="Directory path to remove")
 
 
+# Chat API Models
+
+class ChatSessionRequest(BaseModel):
+    """Request model for creating a chat session."""
+    
+    vault_path: Optional[str] = Field(None, description="Path to Obsidian vault")
+    session_name: Optional[str] = Field(None, description="Human-readable session name")
+    enable_memory: bool = Field(True, description="Enable conversation memory")
+    debug_mode: bool = Field(False, description="Enable debug logging")
+    use_enhanced_agent: bool = Field(True, description="Use enhanced agent with advanced features")
+
+
+class ChatSessionResponse(BaseModel):
+    """Response model for chat session operations."""
+    
+    session_id: str
+    vault_path: Optional[str] = None
+    session_name: Optional[str] = None
+    created_at: str
+    enable_memory: bool
+    debug_mode: bool
+    vault_detected: bool = False
+    available_tools: List[str] = Field(default_factory=list)
+
+
+class ChatMessageRequest(BaseModel):
+    """Request model for sending a chat message."""
+    
+    message: str = Field(..., description="User message")
+    stream: bool = Field(True, description="Stream response in real-time")
+
+
+class ChatMessageResponse(BaseModel):
+    """Response model for chat messages."""
+    
+    message_id: str
+    content: str
+    timestamp: str
+    message_type: str  # 'user', 'assistant', 'system', 'tool_result'
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    processing_time: Optional[float] = None
+
+
+class ChatHistoryResponse(BaseModel):
+    """Response model for chat conversation history."""
+    
+    session_id: str
+    messages: List[ChatMessageResponse]
+    total_messages: int
+    session_created_at: str
+
+
+class ChatSessionListResponse(BaseModel):
+    """Response model for listing chat sessions."""
+    
+    sessions: List[ChatSessionResponse]
+    total_sessions: int
+
+
+class ChatToolExecutionRequest(BaseModel):
+    """Request model for executing chat tools."""
+    
+    tool_name: str = Field(..., description="Name of tool to execute")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Tool parameters")
+
+
+class ChatToolExecutionResponse(BaseModel):
+    """Response model for chat tool execution."""
+    
+    success: bool
+    tool_name: str
+    result: Any = None
+    error: Optional[str] = None
+    execution_time: float
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
 class SuccessResponse(BaseModel):
     """Generic success response."""
 

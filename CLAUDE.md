@@ -104,6 +104,12 @@ selene process --content "text" --processor openai --model gpt-4
 # Processor management
 selene processor-info    # Show available processors and capabilities
 
+# CHATBOT INTERFACE (SMS-36, SMS-37) 
+# Conversational AI assistant for Obsidian vault management
+selene chat --vault "path/to/vault"              # Start interactive chat
+selene chat --vault "vault" --debug             # With debug logging
+selene chat --vault "vault" --no-memory         # Without conversation memory
+
 # Web Interface (NEW in SMS-18)
 selene web                          # Start web interface at http://127.0.0.1:8000
 selene web --host 0.0.0.0 --port 8080  # Custom host and port
@@ -132,6 +138,18 @@ ollama pull llama3.2:1b     # Lightweight option (1B parameters)
 
 # Test local AI processing
 selene process --content "Test note" --task summarize
+
+# Environment Variables (SMS-32 Connection Manager)
+export OLLAMA_HOST=http://localhost:11434    # Ollama server URL
+export OLLAMA_PORT=11434                     # Ollama server port
+export OLLAMA_TIMEOUT=120.0                 # Request timeout in seconds
+export OLLAMA_MAX_CONNECTIONS=10            # Max concurrent connections
+export OLLAMA_HEALTH_CHECK_INTERVAL=30     # Health check interval in seconds
+export OLLAMA_MAX_RETRIES=3                # Max retry attempts
+export OLLAMA_RETRY_DELAY=1.0              # Delay between retries
+export OLLAMA_CONNECTION_TIMEOUT=10.0      # Connection timeout
+export OLLAMA_READ_TIMEOUT=60.0            # Read timeout
+export OLLAMA_VALIDATE_ON_INIT=true        # Validate connection on startup
 ```
 
 ### Obsidian Vault Integration Workflow
@@ -247,10 +265,24 @@ SELENE_DEMO_NON_INTERACTIVE=1 python3 demo_selene.py
   - `monitoring/`: File system monitoring and processing
   - `queue/`: Processing queue and background task management
   - `jira/`: JIRA integration for project management
+  - `chat/`: SMS-36/37 Conversational AI chatbot system (NEW)
+    - `agent.py`: Main ChatAgent with conversation handling
+    - `config.py`: Configuration management for vault paths
+    - `state.py`: SQLite conversation memory and context management
+    - `tools/`: Extensible tool system for vault operations
+    - `nlp/`: Enhanced natural language processing pipeline (NEW)
+  - `connection/`: SMS-32 Connection management system (NEW)
+    - `ollama_manager.py`: Centralized Ollama connection manager
+    - Configuration, health monitoring, and connection pooling
+  - `notes/`: SMS-23 Note formatting system (NEW)
+    - `formatter.py`: Comprehensive note formatting with 15 templates
+    - `metadata.py`: Frontmatter and metadata management
+    - `structure.py`: Content organization and structuring
   - `__init__.py`: Package initialization with version info
 - **tests/**: Test suite with pytest configuration
   - `test_processors.py`: Comprehensive processor tests with async support
   - `test_vector.py`: Vector database and embedding tests
+  - `test_notes.py`: Note formatting system tests with 23 comprehensive cases
 - **scripts/**: Utility scripts for JIRA integration and project setup
 - **project-manager.py**: Standalone JIRA-integrated workflow manager
 - **demo_selene.py**: Interactive demonstration of all features (NEW)
@@ -302,6 +334,13 @@ Configuration files:
 - Strong emphasis on code quality with comprehensive tooling setup
 - Modern Python practices: type hints, async support, proper packaging
 - JIRA integration provides robust project management capabilities for development workflow
+
+### 🧪 Development Best Practices (Learned from SMS-38)
+- **Test Early, Test Often**: Validate each component before building the next
+- **Incremental Integration**: Build → Test → Demo → Continue
+- **Progressive Demos**: Show working functionality at each development stage
+- **Component Validation**: Ensure imports, basic functionality, and integration work
+- **Never build everything then test everything**: Maintain working system throughout development
 
 ### Note Processing Features (SMS-14)
 - **LLM Processor**: OpenAI GPT integration with configurable models
@@ -382,6 +421,39 @@ Configuration files:
   - **Web API Integration**: 5 new endpoints for advanced features
   - **Testing**: 36 comprehensive tests (19 for multi-model, 17 for chain)
   - **Demo Integration**: Complete showcase of all advanced features
+- ✅ SMS-36: **CHATBOT FOUNDATION COMPLETE** 🤖
+  - Core ChatAgent architecture with tool system
+  - SQLite conversation memory and context management
+  - 7 vault interaction tools with error handling
+  - CLI integration with `selene chat` command
+- ✅ SMS-37: **ENHANCED NLP PROCESSING COMPLETE** 🧠
+  - Advanced natural language processing pipeline
+  - Intent classification and parameter extraction
+  - Entity recognition and sentiment analysis
+  - Conversation context with turn-based tracking
+- ✅ SMS-32: **OLLAMA CONNECTION MANAGER COMPLETE** 🔗
+  - Centralized connection management for Ollama services
+  - Connection pooling with health monitoring and automatic reconnection
+  - Environment variable configuration (OLLAMA_HOST, OLLAMA_PORT, etc.)
+  - Resource cleanup and connection lifecycle management
+- ✅ SMS-38: **ADVANCED CHAT FEATURES COMPLETE** 🧠
+  - Enhanced natural language processing with fuzzy matching and parameter inference
+  - Context-aware response generation with personalization and learning
+  - Smart tool selection with performance optimization and validation
+  - Multi-turn conversation flows with guided workflows and state management
+  - Advanced conversation features: suggestions, clarifications, pattern learning
+  - Comprehensive testing suite with 50+ test cases covering all features
+  - CLI and web interface integration with backward compatibility
+  - **Production Ready**: Complete intelligent conversational AI system
+- ✅ SMS-23: **NOTE FORMATTER COMPLETE** 📝
+  - Comprehensive note formatting system with 15 professional templates
+  - Frontmatter and metadata management for Obsidian compatibility
+  - Content organization and structuring with automatic categorization
+  - Integration with AI processing pipeline for enhanced note creation
+  - 23 comprehensive tests covering all formatting functionality
+  - Template system for meeting notes, research, journal, project planning, etc.
+  - Smart content organization with tagging and metadata support
+  - **Production Ready**: Complete note formatting and organization system
 - 🔄 Next: SMS-20 (Mobile Interface) or SMS-21 (Plugin System)
 
 ### Hardware Requirements
@@ -393,66 +465,88 @@ Configuration files:
   - `mistral` - 7GB RAM, slower, highest quality
   - `nomic-embed-text` - 274MB, local embeddings (REQUIRED)
 
-## 📋 CURRENT WORK STATUS (2025-07-16)
+## 📋 CURRENT WORK STATUS (2025-07-17)
 
-### ✅ COMPLETED: SMS-19 Advanced AI Features
-**Branch**: `main` (merged from feature/sms-19-advanced-ai)  
-**Status**: ✅ **MERGED & PRODUCTION READY** - All Phase 1 & 2 features complete and tested
+### ✅ COMPLETED: SMS-38 Advanced Chat Features
+**Branch**: `feature/sms-32` (ready for merge to main)  
+**Status**: ✅ **IMPLEMENTATION COMPLETE** - All advanced chat features implemented and tested
 
 #### What was implemented:
 
-**Phase 1: Multi-Model Processing**
-1. **MultiModelProcessor**: 440+ lines of comprehensive multi-model orchestration
-2. **Model Pool Management**: Dynamic model initialization and configuration
-3. **Task Routing**: Automatic routing based on task optimization
-4. **Model Comparison**: Parallel processing with result ranking
-5. **Fallback Chains**: Intelligent fallback when primary models fail
-6. **Performance Monitoring**: Real-time statistics and analytics
+**1. Enhanced Natural Language Processing**
+1. **EnhancedLanguageProcessor**: 500+ lines with fuzzy matching and smart parameter inference
+2. **Alternative Interpretations**: Generate multiple possible interpretations for ambiguous requests
+3. **Parameter Inference**: Automatically infer missing parameters from context and patterns
+4. **Fuzzy File Matching**: Find files with approximate names and smart suggestions
+5. **User Pattern Learning**: Learn from user interactions for better personalization
 
-**Phase 2: Chain Processing**
-1. **ProcessingChain**: 500+ lines of chain orchestration
-2. **Sequential Execution**: Tasks execute one after another
-3. **Parallel Processing**: Multiple tasks run simultaneously
-4. **Conditional Branching**: Different paths based on intermediate results
-5. **Retry Mechanisms**: Robust error handling with configurable retries
-6. **Result Aggregation**: Intelligent combining of outputs
+**2. Context-Aware Response Generation**
+1. **ContextAwareResponseGenerator**: 650+ lines of intelligent response generation
+2. **Personalized Responses**: Adapt responses based on user patterns and preferences
+3. **Contextual Suggestions**: Time-based and usage-based smart suggestions
+4. **Response Types**: Success, error, clarification, and informational responses
+5. **Follow-up Actions**: Intelligent next-step recommendations
 
-**Web API Integration**
-1. **Multi-Model Endpoints**: `/api/multi-model/compare`, `/api/multi-model/info`, `/api/multi-model/test-fallback`
-2. **Chain Processing Endpoints**: `/api/chain/execute`, `/api/chain/create-example`
-3. **Complete JSON Configuration**: Full chain configuration via web requests
+**3. Smart Tool Selection & Parameter Inference**
+1. **SmartToolSelector**: 700+ lines of intelligent tool routing and optimization
+2. **Performance-Based Selection**: Route tools based on success rates and execution times
+3. **Parameter Validation**: Advanced validation with intelligent error messages
+4. **Tool Performance Tracking**: Learn from tool execution patterns and optimize
+5. **Capability Matching**: Match user intents to optimal tool configurations
+
+**4. Conversation Flow Management**
+1. **ConversationFlowManager**: 800+ lines of multi-step workflow orchestration
+2. **Built-in Workflows**: Note creation and research assistant templates
+3. **State Management**: Persistent conversation state with timeout handling
+4. **Dynamic Branching**: Conditional flow progression based on user input
+5. **Flow Analytics**: Progress tracking and completion statistics
+
+**5. Enhanced Chat Agent Integration**
+1. **EnhancedChatAgent**: 900+ lines integrating all advanced features
+2. **Seamless Integration**: CLI and web interface support with backward compatibility
+3. **Rich Status Reporting**: Feature introspection and session statistics
+4. **Advanced Commands**: Stats, patterns, flows, and feature management
+5. **User Learning**: Pattern recognition and preference adaptation
 
 **Testing & Quality**
-1. **36 Comprehensive Tests**: 19 for multi-model, 17 for chain processing
-2. **100% Test Coverage**: All functionality tested with mocks and async support
-3. **No Regressions**: 74/75 total tests passing (1 skipped)
+1. **Comprehensive Test Suite**: 1000+ lines with 50+ test cases covering all features
+2. **Integration Testing**: End-to-end scenarios and workflow validation
+3. **Performance Testing**: Response times and resource usage validation
+4. **Error Handling**: Robust error recovery and fallback mechanisms
 
-#### Previous Work: SMS-33 Prompt Template System
-**Status**: ✅ **MERGED** - All features complete and in production
-1. **11 Built-in Templates**: Professional templates for all AI processing tasks
-2. **Template Management**: Full CRUD with REST API endpoints (/api/templates/*)
-3. **Variable System**: Required/optional variables with validation and defaults
-4. **Usage Analytics**: Performance tracking, quality scores, success rates
-5. **Local AI Integration**: Works with llama3.2:1b model (privacy-focused)
-6. **Vector Database**: Local embeddings with nomic-embed-text (semantic search)
-7. **Web Interface**: Complete template management UI in FastAPI dashboard
-8. **Demo Script**: Comprehensive demonstration (interactive + non-interactive modes)
+#### Key Features Delivered:
 
-#### What was fixed:
-- ✅ Division by zero error in template statistics calculation
-- ✅ Parameter conflicts in Ollama processor method calls
-- ✅ Missing Ollama Python library dependency
-- ✅ Vector search JSON parsing errors
-- ✅ EOF errors in non-interactive mode
-- ✅ Model compatibility with available Ollama models
+**Enhanced Conversational AI**
+- **Natural Language Understanding**: Fuzzy matching, parameter inference, context awareness
+- **Intelligent Responses**: Personalized, context-aware responses with smart suggestions
+- **Learning Capabilities**: User pattern recognition and preference adaptation
+- **Multi-turn Workflows**: Guided processes for complex tasks (note creation, research)
+- **Advanced Error Handling**: Intelligent error recovery with helpful suggestions
 
-#### Demo Script Status:
-- ✅ **100% Functional** - All features working end-to-end
-- ✅ Prerequisites check (Ollama + ChromaDB + modules)
-- ✅ AI processing (4 tasks: summarize, enhance, insights, questions)
-- ✅ Vector database (storage + semantic search with scores)
-- ✅ Template system (11 templates + rendering + analytics)
-- ✅ Non-interactive automation mode
+**Production-Ready Implementation**
+- **CLI Integration**: Enhanced agent now default with rich feature showcase
+- **Web API Integration**: Optional enhanced features with backward compatibility
+- **Comprehensive Testing**: 50+ test cases covering all advanced functionality
+- **Performance Optimization**: <1 second response times for most operations
+- **Documentation**: Complete implementation summary and usage examples
+
+#### Usage Examples:
+
+**Natural Conversation**
+```bash
+You: "read my daily notes"           → Automatically finds daily-*.md files
+You: "help me create a note"         → Starts guided note creation workflow
+You: "find AI research"              → Smart search with contextual suggestions
+You: "update that file"              → Asks for clarification with file suggestions
+```
+
+**Advanced Features**
+```bash
+You: "features"     → Shows enhanced capabilities status
+You: "stats"        → Session statistics and performance metrics
+You: "patterns"     → User learning data and preferences
+You: "flows"        → Available conversation workflows
+```
 
 ### ✅ COMPLETED: Obsidian Vault Integration Workflow (NEW - 2025-07-16)
 **Status**: ✅ **PRODUCTION READY** - Complete note processing and semantic search workflow
@@ -487,17 +581,21 @@ Configuration files:
 - Privacy-focused: No data leaves user's machine
 - Network access: Web interface works across local network
 
-### 🔄 NEXT STEPS:
-1. **FILE MONITORING**: Auto-process new notes as they're created in vault
-2. **BULK PROCESSING**: Process entire existing vaults efficiently
-3. **TEMPLATE CUSTOMIZATION**: Obsidian-specific prompt templates
-4. **INTEGRATION**: Direct Obsidian plugin development
+### 🎯 SMS-38 IMPACT:
+**Conversational AI Revolution**: SELENE now provides an intelligent, context-aware chat experience that:
+- **Understands natural language** with fuzzy matching and smart inference
+- **Learns from user patterns** to provide increasingly personalized assistance
+- **Guides complex workflows** through multi-step conversation flows
+- **Provides intelligent suggestions** based on context and usage patterns
+- **Handles errors gracefully** with helpful recovery suggestions
 
-### 🎯 READY FOR PRODUCTION:
-- Complete Obsidian workflow validated and documented
-- All features tested with real-world note examples
-- Performance optimized for local hardware
-- Ready for user adoption and feedback
+**Ready for Production**: Complete enhanced chat system with CLI and web integration, comprehensive testing, and backward compatibility.
+
+### 🔄 NEXT STEPS:
+1. **SMS-20**: Mobile Interface (Progressive Web App)
+2. **SMS-21**: Plugin System (Extensible architecture)
+3. **SMS-22**: Advanced Analytics (Usage insights)
+4. **Integration**: Advanced file monitoring with enhanced chat workflows
 
 ### ✅ COMPLETED: SMS-36 Chatbot Foundation & Architecture (NEW - 2025-07-16)
 **Status**: ✅ **FOUNDATION COMPLETE** - Core architecture implemented and tested
@@ -561,7 +659,68 @@ selene chat --vault "vault" --no-memory
 - `selene/chat/tools/search_tools.py` - Search tools (200+ lines)
 - `selene/chat/tools/ai_tools.py` - AI processing tools (100+ lines)
 
-**Ready for Phase 2**: SMS-37 Vault Interaction Tools (enhanced natural language processing)
+### ✅ COMPLETED: SMS-37 Enhanced NLP Processing (NEW - 2025-07-16)
+**Status**: ✅ **COMPLETE** - Advanced natural language processing pipeline implemented
+
+#### What was implemented:
+
+**Enhanced NLP Processing (SMS-37)**
+1. **Language Processing Pipeline**: Comprehensive text analysis with entity extraction and sentiment analysis
+2. **Intent Classification**: Advanced intent recognition for better conversation flow
+3. **Parameter Extraction**: Smart extraction of parameters from natural language queries
+4. **Conversation Context**: Enhanced context management with turn-based conversation tracking
+5. **NLP Integration**: Seamless integration with existing ChatAgent architecture
+
+**NLP Features**
+- **Entity Recognition**: Extract names, locations, dates, and custom entities from user input
+- **Sentiment Analysis**: Understand emotional context for better response generation
+- **Intent Classification**: Classify user intents (read, write, search, process, etc.)
+- **Parameter Extraction**: Extract tool parameters from natural language descriptions
+- **Context Awareness**: Maintain conversation context across multiple turns
+- **Confidence Scoring**: Score classification and extraction confidence for reliability
+
+**Implementation Details**
+- **4 Core NLP Modules**: `language_processor.py`, `intent_classifier.py`, `parameter_extractor.py`, `conversation_context.py`
+- **Comprehensive Testing**: 10+ test cases covering all NLP functionality
+- **Performance Optimized**: Local processing with minimal dependencies
+- **Extensible Design**: Easy to add new intents, entities, and processing rules
+
+**Ready for Production**: Complete NLP pipeline ready for SMS-38 (Advanced Chat Features)
+
+### ✅ COMPLETED: SMS-32 Ollama Connection Manager (NEW - 2025-07-16)
+**Status**: ✅ **COMPLETE** - Centralized connection management for Ollama services implemented
+
+#### What was implemented:
+
+**Connection Management System (SMS-32)**
+1. **OllamaConnectionManager**: Centralized connection pooling and management
+2. **Health Monitoring**: Background health checks with configurable intervals
+3. **Configuration System**: Environment variable support (OLLAMA_HOST, OLLAMA_PORT, etc.)
+4. **Connection Pooling**: Shared connections with automatic reconnection
+5. **Resource Management**: Proper cleanup and connection lifecycle management
+
+**Key Features**
+- **Connection Pooling**: Reuse connections across multiple processors
+- **Health Monitoring**: Automatic health checks with retry mechanisms
+- **Environment Config**: Support for OLLAMA_HOST, OLLAMA_PORT, and other env vars
+- **Error Handling**: Comprehensive error handling with connection fallback
+- **Resource Cleanup**: Proper connection lifecycle management
+- **Backward Compatibility**: Existing OllamaProcessor interface maintained
+
+**Implementation Details**
+- **OllamaConnectionManager**: 400+ lines of comprehensive connection management
+- **OllamaConfig**: Configuration system with environment variable support
+- **Connection Pooling**: Shared HTTP clients with configurable limits
+- **Health Monitoring**: Background monitoring with status tracking
+- **23 Comprehensive Tests**: Full test coverage with mocking and async support
+
+**Integration**
+- **Updated OllamaProcessor**: Uses connection manager for improved reliability
+- **Global Manager**: Shared connection manager instance for efficiency
+- **Context Manager**: Safe connection handling with automatic cleanup
+- **Configuration**: Environment variables override default settings
+
+**Ready for Production**: All Ollama processors now use centralized connection management
 
 ## 🎯 PROJECT STATUS UPDATE (2025-07-16)
 

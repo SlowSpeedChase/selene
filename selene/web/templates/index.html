@@ -59,6 +59,9 @@
                 <li><button class="nav-tab" data-tab="process">
                     <i class="fas fa-magic"></i> Process Content
                 </button></li>
+                <li><button class="nav-tab" data-tab="chat">
+                    <i class="fas fa-comments"></i> Chat Assistant
+                </button></li>
                 <li><button class="nav-tab" data-tab="search">
                     <i class="fas fa-search"></i> Vector Search
                 </button></li>
@@ -195,6 +198,108 @@
                         <h4 class="card-title">Processing Result</h4>
                     </div>
                     <div id="process-output"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Assistant Tab -->
+        <div id="chat-tab" class="tab-content hidden">
+            <div class="chat-container">
+                <!-- Chat Sessions Panel -->
+                <div class="chat-sidebar">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Chat Sessions</h3>
+                            <button id="new-chat-session" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> New Session
+                            </button>
+                        </div>
+                        <div id="chat-sessions-list" class="chat-sessions">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                Loading sessions...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Session Configuration -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Session Settings</h4>
+                        </div>
+                        <form id="chat-session-form">
+                            <div class="form-group">
+                                <label class="form-label">Vault Path</label>
+                                <input type="text" class="form-input" id="chat-vault-path" placeholder="/path/to/vault (optional)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Session Name</label>
+                                <input type="text" class="form-input" id="chat-session-name" placeholder="My Chat Session">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="chat-enable-memory" checked>
+                                    Enable conversation memory
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="chat-debug-mode">
+                                    Debug mode
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Chat Interface -->
+                <div class="chat-main">
+                    <div class="card chat-card">
+                        <!-- Chat Header -->
+                        <div class="chat-header">
+                            <div class="chat-session-info">
+                                <h3 id="current-session-name">No Session Selected</h3>
+                                <span id="current-session-status" class="status-indicator">Disconnected</span>
+                            </div>
+                            <div class="chat-actions">
+                                <button id="chat-clear-history" class="btn btn-secondary btn-sm" disabled>
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                                <button id="chat-disconnect" class="btn btn-danger btn-sm" disabled>
+                                    <i class="fas fa-disconnect"></i> Disconnect
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages -->
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="chat-welcome">
+                                <div class="chat-welcome-icon">🤖</div>
+                                <h4>Welcome to SELENE Chat Assistant</h4>
+                                <p>Create a new session or select an existing one to start chatting with your vault.</p>
+                                <p>Your AI assistant can help you read, write, search, and organize your notes.</p>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div class="chat-input-container">
+                            <form id="chat-form" class="chat-form">
+                                <div class="chat-input-wrapper">
+                                    <textarea 
+                                        id="chat-input" 
+                                        class="chat-input" 
+                                        placeholder="Type your message here... (Enter to send, Shift+Enter for new line)"
+                                        rows="1"
+                                        disabled
+                                    ></textarea>
+                                    <button type="submit" id="chat-send" class="chat-send-btn" disabled>
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="chat-status" id="chat-typing-indicator"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

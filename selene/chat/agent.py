@@ -22,6 +22,7 @@ from ..processors.ollama_processor import OllamaProcessor
 from .config import ChatConfig
 from .state import ConversationState
 from .tools.base import BaseTool, ToolRegistry, ToolResult, ToolStatus
+from .nlp.language_processor import LanguageProcessor
 
 
 class ChatAgent:
@@ -46,6 +47,7 @@ class ChatAgent:
         self.tool_registry = ToolRegistry()
         self.conversation_state = ConversationState(self.config)
         self.ai_processor = None
+        self.language_processor = None
         
         # Agent state
         self._initialized = False
@@ -71,6 +73,10 @@ class ChatAgent:
             self.ai_processor = OllamaProcessor()
             logger.debug("AI processor initialized")
             
+            # Initialize language processor
+            self.language_processor = LanguageProcessor()
+            logger.debug("Language processor initialized")
+            
             # Initialize conversation state
             if self.config.conversation_memory:
                 await self.conversation_state.initialize()
@@ -91,6 +97,9 @@ class ChatAgent:
                 if discovered:
                     self._current_vault_path = discovered[0]
                     logger.info(f"Auto-discovered vault: {self._current_vault_path}")
+                    
+            # Update language processor with vault path
+            self.language_processor.set_vault_path(self._current_vault_path)
                     
             # Load and enable tools
             await self._load_tools()
@@ -203,15 +212,14 @@ class ChatAgent:
         elif message.lower().strip() in ["exit", "quit", "/exit", "/quit"]:
             return "👋 Goodbye! Chat session ended."
             
-        # Get conversation context
-        context = await self.conversation_state.get_context(self.config.context_window_size)
+        # Process message with enhanced NLP
+        processing_result = self.language_processor.process_message(message)
         
-        # Prepare AI prompt with tools and context
-        system_prompt = self._build_system_prompt()
-        user_prompt = self._build_user_prompt(message, context)
+        # Handle the processing result
+        response = await self._handle_processing_result(processing_result, message)
         
-        # Get AI response with tool calling
-        response = await self._get_ai_response(system_prompt, user_prompt)
+        # Update conversation context
+        self.language_processor.update_context(message, processing_result, response)
         
         return response
         
@@ -256,29 +264,136 @@ If you need to modify files, explain what you're doing and ask for confirmation 
 
 Current message: {message}"""
 
-    async def _get_ai_response(self, system_prompt: str, user_prompt: str) -> str:
+    async def _handle_processing_result(self, processing_result, message: str) -> str:
         """
-        Get AI response with tool calling support.
+        Handle the NLP processing result and execute appropriate actions.
         
         Args:
-            system_prompt: System prompt with instructions
-            user_prompt: User prompt with message and context
+            processing_result: Result from language processor
+            message: Original user message
             
         Returns:
-            AI response
+            Agent response
         """
         try:
-            # For now, use simple AI processing without function calling
-            # TODO: Implement proper function calling when Ollama supports it
+            # Check if we can execute the tool directly
+            if processing_result.is_executable:
+                return await self._execute_tool_from_result(processing_result)
+                
+            # Check if we need confirmation
+            elif processing_result.needs_confirmation:
+                return await self._request_confirmation(processing_result)
+                
+            # Check if we have missing parameters
+            elif processing_result.missing_parameters:
+                return self._request_missing_parameters(processing_result)
+                
+            # Check if confidence is too low
+            elif not processing_result.is_confident:
+                return self._handle_low_confidence(processing_result, message)
+                
+            # Fall back to AI conversation
+            else:
+                return await self._get_ai_response(processing_result, message)
+                
+        except Exception as e:
+            logger.error(f"Error handling processing result: {e}")
+            return f"❌ Sorry, I encountered an error processing your request: {e}"
+            
+    async def _execute_tool_from_result(self, processing_result) -> str:
+        """Execute tool from processing result."""
+        tool_name = processing_result.tool_name
+        parameters = processing_result.parameters
+        
+        # Handle special case for AI processing tools
+        if tool_name == "ai_process" and "note_path" in parameters:
+            # Read note content first
+            note_path = parameters["note_path"]
+            read_result = await self.tool_registry.execute_tool("read_note", note_path=note_path)
+            if read_result.is_success:
+                # Replace note_path with actual content
+                parameters["content"] = read_result.content
+                del parameters["note_path"]
+            else:
+                return self._format_tool_result(read_result, f"Reading note: {note_path}")
+        
+        # Execute the tool
+        result = await self.tool_registry.execute_tool(tool_name, **parameters)
+        
+        # Format and return result
+        action_description = self._get_action_description(tool_name, parameters)
+        return self._format_tool_result(result, action_description)
+        
+    async def _request_confirmation(self, processing_result) -> str:
+        """Request user confirmation for the action."""
+        tool_name = processing_result.tool_name
+        parameters = processing_result.parameters
+        
+        action_description = self._get_action_description(tool_name, parameters)
+        
+        confirmation_msg = f"⚠️ I want to {action_description.lower()}. This will modify your vault.\n\n"
+        confirmation_msg += "Parameters:\n"
+        for key, value in parameters.items():
+            confirmation_msg += f"• {key}: {value}\n"
+        confirmation_msg += "\nDo you want to proceed? (yes/no)"
+        
+        return confirmation_msg
+        
+    def _request_missing_parameters(self, processing_result) -> str:
+        """Request missing parameters from user."""
+        missing = processing_result.missing_parameters
+        suggestions = processing_result.suggestions
+        
+        msg = f"❓ I need more information to proceed:\n\n"
+        
+        for param in missing:
+            msg += f"• Missing: {param}\n"
+            
+        if suggestions:
+            msg += f"\n💡 Suggestions:\n"
+            for suggestion in suggestions:
+                msg += f"• {suggestion}\n"
+                
+        msg += "\nPlease provide the missing information and try again."
+        
+        return msg
+        
+    def _handle_low_confidence(self, processing_result, message: str) -> str:
+        """Handle low confidence processing results."""
+        intent = processing_result.intent
+        confidence = processing_result.confidence
+        suggestions = processing_result.suggestions
+        
+        msg = f"🤔 I'm not sure what you want to do (confidence: {confidence:.1%}).\n\n"
+        
+        if intent.value != "unknown":
+            msg += f"I think you want to: {intent.value.replace('_', ' ')}\n\n"
+            
+        if suggestions:
+            msg += "💡 Suggestions:\n"
+            for suggestion in suggestions:
+                msg += f"• {suggestion}\n"
+        else:
+            msg += "Try rephrasing your request or use commands like:\n"
+            msg += "• 'read my notes about X'\n"
+            msg += "• 'create a note called Y'\n"
+            msg += "• 'search for Z'\n"
+            
+        return msg
+        
+    async def _get_ai_response(self, processing_result, message: str) -> str:
+        """Get AI response for general conversation."""
+        try:
+            # Get conversation context
+            context = self.language_processor.get_conversation_context(3)
+            
+            # Build prompt with context
+            system_prompt = self._build_system_prompt()
+            user_prompt = self._build_user_prompt(message, context)
             
             full_prompt = f"{system_prompt}\n\nUser: {user_prompt}\n\nAssistant:"
             
-            # Check if the message contains tool requests
-            tool_response = await self._detect_and_execute_tools(user_prompt)
-            if tool_response:
-                return tool_response
-                
-            # Otherwise, use AI for general conversation
+            # Use AI for general conversation
             result = await self.ai_processor.process(
                 content=full_prompt,
                 task="enhance"  # Use enhance for general conversation
@@ -293,62 +408,25 @@ Current message: {message}"""
             logger.error(f"AI response generation failed: {e}")
             return f"❌ Sorry, I encountered an error processing your request: {e}"
             
-    async def _detect_and_execute_tools(self, message: str) -> Optional[str]:
-        """
-        Detect tool usage in natural language and execute tools.
-        
-        Args:
-            message: User message
-            
-        Returns:
-            Tool execution result or None if no tools detected
-        """
-        message_lower = message.lower()
-        
-        # Simple pattern matching for tool detection
-        # TODO: Replace with proper NLP/function calling
-        
-        if any(word in message_lower for word in ["read", "show", "open", "display"]) and any(word in message_lower for word in ["note", "file"]):
-            # Extract note name/path
-            note_pattern = r'"([^"]+)"|\b(\w+\.md)\b|note(?:\s+named?)?\s+([^\s,]+)'
-            match = re.search(note_pattern, message, re.IGNORECASE)
-            if match:
-                note_name = match.group(1) or match.group(2) or match.group(3)
-                result = await self.tool_registry.execute_tool("read_note", note_path=note_name)
-                return self._format_tool_result(result, f"Reading note: {note_name}")
-                
-        elif any(word in message_lower for word in ["create", "write", "new"]) and "note" in message_lower:
-            # Extract note name and content
-            create_pattern = r'create.*note.*"([^"]+)"'
-            match = re.search(create_pattern, message, re.IGNORECASE)
-            if match:
-                note_name = match.group(1)
-                content = f"# {note_name}\n\nCreated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                result = await self.tool_registry.execute_tool("write_note", note_path=f"{note_name}.md", content=content)
-                return self._format_tool_result(result, f"Creating note: {note_name}")
-                
-        elif any(word in message_lower for word in ["search", "find", "look for"]):
-            # Extract search query
-            search_patterns = [
-                r'search for "([^"]+)"',
-                r'find "([^"]+)"',
-                r'look for "([^"]+)"',
-                r'search\s+(.+?)(?:\s+in|\s*$)',
-                r'find\s+(.+?)(?:\s+in|\s*$)'
-            ]
-            
-            for pattern in search_patterns:
-                match = re.search(pattern, message, re.IGNORECASE)
-                if match:
-                    query = match.group(1).strip()
-                    result = await self.tool_registry.execute_tool("vector_search", query=query, results=5)
-                    return self._format_tool_result(result, f"Searching for: {query}")
-                    
-        elif any(word in message_lower for word in ["list", "show all", "what notes"]):
-            result = await self.tool_registry.execute_tool("list_notes")
-            return self._format_tool_result(result, "Listing notes")
-            
-        return None
+    def _get_action_description(self, tool_name: str, parameters: Dict[str, Any]) -> str:
+        """Get human-readable description of the action."""
+        if tool_name == "read_note":
+            return f"Reading note: {parameters.get('note_path', 'unknown')}"
+        elif tool_name == "write_note":
+            return f"Creating note: {parameters.get('note_path', 'unknown')}"
+        elif tool_name == "update_note":
+            return f"Updating note: {parameters.get('note_path', 'unknown')}"
+        elif tool_name == "search_notes":
+            return f"Searching for: {parameters.get('query', 'unknown')}"
+        elif tool_name == "vector_search":
+            return f"Semantic search for: {parameters.get('query', 'unknown')}"
+        elif tool_name == "list_notes":
+            return "Listing notes"
+        elif tool_name == "ai_process":
+            task = parameters.get('task', 'processing')
+            return f"AI {task.replace('_', ' ')}"
+        else:
+            return f"Executing {tool_name}"
         
     def _format_tool_result(self, result: ToolResult, action: str) -> str:
         """Format tool execution result for display."""
@@ -499,6 +577,10 @@ Ask me to enhance, summarize, or analyze your notes:
             return False
             
         self._current_vault_path = path
+        
+        # Update language processor with new vault path
+        if self.language_processor:
+            self.language_processor.set_vault_path(path)
         
         # Reload tools with new vault path
         await self._load_tools()
