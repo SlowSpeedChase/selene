@@ -17,6 +17,7 @@ from selene.jira import JiraClient, TicketManager
 from selene.monitoring import FileWatcher, MonitorConfig
 from selene.processors import LLMProcessor, OllamaProcessor, VectorProcessor
 from selene.queue import ProcessingQueue, QueueManager
+from selene.connections import ConnectionDiscovery, ConnectionStorage, ConnectionStatisticsCollector
 
 app = typer.Typer(
     name="selene",
@@ -1318,6 +1319,178 @@ def chat(
             raise typer.Exit(1)
     
     asyncio.run(run_chat())
+
+
+@app.command()
+def connections(
+    action: str = typer.Argument(help="Action: discover, analyze, stats, report"),
+    note_id: Optional[str] = typer.Option(None, "--note-id", help="Specific note ID to analyze"),
+    min_confidence: Optional[float] = typer.Option(None, "--min-confidence", help="Minimum confidence threshold"),
+    connection_type: Optional[str] = typer.Option(None, "--type", help="Connection type filter"),
+    limit: Optional[int] = typer.Option(None, "--limit", help="Limit number of results"),
+    output_format: str = typer.Option("table", "--format", help="Output format: table, json"),
+) -> None:
+    """Manage and analyze connections between notes."""
+    
+    async def run_connections():
+        setup_logging()
+        
+        try:
+            # Initialize connection system
+            storage = ConnectionStorage()
+            discovery = ConnectionDiscovery()
+            stats_collector = ConnectionStatisticsCollector(storage)
+            
+            if action == "discover":
+                console.print("🔍 Discovering connections between notes...")
+                
+                # Discover connections
+                connections = await discovery.discover_connections(
+                    note_ids=[note_id] if note_id else None
+                )
+                
+                # Store discovered connections
+                if connections:
+                    stored_count = storage.store_connections(connections)
+                    console.print(f"✅ Discovered and stored {stored_count} connections")
+                    
+                    # Display sample connections
+                    if output_format == "table":
+                        table = Table(title="Sample Discovered Connections")
+                        table.add_column("Source", style="cyan")
+                        table.add_column("Target", style="cyan")
+                        table.add_column("Type", style="blue")
+                        table.add_column("Confidence", style="green")
+                        table.add_column("Explanation", style="white")
+                        
+                        for conn in connections[:10]:  # Show first 10
+                            table.add_row(
+                                conn.source_id[:20] + "..." if len(conn.source_id) > 20 else conn.source_id,
+                                conn.target_id[:20] + "..." if len(conn.target_id) > 20 else conn.target_id,
+                                conn.connection_type.value,
+                                f"{conn.confidence:.2f}",
+                                conn.explanation[:50] + "..." if len(conn.explanation) > 50 else conn.explanation
+                            )
+                        
+                        console.print(table)
+                    else:
+                        import json
+                        output = [conn.to_dict() for conn in connections]
+                        console.print(json.dumps(output, indent=2))
+                else:
+                    console.print("❌ No connections discovered")
+            
+            elif action == "analyze":
+                if not note_id:
+                    console.print("❌ Note ID required for analysis")
+                    return
+                
+                console.print(f"📊 Analyzing connections for note: {note_id}")
+                
+                # Get connections for the note
+                connections = storage.get_connections_for_note(note_id)
+                summary = storage.get_note_connection_summary(note_id)
+                
+                if connections:
+                    console.print(f"✅ Found {len(connections)} connections")
+                    
+                    # Display summary
+                    if output_format == "table":
+                        table = Table(title=f"Connection Analysis for {note_id}")
+                        table.add_column("Metric", style="cyan")
+                        table.add_column("Value", style="green")
+                        
+                        table.add_row("Total Connections", str(summary.total_connections))
+                        table.add_row("Incoming", str(summary.incoming_connections))
+                        table.add_row("Outgoing", str(summary.outgoing_connections))
+                        table.add_row("Average Confidence", f"{summary.average_confidence:.2f}")
+                        
+                        console.print(table)
+                        
+                        # Show connection types
+                        if summary.connection_types:
+                            type_table = Table(title="Connection Types")
+                            type_table.add_column("Type", style="blue")
+                            type_table.add_column("Count", style="green")
+                            
+                            for conn_type, count in summary.connection_types.items():
+                                type_table.add_row(conn_type, str(count))
+                            
+                            console.print(type_table)
+                    else:
+                        console.print(json.dumps(summary.to_dict(), indent=2))
+                else:
+                    console.print("❌ No connections found for this note")
+            
+            elif action == "stats":
+                console.print("📈 Collecting connection statistics...")
+                
+                stats = stats_collector.collect_statistics()
+                
+                if output_format == "table":
+                    table = Table(title="Connection Statistics")
+                    table.add_column("Metric", style="cyan")
+                    table.add_column("Value", style="green")
+                    
+                    table.add_row("Total Connections", str(stats.total_connections))
+                    table.add_row("Average Confidence", f"{stats.average_confidence:.2f}")
+                    
+                    console.print(table)
+                    
+                    # Show type distribution
+                    if stats.connections_by_type:
+                        type_table = Table(title="Connections by Type")
+                        type_table.add_column("Type", style="blue")
+                        type_table.add_column("Count", style="green")
+                        
+                        for conn_type, count in stats.connections_by_type.items():
+                            type_table.add_row(conn_type, str(count))
+                        
+                        console.print(type_table)
+                else:
+                    console.print(json.dumps(stats.to_dict(), indent=2))
+            
+            elif action == "report":
+                console.print("📋 Generating connection report...")
+                
+                report = stats_collector.generate_connection_report(note_id)
+                
+                if output_format == "table":
+                    # Display key metrics from report
+                    if note_id:
+                        console.print(f"📄 Connection Report for {note_id}")
+                        summary = report.get('summary', {})
+                        console.print(f"Total Connections: {summary.get('total_connections', 0)}")
+                        console.print(f"Average Confidence: {summary.get('average_confidence', 0):.2f}")
+                    else:
+                        console.print("📄 Global Connection Report")
+                        overview = report.get('overview', {})
+                        console.print(f"Total Connections: {overview.get('total_connections', 0)}")
+                        console.print(f"Average Confidence: {overview.get('average_confidence', 0):.2f}")
+                        
+                        # Show network health
+                        health = report.get('network_health', {})
+                        console.print(f"Network Health: {health.get('status', 'unknown')} ({health.get('health_score', 0):.2f})")
+                    
+                    # Show recommendations
+                    recommendations = report.get('recommendations', [])
+                    if recommendations:
+                        console.print("\n💡 Recommendations:")
+                        for i, rec in enumerate(recommendations, 1):
+                            console.print(f"{i}. {rec}")
+                else:
+                    console.print(json.dumps(report, indent=2))
+            
+            else:
+                console.print(f"❌ Unknown action: {action}")
+                console.print("Valid actions: discover, analyze, stats, report")
+                
+        except Exception as e:
+            console.print(f"[red]❌ Connection operation failed: {e}[/red]")
+            logger.error(f"Connection operation failed: {e}")
+            raise typer.Exit(1)
+    
+    asyncio.run(run_connections())
 
 
 if __name__ == "__main__":
