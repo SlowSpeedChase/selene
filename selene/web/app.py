@@ -23,6 +23,7 @@ from ..prompts.models import PromptCategory, TemplateVariable
 from ..prompts.builtin_templates import register_builtin_templates
 from ..queue import ProcessingQueue, QueueManager
 from .chat_manager import WebChatManager
+from ..analytics.api import analytics_router
 from .models import (
     AddDirectoryRequest,
     ChatHistoryResponse,
@@ -75,6 +76,9 @@ def create_app() -> FastAPI:
     app.state.processing_queue = None
     app.state.prompt_manager = None
     app.state.chat_manager = None
+    
+    # Include routers
+    app.include_router(analytics_router)
 
     @app.on_event("startup")
     async def startup_event():

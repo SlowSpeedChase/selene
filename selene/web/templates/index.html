@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/mobile.css">
     <link rel="stylesheet" href="/static/css/monitoring.css">
+    <link rel="stylesheet" href="/static/css/analytics.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- Preload critical resources -->
@@ -73,6 +74,9 @@
                 </button></li>
                 <li><button class="nav-tab" data-tab="monitoring">
                     <i class="fas fa-chart-pulse"></i> Processing Monitor
+                </button></li>
+                <li><button class="nav-tab" data-tab="analytics">
+                    <i class="fas fa-chart-bar"></i> Analytics
                 </button></li>
             </ul>
         </div>
@@ -504,7 +508,97 @@
                 </div>
             </div>
         </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics-tab" class="tab-content hidden">
+            <div id="analytics-dashboard">
+                <!-- Analytics Controls -->
+                <div class="analytics-controls">
+                    <div class="control-group">
+                        <label for="analytics-time-range">Time Range:</label>
+                        <select id="analytics-time-range" class="form-select">
+                            <option value="1">Last 24 Hours</option>
+                            <option value="7" selected>Last 7 Days</option>
+                            <option value="30">Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                        </select>
+                    </div>
+                    <button id="analytics-refresh" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                <!-- Loading and Error States -->
+                <div id="analytics-loader" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    Loading analytics data...
+                </div>
+                <div id="analytics-error" class="error-message" style="display: none;"></div>
+
+                <!-- Processing Summary -->
+                <div class="analytics-section">
+                    <h3>Processing Summary</h3>
+                    <div id="processing-summary" class="analytics-content">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading processing data...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Behavior -->
+                <div class="analytics-section">
+                    <h3>User Behavior</h3>
+                    <div id="user-behavior" class="analytics-content">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading user behavior data...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Health -->
+                <div class="analytics-section">
+                    <h3>System Health</h3>
+                    <div id="system-health" class="analytics-content">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading system health data...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div class="analytics-section">
+                    <h3>Key Metrics</h3>
+                    <div id="aggregated-metrics" class="analytics-content">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading metrics data...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Series Charts -->
+                <div class="analytics-section">
+                    <h3>Performance Trends</h3>
+                    <div id="time-series-charts" class="analytics-content">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading charts...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
+
+    <!-- Analytics Modal -->
+    <div id="metric-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+    </div>
 
     <!-- Success/Error Messages -->
     <div id="message-container"></div>
@@ -512,5 +606,6 @@
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile.js"></script>
     <script src="/static/js/monitoring.js"></script>
+    <script src="/static/js/analytics.js"></script>
 </body>
 </html>

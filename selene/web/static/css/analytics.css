@@ -1,0 +1,532 @@
+/* Analytics Dashboard Styles for Selene SMS-22 */
+
+/* Analytics Controls */
+.analytics-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* Analytics Sections */
+.analytics-section {
+    margin-bottom: 30px;
+}
+
+.analytics-section h3 {
+    margin-bottom: 15px;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.analytics-content {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+/* Analytics Grid Layout */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Analytics Cards */
+.analytics-card {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.analytics-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.analytics-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.analytics-card-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.analytics-card-content {
+    color: var(--text-secondary);
+}
+
+/* Statistics Display */
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.stat-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.stat-value.success {
+    color: var(--success-color);
+}
+
+.stat-value.error {
+    color: var(--error-color);
+}
+
+.stat-value.warning {
+    color: var(--warning-color);
+}
+
+/* Trend Indicators */
+.trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trend-indicator.trend-up {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--success-color);
+}
+
+.trend-indicator.trend-down {
+    background: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+}
+
+.trend-indicator.trend-stable {
+    background: rgba(255, 152, 0, 0.1);
+    color: var(--warning-color);
+}
+
+/* Health Status Colors */
+.health-good {
+    color: var(--success-color);
+}
+
+.health-warning {
+    color: var(--warning-color);
+}
+
+.health-critical {
+    color: var(--error-color);
+}
+
+/* Metric Summary */
+.metric-summary {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.metric-details {
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.metric-detail-btn {
+    width: 100%;
+    padding: 8px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.metric-detail-btn:hover {
+    background: var(--primary-hover);
+}
+
+/* Breakdown Tables */
+.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.breakdown-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.breakdown-table tr:hover {
+    background: var(--bg-hover);
+}
+
+/* Action Items */
+.action-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.action-item:last-child {
+    border-bottom: none;
+}
+
+.action-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.action-count {
+    background: var(--primary-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Chart Containers */
+.chart-container {
+    position: relative;
+    margin-bottom: 30px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.chart-container h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.chart-container canvas {
+    width: 100%;
+    height: 200px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: white;
+}
+
+.export-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 6px 12px;
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.3s ease;
+}
+
+.export-btn:hover {
+    background: var(--secondary-hover);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.3rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.metric-details {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-item span:first-child {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.detail-item span:last-child {
+    color: var(--text-secondary);
+}
+
+/* Error and Loading States */
+.error-message {
+    background: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid var(--error-color);
+    margin-bottom: 20px;
+}
+
+.no-data {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 20px;
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .analytics-controls {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .metric-details {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .breakdown-table {
+        font-size: 0.9rem;
+    }
+    
+    .breakdown-table th,
+    .breakdown-table td {
+        padding: 8px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .chart-container {
+        padding: 15px;
+    }
+    
+    .export-btn {
+        position: static;
+        margin-top: 10px;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .analytics-section h3 {
+        font-size: 1.2rem;
+    }
+    
+    .analytics-card {
+        padding: 15px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .chart-container canvas {
+        height: 150px;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .chart-container canvas {
+        background: #1a1a1a;
+    }
+    
+    .modal {
+        background: rgba(0, 0, 0, 0.7);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .analytics-controls,
+    .export-btn,
+    .metric-detail-btn,
+    .modal {
+        display: none !important;
+    }
+    
+    .analytics-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+    
+    .chart-container {
+        break-inside: avoid;
+        border: 1px solid #000;
+    }
+}
+
+/* Animation for loading states */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.analytics-card,
+.chart-container {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Accessibility improvements */
+.analytics-card:focus-within,
+.chart-container:focus-within {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.metric-detail-btn:focus,
+.export-btn:focus,
+.modal-close:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .analytics-card,
+    .chart-container {
+        border: 2px solid currentColor;
+    }
+    
+    .trend-indicator {
+        border: 1px solid currentColor;
+    }
+}
