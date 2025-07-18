@@ -14,6 +14,7 @@ Usage:
     python project-manager.py status   # Check current work status
     python project-manager.py finish   # Finish current work session
     python project-manager.py tickets  # List available tickets
+    python project-manager.py details --ticket SMS-22  # Show detailed ticket information
 """
 
 import os
@@ -522,6 +523,166 @@ class ProjectManager:
         self.console.print("🔗 Creating pull request...", style="blue")
         self.console.print("💡 Use: gh pr create --title 'Your Title' --body 'Description'", style="dim")
     
+    def get_ticket_details(self, ticket_key: str) -> Dict:
+        """Get detailed information about a specific ticket."""
+        try:
+            # Fetch the ticket with expanded fields
+            ticket = self.jira.issue(ticket_key, expand='changelog,attachment,comment')
+            
+            details = {
+                'key': ticket.key,
+                'summary': ticket.fields.summary,
+                'description': ticket.fields.description or "No description available",
+                'status': ticket.fields.status.name,
+                'priority': ticket.fields.priority.name if ticket.fields.priority else "Medium",
+                'assignee': ticket.fields.assignee.displayName if ticket.fields.assignee else "Unassigned",
+                'reporter': ticket.fields.reporter.displayName if ticket.fields.reporter else "Unknown",
+                'created': ticket.fields.created,
+                'updated': ticket.fields.updated,
+                'issue_type': ticket.fields.issuetype.name,
+                'project': ticket.fields.project.name,
+                'labels': ticket.fields.labels,
+                'components': [comp.name for comp in ticket.fields.components] if ticket.fields.components else [],
+                'fix_versions': [version.name for version in ticket.fields.fixVersions] if ticket.fields.fixVersions else [],
+                'attachments': [],
+                'comments': [],
+                'acceptance_criteria': None,
+                'custom_fields': {}
+            }
+            
+            # Get attachments
+            if hasattr(ticket.fields, 'attachment') and ticket.fields.attachment:
+                for attachment in ticket.fields.attachment:
+                    details['attachments'].append({
+                        'filename': attachment.filename,
+                        'size': attachment.size,
+                        'created': attachment.created,
+                        'author': attachment.author.displayName,
+                        'content_url': attachment.content
+                    })
+            
+            # Get comments
+            if hasattr(ticket.fields, 'comment') and ticket.fields.comment:
+                for comment in ticket.fields.comment.comments:
+                    details['comments'].append({
+                        'author': comment.author.displayName,
+                        'created': comment.created,
+                        'body': comment.body
+                    })
+            
+            # Look for acceptance criteria in custom fields or description
+            # Common custom field names for acceptance criteria
+            ac_field_names = ['customfield_10200', 'customfield_10201', 'customfield_10202']
+            for field_name in ac_field_names:
+                if hasattr(ticket.fields, field_name.replace('customfield_', '')):
+                    field_value = getattr(ticket.fields, field_name.replace('customfield_', ''), None)
+                    if field_value:
+                        details['acceptance_criteria'] = field_value
+                        break
+            
+            # If no dedicated AC field, look for it in description
+            if not details['acceptance_criteria'] and details['description']:
+                desc_lower = details['description'].lower()
+                if 'acceptance criteria' in desc_lower or 'definition of done' in desc_lower:
+                    # Extract the AC section from description
+                    lines = details['description'].split('\n')
+                    ac_lines = []
+                    capturing = False
+                    for i, line in enumerate(lines):
+                        if 'acceptance criteria' in line.lower() or 'definition of done' in line.lower():
+                            capturing = True
+                            ac_lines.append(line)
+                        elif capturing:
+                            # Continue capturing until we hit a new h2 section or end
+                            if line.strip().startswith('h2.') and 'acceptance criteria' not in line.lower():
+                                # New section started
+                                break
+                            ac_lines.append(line)
+                    
+                    if ac_lines:
+                        # Extract just the bullet points from acceptance criteria
+                        bullet_points = []
+                        for line in ac_lines:
+                            if line.strip().startswith('*') and not line.strip().startswith('*As') and not line.strip().startswith('*I want') and not line.strip().startswith('*So that'):
+                                bullet_points.append(line.strip())
+                        
+                        if bullet_points:
+                            details['acceptance_criteria'] = '\n'.join(bullet_points)
+                        else:
+                            details['acceptance_criteria'] = '\n'.join(ac_lines)
+            
+            # Get story points
+            story_points_field = self.config.get('custom_fields', {}).get('story_points')
+            if story_points_field and hasattr(ticket.fields, story_points_field.replace('customfield_', '')):
+                points = getattr(ticket.fields, story_points_field.replace('customfield_', ''), None)
+                details['story_points'] = points
+            
+            return details
+            
+        except Exception as e:
+            logger.error(f"Failed to get ticket details for {ticket_key}: {e}")
+            self.console.print(f"❌ Error fetching ticket details: {e}", style="red")
+            return {}
+    
+    def display_ticket_details(self, ticket_key: str) -> None:
+        """Display detailed information about a specific ticket."""
+        details = self.get_ticket_details(ticket_key)
+        
+        if not details:
+            return
+        
+        # Main ticket information
+        self.console.print(Panel.fit(
+            f"🎯 [bold]{details['key']}[/bold]: {details['summary']}\n"
+            f"📊 Status: {details['status']}\n"
+            f"🏷️  Type: {details['issue_type']}\n"
+            f"⭐ Priority: {details['priority']}\n"
+            f"👤 Assignee: {details['assignee']}\n"
+            f"📅 Created: {details['created'][:10]} | Updated: {details['updated'][:10]}",
+            title="Ticket Overview",
+            border_style="blue"
+        ))
+        
+        # Description
+        if details['description']:
+            self.console.print(f"\n📝 [bold]Description:[/bold]")
+            desc_syntax = Syntax(details['description'], "markdown", theme="monokai", line_numbers=False)
+            self.console.print(Panel(desc_syntax, border_style="green"))
+        
+        # Acceptance Criteria
+        if details['acceptance_criteria']:
+            self.console.print(f"\n✅ [bold]Acceptance Criteria:[/bold]")
+            ac_syntax = Syntax(details['acceptance_criteria'], "markdown", theme="monokai", line_numbers=False)
+            self.console.print(Panel(ac_syntax, border_style="yellow"))
+        
+        # Attachments
+        if details['attachments']:
+            self.console.print(f"\n📎 [bold]Attachments:[/bold]")
+            for attachment in details['attachments']:
+                self.console.print(f"  • {attachment['filename']} ({attachment['size']} bytes) - {attachment['author']}")
+        
+        # Recent Comments
+        if details['comments']:
+            self.console.print(f"\n💬 [bold]Recent Comments ({len(details['comments'])}):[/bold]")
+            for comment in details['comments'][-3:]:  # Show last 3 comments
+                created_date = comment['created'][:10]
+                self.console.print(f"\n[dim]{comment['author']} on {created_date}:[/dim]")
+                comment_syntax = Syntax(comment['body'], "markdown", theme="monokai", line_numbers=False)
+                self.console.print(Panel(comment_syntax, border_style="dim"))
+        
+        # Additional metadata
+        if details['labels'] or details['components']:
+            metadata_text = ""
+            if details['labels']:
+                metadata_text += f"🏷️  Labels: {', '.join(details['labels'])}\n"
+            if details['components']:
+                metadata_text += f"🔧 Components: {', '.join(details['components'])}\n"
+            if details.get('story_points'):
+                metadata_text += f"📊 Story Points: {details['story_points']}\n"
+            
+            if metadata_text:
+                self.console.print(Panel(metadata_text.strip(), title="Metadata", border_style="dim"))
+
     def show_status(self) -> None:
         """Show current work session status."""
         if not self.session.is_working():
@@ -577,10 +738,11 @@ class ProjectManager:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Project Manager - Daily Development Companion")
-    parser.add_argument("command", nargs='?', choices=['start', 'status', 'finish', 'tickets'], 
+    parser.add_argument("command", nargs='?', choices=['start', 'status', 'finish', 'tickets', 'details'], 
                        default='start', help="Command to execute")
     parser.add_argument("--config", default=".jira-config.yaml", help="JIRA config file path")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--ticket", "-t", help="Ticket key for details command (e.g., SMS-22)")
     
     args = parser.parse_args()
     
@@ -596,6 +758,20 @@ def main():
         elif args.command == 'tickets':
             tickets = pm.get_current_sprint_tickets()
             pm.display_tickets(tickets)
+        elif args.command == 'details':
+            if not args.ticket:
+                pm.console.print("❌ --ticket argument required for details command", style="red")
+                pm.console.print("Example: python project-manager.py details --ticket SMS-22", style="yellow")
+                sys.exit(1)
+            pm.display_ticket_details(args.ticket)
+            
+            # If verbose, also show raw data
+            if args.verbose:
+                details = pm.get_ticket_details(args.ticket)
+                pm.console.print("\n🔍 [bold]Raw Data (for debugging):[/bold]")
+                for key in ['comments', 'attachments', 'labels', 'components']:
+                    if details.get(key):
+                        pm.console.print(f"{key}: {details[key]}")
         else:
             pm.console.print(f"❌ Unknown command: {args.command}", style="red")
             

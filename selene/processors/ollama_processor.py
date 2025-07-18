@@ -21,7 +21,7 @@ class OllamaProcessor(BaseProcessor):
     Features:
     - Completely local processing (no API keys needed)
     - Privacy-focused (data never leaves your machine)
-    - Supports multiple local models (llama3.2, mistral, etc.)
+    - Supports multiple local models (llama3.1:8b, llama3.2, mistral, etc.)
     - No usage costs or rate limits
     """
 
@@ -29,7 +29,7 @@ class OllamaProcessor(BaseProcessor):
         """Initialize Ollama processor with connection manager."""
         super().__init__(config)
 
-        self.model = self.config.get("model", "llama3.2")
+        self.model = self.config.get("model", "llama3.1:8b")
         self.max_tokens = self.config.get("max_tokens", 1000)
         self.temperature = self.config.get("temperature", 0.7)
         self.validate_on_init = self.config.get("validate_on_init", True)
@@ -477,10 +477,10 @@ Error details: {details}
         # Model preference order (best to fallback)
         preference_order = [
             # Llama family (recommended)
+            "llama3.1:8b",
+            "llama3.1",
             "llama3.2",
             "llama3.2:3b",
-            "llama3.1",
-            "llama3.1:8b",
             "llama3",
             "llama3.2:1b",
             "llama2",
