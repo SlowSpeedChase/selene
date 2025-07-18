@@ -429,7 +429,7 @@ class OllamaProcessor(BaseProcessor):
 🔧 Quick Setup Guide:
 1. Install Ollama: https://ollama.ai/download
 2. Start Ollama service: 'ollama serve'
-3. Pull a model: 'ollama pull llama3.2'
+3. Pull a model: 'ollama pull llama3.1:8b'
 4. Try again: 'selene process --content "test"'
 
 💡 Alternative: Use cloud processor with --processor openai --api-key YOUR_KEY
@@ -446,10 +446,10 @@ Details: {details}
 
 🔧 Quick Fix:
 1. Pull the model: 'ollama pull {self.model}'
-2. Or use available model: 'selene process --model {available_models[0] if available_models else "llama3.2"} --content "test"'
+2. Or use available model: 'selene process --model {available_models[0] if available_models else "llama3.1:8b"} --content "test"'
 3. Or list all models: 'ollama list'
 
-💡 Recommended models: llama3.2 (fast), mistral (high quality)
+💡 Recommended models: llama3.1:8b (excellent quality), llama3.2 (fast), mistral (high quality)
             """.strip()
 
         else:  # validation error
@@ -459,7 +459,7 @@ Details: {details}
 🔧 Setup Steps:
 1. Install Ollama: https://ollama.ai/download  
 2. Start service: 'ollama serve'
-3. Pull a model: 'ollama pull llama3.2'
+3. Pull a model: 'ollama pull llama3.1:8b'
 4. Check status: 'ollama list'
 
 💡 Or use cloud: 'selene process --processor openai --api-key YOUR_KEY --content "test"'

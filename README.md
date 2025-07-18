@@ -5,7 +5,7 @@ A completely local AI-powered Second Brain system for processing and managing no
 ## 🚀 Features
 
 ### Core AI Processing
-- **Local AI Processing**: Complete privacy with Ollama integration (llama3.2, mistral)
+- **Local AI Processing**: Complete privacy with Ollama integration (llama3.1:8b, llama3.2, mistral)
 - **OpenAI Fallback**: Optional cloud AI support for enhanced capabilities
 - **Multi-Model Processing**: Automatic task routing across multiple AI models
 - **Chain Processing**: Sequential and parallel task execution with conditional branching
@@ -43,6 +43,13 @@ A completely local AI-powered Second Brain system for processing and managing no
 - **Session Management**: Track individual processing requests with unique IDs
 - **Performance Metrics**: Token counts, processing times, success rates
 - **Web Dashboard**: Dedicated monitoring tab with statistics and timelines
+
+### Batch Import System (NEW)
+- **Drafts App Integration**: Import notes with tag filtering and auto-archive
+- **Multi-Source Support**: Text files, Obsidian vaults, and Drafts app
+- **Concurrent Processing**: Configurable batch sizes for optimal performance
+- **Archive Management**: Automatically archive processed notes from source
+- **Production Ready**: Complete deployment system with monitoring
 
 ### File Monitoring & Automation
 - **Intelligent File Monitoring**: Real-time file system watching with automated processing
@@ -109,7 +116,7 @@ brew install ollama          # macOS
 ollama serve                 # Start service (separate terminal)
 
 # 2. Pull required models
-ollama pull llama3.2:1b     # Text generation (1.3GB)
+ollama pull llama3.1:8b     # Text generation (8B parameters)
 ollama pull nomic-embed-text # Embeddings (274MB)
 
 # 3. Verify setup
@@ -130,12 +137,20 @@ selene process --content "Meeting notes" --task questions
 selene vector store --content "Important research notes"
 selene vector search --query "machine learning insights"
 
+# Batch import from various sources
+selene batch-import --source drafts --tag selene          # Import from Drafts app
+selene batch-import --source text --path ~/notes          # Import from text files
+selene batch-import --source obsidian --path ~/vault      # Import from Obsidian
+
 # Advanced AI processing
 selene process --content "text" --processor multi_model --task summarize
 selene chain --steps "summarize,extract_insights,questions" --file note.txt
 
 # Web interface
 selene web                   # Start at http://127.0.0.1:8000
+
+# Batch import demo
+python3 demo_batch_import.py # Batch import system demonstration
 
 # Mobile PWA demo
 python3 demo_mobile.py       # Mobile interface demonstration
@@ -170,6 +185,10 @@ selene/
 │   │   ├── multi_model_processor.py  # Multi-model routing
 │   │   ├── chain_processor.py    # Chain processing
 │   │   └── vector_processor.py   # Vector database ops
+│   ├── batch/                     # Batch import system
+│   │   ├── importer.py           # Main batch importer
+│   │   ├── sources.py            # Drafts, text, Obsidian sources
+│   │   └── processors.py         # Batch processing utilities
 │   ├── prompts/                   # Template system
 │   │   ├── manager.py            # Template management
 │   │   ├── models.py             # Template data models
@@ -190,8 +209,16 @@ selene/
 │   ├── test_multi_model_processor.py  # Multi-model tests
 │   └── test_chain_processor.py   # Chain processing tests
 ├── demo_selene.py                 # Interactive demo
+├── demo_batch_import.py           # Batch import demo
+├── test_batch_import.py           # Batch import tests
 ├── project-manager.py             # JIRA workflow manager
+├── scripts/                       # Production deployment
+│   ├── production_setup.sh       # Production setup script
+│   ├── deploy.sh                 # Deployment script
+│   └── monitor.sh                # System monitoring
 └── docs/                          # Documentation
+    ├── batch-import-guide.md     # Batch import user guide
+    └── production-deployment.md  # Production deployment guide
 ```
 
 ### Running Tests
@@ -288,7 +315,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### 📊 Current Stats
 - **74/75 tests passing** (comprehensive test coverage)
 - **11 built-in templates** with variable system
-- **36 advanced AI tests** (multi-model + chain processing)
+- **36 advanced AI tests** (multi-model + chain processing)Tha
 - **5 major AI processors** (Local, Cloud, Multi-model, Chain, Vector)
 - **100% local processing** capability
 - **Progressive Web App** with Lighthouse score 95+ (Performance, PWA)

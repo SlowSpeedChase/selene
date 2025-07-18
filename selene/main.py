@@ -81,10 +81,10 @@ def process(
         help="Processor type: ollama (local), openai (cloud), vector (local database)",
     ),
     model: str = typer.Option(
-        "llama3.2",
+        "llama3.1:8b",
         "--model",
         "-m",
-        help="Model to use (llama3.2, mistral, gpt-4o-mini, etc.)",
+        help="Model to use (llama3.1:8b, llama3.2, mistral, gpt-4o-mini, etc.)",
     ),
     output: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Output file path"
@@ -527,7 +527,7 @@ def doctor() -> None:
                 console.print("   ✅ Models available", style="green")
             else:
                 console.print("   ⚠️  No models installed", style="yellow")
-                console.print("   💡 Run: ollama pull llama3.2")
+                console.print("   💡 Run: ollama pull llama3.1:8b")
 
         else:
             console.print(
@@ -593,7 +593,7 @@ def doctor() -> None:
                 )
 
                 # Suggest additional models
-                suggested_models = ["llama3.2", "mistral", "phi3:mini"]
+                suggested_models = ["llama3.1:8b", "llama3.2", "mistral", "phi3:mini"]
                 missing_models = [
                     m for m in suggested_models if m not in available_models
                 ]
@@ -603,11 +603,11 @@ def doctor() -> None:
                     for model in missing_models[:3]:
                         console.print(f"      ollama pull {model}")
             else:
-                console.print("   📥 Install a model: ollama pull llama3.2")
+                console.print("   📥 Install a model: ollama pull llama3.1:8b")
                 console.print("   🚀 Then test: selene process --content 'Hello world'")
         else:
             console.print("   🔧 Start Ollama: ollama serve")
-            console.print("   📥 Install model: ollama pull llama3.2")
+            console.print("   📥 Install model: ollama pull llama3.1:8b")
             console.print("   🚀 Test: selene process --content 'Hello world'")
 
     except Exception as e:

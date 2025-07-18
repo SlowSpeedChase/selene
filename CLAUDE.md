@@ -132,9 +132,9 @@ python3 -m selene.main web    # Start web interface
 ollama serve
 
 # Pull recommended models for note processing
-ollama pull llama3.2        # Default model (3B parameters, fast)
+ollama pull llama3.1:8b     # Default model (8B parameters, excellent quality)
+ollama pull llama3.2        # Lightweight option (3B parameters, fast)
 ollama pull mistral         # Alternative model (7B parameters)
-ollama pull llama3.2:1b     # Lightweight option (1B parameters)
 
 # Test local AI processing
 selene process --content "Test note" --task summarize
@@ -187,8 +187,8 @@ python3 -m selene.main web --host 0.0.0.0 --port 8080
 # - Note management and organization
 # - Real-time processing statistics
 
-# PERFORMANCE: Local processing with llama3.2:1b + nomic-embed-text
-# - Note processing: 7-12 seconds per task
+# PERFORMANCE: Local processing with llama3.1:8b + nomic-embed-text
+# - Note processing: 10-20 seconds per task (higher quality)
 # - Vector operations: <1 second (store/search)
 # - Full privacy: All data stays on your machine
 ```
@@ -211,7 +211,7 @@ python3 scripts/setup_jira.py
 # 1. Install Ollama and pull required models
 brew install ollama          # macOS installation
 ollama serve                 # Start Ollama service (in separate terminal)
-ollama pull llama3.2:1b     # Pull text generation model (1.3GB)
+ollama pull llama3.1:8b     # Pull text generation model (8B parameters)
 ollama pull nomic-embed-text # Pull embedding model (274MB)
 
 # 2. Install Python dependencies

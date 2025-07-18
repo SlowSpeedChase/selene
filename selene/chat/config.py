@@ -22,7 +22,7 @@ class ChatConfig:
     
     # AI processing settings
     default_processor: str = "ollama"
-    default_model: str = "llama3.2:1b"
+    default_model: str = "llama3.1:8b"
     ai_confirmation_required: bool = True
     
     # Conversation settings
@@ -68,7 +68,7 @@ class ChatConfig:
                 auto_discover_vaults=chat_config.get("auto_discover_vaults", True),
                 watched_extensions=chat_config.get("watched_extensions", [".md", ".txt"]),
                 default_processor=chat_config.get("default_processor", "ollama"),
-                default_model=chat_config.get("default_model", "llama3.2:1b"),
+                default_model=chat_config.get("default_model", "llama3.1:8b"),
                 ai_confirmation_required=chat_config.get("ai_confirmation_required", True),
                 conversation_memory=chat_config.get("conversation_memory", True),
                 memory_db_path=chat_config.get("memory_db_path", "~/.selene/chat_memory.db"),
