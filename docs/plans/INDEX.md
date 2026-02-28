@@ -1,6 +1,6 @@
 # Design Documents Index
 
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-02-28
 
 Design docs are the planning unit for Selene development. Each doc captures an idea, architecture, and implementation plan.
 
@@ -53,6 +53,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 | 2026-02-13 | 2026-02-13-selene-mobile-ios-design.md | selenechat, mobile | Native iOS app with full parity, Tailscale networking, push + live activities |
 | 2026-02-19 | 2026-02-19-calendar-context-linking-design.md | ingestion, calendar | Auto-link notes to Apple Calendar events via Swift CLI + EventKit |
 | 2026-02-22 | 2026-02-22-voice-memo-llm-title-design.md | voice, llm | LLM-generated titles for voice memos instead of timestamp titles |
+| 2026-02-28 | 2026-02-28-thread-context-isolation-design.md | selenechat, bugs | Thread workspace context leaks, memory contamination, project status bug + golden walkthrough |
 | 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
 
 ---

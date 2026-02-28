@@ -21,7 +21,21 @@ final class DebugLogger {
     private var fileHandle: FileHandle?
     private let queue = DispatchQueue(label: "com.selenechat.debuglogger")
 
-    init(logPath: String = "/tmp/selenechat-debug.log", maxSizeBytes: Int = 5 * 1024 * 1024, errorPath: String = "/tmp/selenechat-last-error") {
+    static var defaultLogPath: String {
+        DatabaseService.isRunningFromAppBundle()
+            ? "/tmp/selenechat-debug.log"
+            : "/tmp/selenechat-dev-debug.log"
+    }
+
+    static var defaultErrorPath: String {
+        DatabaseService.isRunningFromAppBundle()
+            ? "/tmp/selenechat-last-error"
+            : "/tmp/selenechat-dev-last-error"
+    }
+
+    init(logPath: String? = nil, maxSizeBytes: Int = 5 * 1024 * 1024, errorPath: String? = nil) {
+        let logPath = logPath ?? Self.defaultLogPath
+        let errorPath = errorPath ?? Self.defaultErrorPath
         self.logPath = logPath
         self.errorPath = errorPath
         self.maxSizeBytes = maxSizeBytes

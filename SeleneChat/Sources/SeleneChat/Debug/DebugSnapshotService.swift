@@ -12,10 +12,24 @@ final class DebugSnapshotService {
     private var timer: Timer?
     private let dateFormatter: ISO8601DateFormatter
 
+    static var defaultRequestPath: String {
+        DatabaseService.isRunningFromAppBundle()
+            ? "/tmp/selenechat-snapshot-request"
+            : "/tmp/selenechat-dev-snapshot-request"
+    }
+
+    static var defaultOutputPath: String {
+        DatabaseService.isRunningFromAppBundle()
+            ? "/tmp/selenechat-snapshot.json"
+            : "/tmp/selenechat-dev-snapshot.json"
+    }
+
     init(
-        requestPath: String = "/tmp/selenechat-snapshot-request",
-        outputPath: String = "/tmp/selenechat-snapshot.json"
+        requestPath: String? = nil,
+        outputPath: String? = nil
     ) {
+        let requestPath = requestPath ?? Self.defaultRequestPath
+        let outputPath = outputPath ?? Self.defaultOutputPath
         self.requestPath = requestPath
         self.outputPath = outputPath
         self.dateFormatter = ISO8601DateFormatter()
