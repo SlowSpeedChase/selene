@@ -36,12 +36,27 @@ Rename everything from `selene-n8n` to `selene`.
 
 **package.json** — update `name` to `selene`, update `description` to remove "n8n", remove `"n8n"` from keywords.
 
-**Documentation** — update `selene-n8n` to `selene` in:
-- `CLAUDE.md` — directory diagram + version history
+**.claude/ config files** — update `selene-n8n` to `selene` in:
+- `.claude/settings.json` — hook command path
+- `.claude/skills/run-workflow/SKILL.md` — workflow runner path
+- `.claude/skills/launchd-check/SKILL.md` — log paths (3 references)
+- `.claude/agents/documentation-agent.md` — directory tree
+- `.claude/agents/doc-maintainer.md` — directory tree
 - `.claude/CURRENT-ENV.md` — old container name references
-- `.claude/PROJECT-STATUS.md` — location references
+- `.claude/PROJECT-STATUS.md` — location reference
 
-**Cleanup** — delete `.n8n-local/` directory (dead Docker artifacts).
+**Scripts** — update `selene-n8n` to `selene` in:
+- `scripts/verify-production-clean.sh` — database path
+- `scripts/clean-production-database.sh` — database + backup paths
+- `scripts/setup-git-hooks.sh` — project root path
+- `scripts/setup-hooks.sh` — comment
+- `scripts/CLAUDE.md` — Docker container references (historical, update for consistency)
+
+**CLAUDE.md** — directory tree diagram + version history entry
+
+**Documentation** — batch replace `selene-n8n` path references across 62 files in `docs/`
+
+**Cleanup** — delete `.n8n-local/` directory (dead Docker artifacts). Remove stale worktrees.
 
 ### Phase 2: Merge
 
