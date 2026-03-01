@@ -111,7 +111,8 @@ actor MemoryService {
     /// Consolidate a candidate fact with existing memories using embedding similarity
     func consolidateMemory(
         candidateFact: CandidateFact,
-        sessionId: UUID
+        sessionId: UUID,
+        threadId: Int64? = nil
     ) async throws {
         // 1. Generate embedding for the candidate fact
         var factEmbedding: [Float]? = nil
@@ -150,6 +151,7 @@ actor MemoryService {
                 type: memoryType,
                 confidence: candidateFact.confidence,
                 sourceSessionId: sessionId,
+                threadId: threadId,
                 embedding: factEmbedding
             )
             #if DEBUG
@@ -193,6 +195,7 @@ actor MemoryService {
                 type: memoryType,
                 confidence: candidateFact.confidence,
                 sourceSessionId: sessionId,
+                threadId: threadId,
                 embedding: factEmbedding
             )
             return
@@ -209,6 +212,7 @@ actor MemoryService {
                     type: memoryType,
                     confidence: candidateFact.confidence,
                     sourceSessionId: sessionId,
+                    threadId: threadId,
                     embedding: factEmbedding
                 )
                 #if DEBUG
@@ -259,6 +263,7 @@ actor MemoryService {
                 type: memoryType,
                 confidence: candidateFact.confidence,
                 sourceSessionId: sessionId,
+                threadId: threadId,
                 embedding: factEmbedding
             )
         }
@@ -338,11 +343,21 @@ actor MemoryService {
 
     /// Get relevant memories for a query using embedding similarity.
     /// Falls back to keyword matching if Ollama is unavailable.
-    func getRelevantMemories(for query: String, limit: Int = 5) async throws -> [ConversationMemory] {
+    func getRelevantMemories(for query: String, limit: Int = 5, threadId: Int64? = nil) async throws -> [ConversationMemory] {
         // Try embedding-based retrieval
         do {
             let queryEmbedding = try await ollamaService.embed(text: query)
-            let allMemories = try await databaseService.getAllMemoriesWithEmbeddings()
+
+            let allMemories: [(memory: ConversationMemory, embedding: [Float]?)]
+            if let threadId = threadId {
+                // Thread-scoped: get only thread + global memories, then fetch their embeddings
+                let threadMemories = try await databaseService.getMemoriesForThread(threadId: threadId, limit: 50)
+                let threadMemoryIds = Set(threadMemories.map { $0.id })
+                let allWithEmbeddings = try await databaseService.getAllMemoriesWithEmbeddings()
+                allMemories = allWithEmbeddings.filter { threadMemoryIds.contains($0.memory.id) }
+            } else {
+                allMemories = try await databaseService.getAllMemoriesWithEmbeddings()
+            }
 
             let results = MemoryService.findSimilarMemories(
                 queryEmbedding: queryEmbedding,
@@ -370,13 +385,18 @@ actor MemoryService {
             #endif
 
             // Fallback to keyword matching
-            return try await getRelevantMemoriesByKeyword(for: query, limit: limit)
+            return try await getRelevantMemoriesByKeyword(for: query, limit: limit, threadId: threadId)
         }
     }
 
     /// Keyword-based fallback when Ollama is unavailable
-    private func getRelevantMemoriesByKeyword(for query: String, limit: Int) async throws -> [ConversationMemory] {
-        let allMemories = try await databaseService.getAllMemories(limit: 50)
+    private func getRelevantMemoriesByKeyword(for query: String, limit: Int, threadId: Int64? = nil) async throws -> [ConversationMemory] {
+        let allMemories: [ConversationMemory]
+        if let threadId = threadId {
+            allMemories = try await databaseService.getMemoriesForThread(threadId: threadId, limit: 50)
+        } else {
+            allMemories = try await databaseService.getAllMemories(limit: 50)
+        }
         let queryWords = Set(query.lowercased().split(separator: " ").map(String.init))
 
         let scored = allMemories.map { memory -> (memory: ConversationMemory, score: Double) in

@@ -181,6 +181,35 @@ final class GoldenWalkthroughTests: XCTestCase {
         XCTAssertNil(storedThreadId, "General chat memories should have null thread_id")
     }
 
+    // MARK: - Memory Thread Retrieval
+
+    func testMemoryRetrievalFiltersByThread() async throws {
+        let jtThreadId = try insertThread(name: "Joshua Tree")
+        let cerThreadId = try insertThread(name: "Ceramics")
+
+        // Insert memories with different thread scopes
+        _ = try await databaseService.insertMemory(
+            content: "User needs camping packing list",
+            type: .fact, confidence: 0.9, sourceSessionId: nil, threadId: jtThreadId
+        )
+        _ = try await databaseService.insertMemory(
+            content: "User has a ceramics studio",
+            type: .fact, confidence: 0.9, sourceSessionId: nil, threadId: cerThreadId
+        )
+        _ = try await databaseService.insertMemory(
+            content: "User prefers bullet-point responses",
+            type: .preference, confidence: 0.9, sourceSessionId: nil, threadId: nil
+        )
+
+        // Retrieve for JT thread — should get JT + global, not ceramics
+        let jtMemories = try await databaseService.getMemoriesForThread(threadId: jtThreadId, limit: 10)
+
+        let contents = jtMemories.map { $0.content }
+        XCTAssertTrue(contents.contains("User needs camping packing list"), "Should include thread-specific memory")
+        XCTAssertTrue(contents.contains("User prefers bullet-point responses"), "Should include global memory")
+        XCTAssertFalse(contents.contains("User has a ceramics studio"), "Must NOT include other thread's memory")
+    }
+
     // MARK: - Thread Context Isolation
 
     func testThreadWorkspacePromptOnlyContainsThreadNotes() {

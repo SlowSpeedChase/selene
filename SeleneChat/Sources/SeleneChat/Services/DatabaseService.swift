@@ -2059,6 +2059,37 @@ class DatabaseService: ObservableObject {
         return memories
     }
 
+    /// Get memories scoped to a specific thread (plus global memories with null thread_id)
+    func getMemoriesForThread(threadId: Int64, limit: Int = 50) async throws -> [ConversationMemory] {
+        guard let db = db else {
+            throw DatabaseError.notConnected
+        }
+
+        let query = memoriesTable
+            .filter(memThreadId == threadId || memThreadId == nil)
+            .order(memConfidence.desc, memLastAccessed.desc)
+            .limit(limit)
+
+        var memories: [ConversationMemory] = []
+
+        for row in try db.prepare(query) {
+            let memory = ConversationMemory(
+                id: row[memId],
+                content: row[memContent],
+                sourceSessionId: row[memSourceSessionId],
+                threadId: row[memThreadId],
+                memoryType: ConversationMemory.MemoryType(rawValue: row[memType] ?? "fact") ?? .fact,
+                confidence: row[memConfidence],
+                lastAccessed: row[memLastAccessed].flatMap { parseDateString($0) },
+                createdAt: parseDateString(row[memCreatedAt]) ?? Date(),
+                updatedAt: parseDateString(row[memUpdatedAt]) ?? Date()
+            )
+            memories.append(memory)
+        }
+
+        return memories
+    }
+
     /// Get all memories with their embeddings for similarity search
     func getAllMemoriesWithEmbeddings(limit: Int = 500) async throws -> [(memory: ConversationMemory, embedding: [Float]?)] {
         guard let db = db else {
