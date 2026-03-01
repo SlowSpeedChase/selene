@@ -100,4 +100,125 @@ final class GoldenWalkthroughTests: XCTestCase {
         XCTAssertNotNil(found, "Project should appear in active projects list")
         XCTAssertEqual(found?.status, .active)
     }
+
+    // MARK: - Thread Context Isolation
+
+    func testThreadWorkspacePromptOnlyContainsThreadNotes() {
+        // Create two threads with distinct content domains
+        let joshuaTreeThread = Thread(
+            id: 1,
+            name: "Joshua Tree Camping Trip",
+            why: "Planning a desert camping adventure",
+            summary: "Research and logistics for Joshua Tree National Park trip",
+            status: "active",
+            noteCount: 2,
+            createdAt: Date()
+        )
+
+        let ceramicsThread = Thread(
+            id: 2,
+            name: "Ceramics Studio Practice",
+            why: "Learning pottery techniques",
+            summary: "Notes on ceramics classes and glazing experiments",
+            status: "active",
+            noteCount: 2,
+            createdAt: Date()
+        )
+
+        // Joshua Tree notes
+        let jtNote1 = Note.mock(
+            id: 101,
+            title: "Joshua Tree Campsite Research",
+            content: "Jumbo Rocks campground looks perfect - 124 sites, first-come first-served. "
+                + "Need to arrive early on Friday. Ryan Mountain trail is 3 miles round trip with great sunset views.",
+            contentHash: "jt-hash-1",
+            wordCount: 30,
+            characterCount: 150
+        )
+        let jtNote2 = Note.mock(
+            id: 102,
+            title: "Joshua Tree Gear Checklist",
+            content: "Pack extra water for desert conditions. "
+                + "Bring headlamp for stargazing at Keys View. Check tire pressure for park roads.",
+            contentHash: "jt-hash-2",
+            wordCount: 25,
+            characterCount: 120
+        )
+
+        // Ceramics notes (should NOT appear in JT prompt)
+        let ceramicsNote1 = Note.mock(
+            id: 201,
+            title: "Glazing Experiments",
+            content: "Tried a new stoneware glaze recipe with iron oxide. "
+                + "Cone 6 firing gave beautiful amber tones. Need to test with different clay bodies.",
+            contentHash: "cer-hash-1",
+            wordCount: 28,
+            characterCount: 140
+        )
+        let ceramicsNote2 = Note.mock(
+            id: 202,
+            title: "Ceramics Class Notes",
+            content: "Centering on the wheel is getting easier. "
+                + "Instructor showed wedging technique for removing air bubbles from clay.",
+            contentHash: "cer-hash-2",
+            wordCount: 22,
+            characterCount: 110
+        )
+
+        // Build prompt for Joshua Tree thread with ONLY Joshua Tree notes
+        let promptBuilder = ThreadWorkspacePromptBuilder()
+        let jtPrompt = promptBuilder.buildInitialPrompt(
+            thread: joshuaTreeThread,
+            notes: [jtNote1, jtNote2],
+            tasks: []
+        )
+
+        // Prompt should contain Joshua Tree content
+        XCTAssertTrue(
+            jtPrompt.contains("Joshua Tree"),
+            "Thread prompt should contain the thread name"
+        )
+        XCTAssertTrue(
+            jtPrompt.contains("Jumbo Rocks") || jtPrompt.contains("Ryan Mountain"),
+            "Thread prompt should contain Joshua Tree note content"
+        )
+
+        // Prompt must NOT contain ceramics content
+        XCTAssertFalse(
+            jtPrompt.contains("ceramics") || jtPrompt.contains("Ceramics"),
+            "Thread prompt must not contain content from other threads (ceramics)"
+        )
+        XCTAssertFalse(
+            jtPrompt.contains("glazing") || jtPrompt.contains("Glazing"),
+            "Thread prompt must not contain content from other threads (glazing)"
+        )
+        XCTAssertFalse(
+            jtPrompt.contains("stoneware"),
+            "Thread prompt must not contain content from other threads (stoneware)"
+        )
+
+        // Verify the reverse: ceramics prompt should not contain JT content
+        let ceramicsPrompt = promptBuilder.buildInitialPrompt(
+            thread: ceramicsThread,
+            notes: [ceramicsNote1, ceramicsNote2],
+            tasks: []
+        )
+
+        XCTAssertTrue(
+            ceramicsPrompt.contains("Ceramics"),
+            "Ceramics prompt should contain its thread name"
+        )
+        XCTAssertTrue(
+            ceramicsPrompt.contains("stoneware") || ceramicsPrompt.contains("glazing"),
+            "Ceramics prompt should contain ceramics note content"
+        )
+        XCTAssertFalse(
+            ceramicsPrompt.contains("Joshua Tree"),
+            "Ceramics prompt must not contain Joshua Tree content"
+        )
+        XCTAssertFalse(
+            ceramicsPrompt.contains("Jumbo Rocks") || ceramicsPrompt.contains("Ryan Mountain"),
+            "Ceramics prompt must not contain Joshua Tree note details"
+        )
+    }
 }

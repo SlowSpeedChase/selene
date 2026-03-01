@@ -273,33 +273,13 @@ class ThreadWorkspaceChatViewModel: ObservableObject {
 
             guard !validCandidates.isEmpty else { return [] }
 
-            let results = chunkRetrievalService.retrieveTopChunks(
+            return chunkRetrievalService.retrieveTopChunks(
                 queryEmbedding: queryEmbedding,
                 candidates: validCandidates,
                 limit: 15,
                 minSimilarity: 0.3,
                 tokenBudget: 8000
             )
-
-            // If thread-scoped results are poor, try global fallback
-            if results.isEmpty || (results.first?.similarity ?? 0) < 0.5 {
-                let allCandidates = try await databaseService.getAllChunksWithEmbeddings()
-                let validAll: [(chunk: NoteChunk, embedding: [Float])] = allCandidates.compactMap { item in
-                    guard let embedding = item.embedding else { return nil }
-                    return (chunk: item.chunk, embedding: embedding)
-                }
-                if !validAll.isEmpty {
-                    return chunkRetrievalService.retrieveTopChunks(
-                        queryEmbedding: queryEmbedding,
-                        candidates: validAll,
-                        limit: 15,
-                        minSimilarity: 0.3,
-                        tokenBudget: 8000
-                    )
-                }
-            }
-
-            return results
         } catch {
             print("[ThreadWorkspaceChatVM] Chunk retrieval failed: \(error)")
             return []
