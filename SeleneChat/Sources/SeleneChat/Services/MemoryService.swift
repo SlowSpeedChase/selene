@@ -124,11 +124,19 @@ actor MemoryService {
             #endif
         }
 
-        // 2. Find similar existing memories using embeddings
+        // 2. Find similar existing memories using embeddings (scoped to thread + global)
         var similarMemories: [ConversationMemory] = []
         if let embedding = factEmbedding {
             do {
-                let allMemories = try await databaseService.getAllMemoriesWithEmbeddings()
+                let allWithEmbeddings = try await databaseService.getAllMemoriesWithEmbeddings()
+                let allMemories: [(memory: ConversationMemory, embedding: [Float]?)]
+                if let threadId = threadId {
+                    let threadMemories = try await databaseService.getMemoriesForThread(threadId: threadId, limit: 50)
+                    let threadMemoryIds = Set(threadMemories.map { $0.id })
+                    allMemories = allWithEmbeddings.filter { threadMemoryIds.contains($0.memory.id) }
+                } else {
+                    allMemories = allWithEmbeddings
+                }
                 let similar = MemoryService.findSimilarMemories(
                     queryEmbedding: embedding,
                     memories: allMemories,
