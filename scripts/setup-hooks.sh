@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup script: Install git hooks for selene-n8n
+# Setup script: Install git hooks for selene
 
 set -e
 set -u

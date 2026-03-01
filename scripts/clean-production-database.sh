@@ -4,8 +4,8 @@
 
 set -e  # Exit on error
 
-PROD_DB="/Users/chaseeasterling/selene-n8n/data/selene.db"
-BACKUP_DIR="/Users/chaseeasterling/selene-n8n/data/backups"
+PROD_DB="/Users/chaseeasterling/selene/data/selene.db"
+BACKUP_DIR="/Users/chaseeasterling/selene/data/backups"
 
 # Colors for output
 RED='\033[0;31m'

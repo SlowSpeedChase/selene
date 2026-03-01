@@ -2,7 +2,7 @@
 # Verify Production Database is Clean
 # This script checks that production has no test notes
 
-PROD_DB="/Users/chaseeasterling/selene-n8n/data/selene.db"
+PROD_DB="/Users/chaseeasterling/selene/data/selene.db"
 
 # Colors
 RED='\033[0;31m'

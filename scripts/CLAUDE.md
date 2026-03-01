@@ -376,7 +376,7 @@ Comprehensive n8n workflow management via CLI - list, export, import, and update
 #!/bin/bash
 set -e
 
-CONTAINER_NAME="selene-n8n"
+CONTAINER_NAME="selene"
 
 # Check container is running
 check_container() {
@@ -429,14 +429,14 @@ update_workflow() {
 
 ```bash
 # Container not running
-if ! docker ps | grep -q selene-n8n; then
+if ! docker ps | grep -q selene; then
     echo "ERROR: n8n container not running"
     echo "Start with: docker-compose up -d"
     exit 1
 fi
 
 # Invalid workflow ID
-if ! docker exec selene-n8n n8n show:workflow --id="$ID" 2>/dev/null; then
+if ! docker exec selene n8n show:workflow --id="$ID" 2>/dev/null; then
     echo "ERROR: Workflow $ID not found"
     exit 1
 fi

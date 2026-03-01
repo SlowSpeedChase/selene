@@ -5,7 +5,7 @@
 
 set -e
 
-PROJECT_ROOT="/Users/chaseeasterling/selene-n8n"
+PROJECT_ROOT="/Users/chaseeasterling/selene"
 
 echo "Setting up Git hooks for documentation agent..."
 
