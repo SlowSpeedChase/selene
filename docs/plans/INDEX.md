@@ -78,7 +78,6 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
-| 2026-02-28 | 2026-02-28-thread-context-isolation-design.md | worktree-thread-context-isolation | Thread workspace context leaks, memory contamination, project status bug + golden walkthrough |
 
 ---
 
@@ -86,6 +85,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-02-28 | 2026-02-28-thread-context-isolation-design.md | 2026-03-01 | Remove global fallback, thread-scoped memories, active project default, golden walkthrough (665 tests) |
 | 2026-02-24 | 2026-02-24-selene-intelligence-upgrade-design.md | 2026-02-27 | Layers 1+2: ContextualRetriever, zen prompt rewrite, 53 planning patterns, 743 tests |
 | 2026-02-21 | 2026-02-21-tiered-context-compression-design.md | 2026-02-22 | ContextBuilder, 3 new workflows, tier evaluation, essence backfill, health endpoint |
 | 2026-02-21 | 2026-02-21-dev-environment-isolation-design.md | 2026-02-22 | Overmind + Procfile.dev, 536 seed notes, vault export fix, all 9 acceptance criteria pass |
