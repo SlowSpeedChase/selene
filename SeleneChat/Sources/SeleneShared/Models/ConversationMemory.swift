@@ -5,6 +5,7 @@ public struct ConversationMemory: Identifiable, Codable, Hashable {
     public let id: Int64
     public let content: String
     public let sourceSessionId: String?
+    public let threadId: Int64?
     public let memoryType: MemoryType
     public var confidence: Double
     public var lastAccessed: Date?
@@ -22,6 +23,7 @@ public struct ConversationMemory: Identifiable, Codable, Hashable {
         id: Int64,
         content: String,
         sourceSessionId: String? = nil,
+        threadId: Int64? = nil,
         memoryType: MemoryType,
         confidence: Double = 1.0,
         lastAccessed: Date? = nil,
@@ -31,6 +33,7 @@ public struct ConversationMemory: Identifiable, Codable, Hashable {
         self.id = id
         self.content = content
         self.sourceSessionId = sourceSessionId
+        self.threadId = threadId
         self.memoryType = memoryType
         self.confidence = confidence
         self.lastAccessed = lastAccessed

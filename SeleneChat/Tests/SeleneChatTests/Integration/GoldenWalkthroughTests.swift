@@ -101,6 +101,86 @@ final class GoldenWalkthroughTests: XCTestCase {
         XCTAssertEqual(found?.status, .active)
     }
 
+    // MARK: - Helpers
+
+    private func insertThread(name: String, why: String? = nil, summary: String? = nil, status: String = "active") throws -> Int64 {
+        guard let db = databaseService.db else {
+            XCTFail("Database not connected")
+            return -1
+        }
+
+        let threadsTable = Table("threads")
+        let nameCol = SQLite.Expression<String>("name")
+        let whyCol = SQLite.Expression<String?>("why")
+        let summaryCol = SQLite.Expression<String?>("summary")
+        let statusCol = SQLite.Expression<String>("status")
+        let noteCountCol = SQLite.Expression<Int64>("note_count")
+
+        try db.run(threadsTable.insert(
+            nameCol <- name,
+            whyCol <- why,
+            summaryCol <- summary,
+            statusCol <- status,
+            noteCountCol <- 0
+        ))
+
+        return db.lastInsertRowid
+    }
+
+    // MARK: - Memory Thread Scope
+
+    func testInsertMemoryWithThreadId() async throws {
+        let threadId = try insertThread(name: "Test Thread")
+
+        let memoryId = try await databaseService.insertMemory(
+            content: "User prefers morning hikes",
+            type: .fact,
+            confidence: 0.9,
+            sourceSessionId: nil,
+            threadId: threadId
+        )
+
+        XCTAssertGreaterThan(memoryId, 0)
+
+        // Verify thread_id was stored
+        guard let db = databaseService.db else {
+            XCTFail("Database not connected")
+            return
+        }
+
+        let memoriesTable = Table("conversation_memories")
+        let memIdCol = Expression<Int64>("id")
+        let threadIdCol = Expression<Int64?>("thread_id")
+
+        let row = try db.pluck(memoriesTable.filter(memIdCol == memoryId))
+        let storedThreadId = try row?.get(threadIdCol)
+
+        XCTAssertEqual(storedThreadId, threadId, "Memory should be tagged with thread_id")
+    }
+
+    func testInsertMemoryWithoutThreadIdIsNull() async throws {
+        let memoryId = try await databaseService.insertMemory(
+            content: "User likes coffee",
+            type: .preference,
+            confidence: 0.8,
+            sourceSessionId: nil
+        )
+
+        guard let db = databaseService.db else {
+            XCTFail("Database not connected")
+            return
+        }
+
+        let memoriesTable = Table("conversation_memories")
+        let memIdCol = Expression<Int64>("id")
+        let threadIdCol = Expression<Int64?>("thread_id")
+
+        let row = try db.pluck(memoriesTable.filter(memIdCol == memoryId))
+        let storedThreadId = try row?.get(threadIdCol)
+
+        XCTAssertNil(storedThreadId, "General chat memories should have null thread_id")
+    }
+
     // MARK: - Thread Context Isolation
 
     func testThreadWorkspacePromptOnlyContainsThreadNotes() {

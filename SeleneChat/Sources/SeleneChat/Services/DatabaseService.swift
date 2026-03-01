@@ -143,6 +143,7 @@ class DatabaseService: ObservableObject {
     private let memLastAccessed = Expression<String?>("last_accessed")
     private let memCreatedAt = Expression<String>("created_at")
     private let memUpdatedAt = Expression<String>("updated_at")
+    private let memThreadId = Expression<Int64?>("thread_id")
 
     // note_chunks table
     private let noteChunksTable = Table("note_chunks")
@@ -197,6 +198,7 @@ class DatabaseService: ObservableObject {
             try? Migration007_ThingsHeading.run(db: db!)
             try? Migration008_ConversationMemory.run(db: db!)
             try? Migration009_ThreadTasks.run(db: db!)
+            try? Migration010_MemoryThreadScope.run(db: db!)
             try? createNoteChunksTable(db: db!)
 
             // Configure services that need database access
@@ -1932,7 +1934,7 @@ class DatabaseService: ObservableObject {
     // MARK: - Memory Storage
 
     /// Insert a new memory
-    func insertMemory(content: String, type: ConversationMemory.MemoryType, confidence: Double, sourceSessionId: UUID?, embedding: [Float]? = nil) async throws -> Int64 {
+    func insertMemory(content: String, type: ConversationMemory.MemoryType, confidence: Double, sourceSessionId: UUID?, threadId: Int64? = nil, embedding: [Float]? = nil) async throws -> Int64 {
         guard let db = db else {
             throw DatabaseError.notConnected
         }
@@ -1950,6 +1952,10 @@ class DatabaseService: ObservableObject {
 
         if let sessionId = sourceSessionId {
             setter.append(memSourceSessionId <- sessionId.uuidString)
+        }
+
+        if let threadId = threadId {
+            setter.append(memThreadId <- threadId)
         }
 
         if let emb = embedding {
@@ -2040,6 +2046,7 @@ class DatabaseService: ObservableObject {
                 id: row[memId],
                 content: row[memContent],
                 sourceSessionId: row[memSourceSessionId],
+                threadId: row[memThreadId],
                 memoryType: ConversationMemory.MemoryType(rawValue: row[memType] ?? "fact") ?? .fact,
                 confidence: row[memConfidence],
                 lastAccessed: row[memLastAccessed].flatMap { parseDateString($0) },
@@ -2069,6 +2076,7 @@ class DatabaseService: ObservableObject {
                 id: row[memId],
                 content: row[memContent],
                 sourceSessionId: row[memSourceSessionId],
+                threadId: row[memThreadId],
                 memoryType: ConversationMemory.MemoryType(rawValue: row[memType] ?? "fact") ?? .fact,
                 confidence: row[memConfidence],
                 lastAccessed: row[memLastAccessed].flatMap { parseDateString($0) },
