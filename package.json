@@ -1,7 +1,7 @@
 {
-  "name": "selene-n8n",
+  "name": "selene",
   "version": "1.0.0",
-  "description": "ADHD-focused knowledge management system using n8n workflows",
+  "description": "ADHD-focused knowledge management system",
   "private": true,
   "scripts": {
     "mcp-wrapper": "node scripts/things-mcp-wrapper.js",
@@ -35,7 +35,6 @@
     "typescript": "^5.3.0"
   },
   "keywords": [
-    "n8n",
     "knowledge-management",
     "adhd",
     "things",
