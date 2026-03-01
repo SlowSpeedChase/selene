@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.ts$'; then cd /Users/chaseeasterling/selene-n8n && npx tsc --noEmit --pretty 2>&1 | head -20; fi"
+            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.ts$'; then cd /Users/chaseeasterling/selene && npx tsc --noEmit --pretty 2>&1 | head -20; fi"
           }
         ]
       }

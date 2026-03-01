@@ -16,7 +16,7 @@ Your primary responsibility is to keep all project documentation perfectly synch
 You maintain documentation across this structure:
 
 ```
-selene-n8n/
+selene/
 ├── ROADMAP.md                           # High-level project roadmap
 ├── SETUP.md                             # Installation and setup
 ├── PACKAGES.md                          # Dependencies

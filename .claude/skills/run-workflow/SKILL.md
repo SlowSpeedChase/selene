@@ -45,7 +45,7 @@ Execute a Selene TypeScript workflow with proper test isolation.
 
 4. **Run the workflow**:
    ```bash
-   cd /Users/chaseeasterling/selene-n8n && TEST_RUN="$TEST_RUN" npx ts-node src/workflows/$ARGUMENTS.ts
+   cd /Users/chaseeasterling/selene && TEST_RUN="$TEST_RUN" npx ts-node src/workflows/$ARGUMENTS.ts
    ```
 
 5. **Check logs** (last 30 lines):

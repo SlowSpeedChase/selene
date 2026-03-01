@@ -43,12 +43,12 @@ Diagnose Selene launchd agent status and recent activity.
 
 2. **Check recent stdout log** (last 15 lines):
    ```bash
-   tail -15 /Users/chaseeasterling/selene-n8n/logs/$ARGUMENTS.log
+   tail -15 /Users/chaseeasterling/selene/logs/$ARGUMENTS.log
    ```
 
 3. **Check recent stderr log** (last 10 lines):
    ```bash
-   tail -10 /Users/chaseeasterling/selene-n8n/logs/$ARGUMENTS.error.log
+   tail -10 /Users/chaseeasterling/selene/logs/$ARGUMENTS.error.log
    ```
 
 4. **Report**:
@@ -75,5 +75,5 @@ Diagnose Selene launchd agent status and recent activity.
 
 4. **For any flagged agents**, show recent stderr:
    ```bash
-   tail -5 /Users/chaseeasterling/selene-n8n/logs/<agent>.error.log
+   tail -5 /Users/chaseeasterling/selene/logs/<agent>.error.log
    ```

@@ -50,7 +50,7 @@ You are the **Documentation Agent** for the Selene n8n project. Your primary res
 ### Primary Documentation Locations
 
 ```
-selene-n8n/
+selene/
 ├── ROADMAP.md                           # High-level project roadmap
 ├── SETUP.md                             # Installation and setup
 ├── PACKAGES.md                          # Dependencies

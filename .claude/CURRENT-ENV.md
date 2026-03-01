@@ -13,8 +13,8 @@
 
 | Environment | Port | Database | Container |
 |-------------|------|----------|-----------|
-| Production | 5678 | selene.db | selene-n8n |
-| Development | 5679 | selene-dev.db | selene-n8n-dev |
+| Production | 5678 | selene.db | selene |
+| Development | 5679 | selene-dev.db | selene-dev |
 
 ## Switching Environments
 

@@ -12,7 +12,7 @@ Selene is a **thought consolidation system** for someone with ADHD. The core pro
 Notes form **threads** - lines of thinking that span multiple notes, have underlying motivations, and eventually become projects or writing or decisions. **The system's job is to hold the thread so the user does not have to.**
 
 **Architecture:** TypeScript + Fastify + launchd with SQLite database + Ollama embeddings
-**Location:** `/Users/chaseeasterling/selene-n8n`
+**Location:** `/Users/chaseeasterling/selene`
 
 ---
 ## Current Focus: All Major Features Shipped
