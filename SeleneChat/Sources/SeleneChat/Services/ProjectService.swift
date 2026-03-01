@@ -175,7 +175,7 @@ class ProjectService: ObservableObject {
 
         let id = try db.run(projects.insert(
             projectName <- name,
-            projectStatus <- "parked",
+            projectStatus <- "active",
             primaryConcept <- concept,
             createdAt <- now,
             lastActiveAt <- now
@@ -195,7 +195,7 @@ class ProjectService: ObservableObject {
         return Project(
             id: Int(id),
             name: name,
-            status: .parked,
+            status: .active,
             primaryConcept: concept,
             thingsProjectId: nil,
             createdAt: Date(),

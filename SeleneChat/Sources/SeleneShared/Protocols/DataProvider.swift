@@ -47,7 +47,7 @@ public protocol DataProvider: AnyObject {
     // MARK: - Memories
 
     func getAllMemories(limit: Int) async throws -> [ConversationMemory]
-    func insertMemory(content: String, type: ConversationMemory.MemoryType, confidence: Double, sourceSessionId: UUID?, embedding: [Float]?) async throws -> Int64
+    func insertMemory(content: String, type: ConversationMemory.MemoryType, confidence: Double, sourceSessionId: UUID?, threadId: Int64?, embedding: [Float]?) async throws -> Int64
     func updateMemory(id: Int64, content: String, confidence: Double?, embedding: [Float]?) async throws
     func deleteMemory(id: Int64) async throws
     func touchMemories(ids: [Int64]) async throws

@@ -254,13 +254,13 @@ actor RemoteDataService: DataProvider {
         return response.memories
     }
 
-    func insertMemory(content: String, type: ConversationMemory.MemoryType, confidence: Double, sourceSessionId: UUID?, embedding: [Float]?) async throws -> Int64 {
+    func insertMemory(content: String, type: ConversationMemory.MemoryType, confidence: Double, sourceSessionId: UUID?, threadId: Int64? = nil, embedding: [Float]?) async throws -> Int64 {
         struct Body: Encodable {
             let content: String; let type: String; let confidence: Double
-            let sourceSessionId: String?
+            let sourceSessionId: String?; let threadId: Int64?
         }
         let body = Body(content: content, type: type.rawValue, confidence: confidence,
-                       sourceSessionId: sourceSessionId?.uuidString)
+                       sourceSessionId: sourceSessionId?.uuidString, threadId: threadId)
         let data = try await post("/api/memories", body: body)
         let response = try decoder.decode(CreateIdResponse.self, from: data)
         return Int64(response.id)
