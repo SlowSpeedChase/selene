@@ -206,7 +206,7 @@ class SubprojectSuggestionService: ObservableObject {
 
     private func createThingsProject(name: String) async throws -> String {
         let scriptPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("selene-n8n/scripts/things-bridge/create-project.scpt")
+            .appendingPathComponent("selene/scripts/things-bridge/create-project.scpt")
             .path
 
         guard FileManager.default.fileExists(atPath: scriptPath) else {
@@ -250,7 +250,7 @@ class SubprojectSuggestionService: ObservableObject {
 
     private func assignTaskToProject(taskId: String, projectId: String) async throws {
         let scriptPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("selene-n8n/scripts/things-bridge/assign-to-project.scpt")
+            .appendingPathComponent("selene/scripts/things-bridge/assign-to-project.scpt")
             .path
 
         guard FileManager.default.fileExists(atPath: scriptPath) else {

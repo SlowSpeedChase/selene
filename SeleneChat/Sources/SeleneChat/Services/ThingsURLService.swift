@@ -18,8 +18,8 @@ class ThingsURLService {
     private init() {
         // Find script relative to project root
         let paths = [
-            "/Users/chaseeasterling/selene-n8n/scripts/things-bridge/add-task-to-things.scpt",
-            "/Users/chaseeasterling/selene-n8n/.worktrees/bidirectional-things/scripts/things-bridge/add-task-to-things.scpt",
+            "/Users/chaseeasterling/selene/scripts/things-bridge/add-task-to-things.scpt",
+            "/Users/chaseeasterling/selene/.worktrees/bidirectional-things/scripts/things-bridge/add-task-to-things.scpt",
         ]
         self.addTaskScriptPath = paths.first { FileManager.default.fileExists(atPath: $0) } ?? paths[0]
     }
@@ -248,7 +248,7 @@ class ThingsURLService {
 
     /// Path to the get-task-status AppleScript
     private var getTaskStatusScriptPath: String {
-        "/Users/chaseeasterling/selene-n8n/scripts/things-bridge/get-task-status.scpt"
+        "/Users/chaseeasterling/selene/scripts/things-bridge/get-task-status.scpt"
     }
 
     /// Parse JSON response from get-task-status.scpt

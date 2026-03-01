@@ -20,12 +20,12 @@ struct WorkflowRunResult {
 /// or the server process (run via `npm run start`).
 final class WorkflowRunner {
 
-    /// The root directory of the selene-n8n project.
+    /// The root directory of the selene project.
     let projectRoot: String
 
     /// Creates a runner targeting the given project root.
     ///
-    /// - Parameter projectRoot: Path to the selene-n8n directory.
+    /// - Parameter projectRoot: Path to the selene directory.
     ///   Defaults to `ScheduledWorkflow.projectRoot`.
     init(projectRoot: String = ScheduledWorkflow.projectRoot) {
         self.projectRoot = projectRoot

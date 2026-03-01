@@ -42,7 +42,7 @@ func runIntegrationTest() async {
     print("     - Verify your messages appear in the session history")
 
     print("\n💾 Database Verification:")
-    print("  sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db")
+    print("  sqlite3 /Users/chaseeasterling/selene/data/selene.db")
     print("  sqlite> SELECT id, title, message_count FROM chat_sessions;")
     print("  sqlite> SELECT length(full_messages_json) as json_size FROM chat_sessions;")
 

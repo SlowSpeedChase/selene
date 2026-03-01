@@ -7,7 +7,7 @@ import AppKit
 class ObsidianService {
     static let shared = ObsidianService()
 
-    private let vaultPath = "/Users/chaseeasterling/selene-n8n/vault"  // Obsidian vault root
+    private let vaultPath = "/Users/chaseeasterling/selene/vault"  // Obsidian vault root
     private let seleneFolder = "Selene"  // Subfolder for Selene notes
     private let vaultName = "vault"  // Obsidian vault name
 

@@ -556,6 +556,6 @@ final class ScheduledWorkflowTests: XCTestCase {
 
     func testProjectRootContainsSelene() {
         let root = ScheduledWorkflow.projectRoot
-        XCTAssertTrue(root.contains("selene-n8n"), "projectRoot should reference selene-n8n")
+        XCTAssertTrue(root.contains("selene"), "projectRoot should reference selene")
     }
 }

@@ -15,10 +15,10 @@ class ThingsStatusService: ObservableObject {
     init() {
         // Find script relative to project root
         let paths = [
-            // Development: project root (relative to selene-n8n)
-            "/Users/chaseeasterling/selene-n8n/scripts/things-bridge/get-task-status.scpt",
+            // Development: project root (relative to selene)
+            "/Users/chaseeasterling/selene/scripts/things-bridge/get-task-status.scpt",
             // Worktree path
-            "/Users/chaseeasterling/selene-n8n/.worktrees/bidirectional-things/scripts/things-bridge/get-task-status.scpt",
+            "/Users/chaseeasterling/selene/.worktrees/bidirectional-things/scripts/things-bridge/get-task-status.scpt",
         ]
 
         self.scriptPath = paths.first { FileManager.default.fileExists(atPath: $0) } ?? paths[0]
