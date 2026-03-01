@@ -333,7 +333,7 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 ### Key Directories
 
 ```
-selene-n8n/
+selene/
 +-- CLAUDE.md                # THIS FILE - single entry point
 +-- .claude/                 # Context files for AI development
 |   +-- OPERATIONS.md       # Commands, testing, debugging
@@ -416,6 +416,7 @@ selene-n8n/
 
 ## Version History
 
+- **2026-03-01**: Renamed project from selene-n8n to selene (removed legacy n8n naming)
 - **2026-01-27**: Simplified to two-layer system (design docs + GitOps). Archived user stories.
 - **2026-01-09**: Replaced n8n with TypeScript backend (Fastify + launchd)
 - **2026-01-06**: Migrated n8n from Docker to local installation (v1.110.1) for easier debugging
