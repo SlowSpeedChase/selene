@@ -17,7 +17,7 @@ Before starting, ensure:
 - [ ] n8n is accessible: `curl -s http://localhost:5678`
 - [ ] Ollama is running with mistral:7b: `ollama list`
 - [ ] Things 3 is installed on macOS
-- [ ] Working in worktree: `/Users/chaseeasterling/selene-n8n/.worktrees/project-grouping`
+- [ ] Working in worktree: `/Users/chaseeasterling/selene/.worktrees/project-grouping`
 
 ---
 
@@ -1117,7 +1117,7 @@ Run:
 docker-compose ps
 ```
 
-Expected: `selene-n8n` container is `Up`
+Expected: `selene` container is `Up`
 
 ### Step 2: Import workflow to n8n
 

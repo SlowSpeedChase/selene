@@ -56,7 +56,7 @@ final class QueryAnalyzerSynthesisTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter QueryAnalyzerSynthesisTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter QueryAnalyzerSynthesisTests`
 Expected: FAIL with "has no member 'detectSynthesisIntent'" or "has no member 'synthesis'"
 
 **Step 3: Add implementation to QueryAnalyzer.swift**
@@ -108,7 +108,7 @@ if detectSynthesisIntent(query) {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter QueryAnalyzerSynthesisTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter QueryAnalyzerSynthesisTests`
 Expected: PASS
 
 **Step 5: Commit**
@@ -197,7 +197,7 @@ final class SynthesisPromptBuilderTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter SynthesisPromptBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter SynthesisPromptBuilderTests`
 Expected: FAIL
 
 **Step 3: Write implementation**
@@ -279,7 +279,7 @@ class SynthesisPromptBuilder {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter SynthesisPromptBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter SynthesisPromptBuilderTests`
 Expected: PASS
 
 **Step 5: Commit**
@@ -373,7 +373,7 @@ if queryAnalyzer.detectSynthesisIntent(content) {
 
 **Step 2: Verify build**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift build`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift build`
 Expected: Build succeeds
 
 **Step 3: Commit**
@@ -549,7 +549,7 @@ final class SynthesisIntegrationTests: XCTestCase {
 
 **Step 2: Run tests**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter SynthesisIntegrationTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter SynthesisIntegrationTests`
 Expected: PASS
 
 **Step 3: Commit**

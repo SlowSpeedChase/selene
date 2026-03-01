@@ -33,7 +33,7 @@ Move production data outside the repo to a location Claude Code cannot access. K
 
 **Test data (inside repo - accessible to Claude):**
 ```
-~/selene-n8n/
+~/selene/
 ├── data-test/
 │   └── selene-test.db     # 18 synthetic notes
 ├── vault-test/            # Synthetic Obsidian exports

@@ -715,7 +715,7 @@ git commit -m "feat: add voice memo transcription workflow"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -734,10 +734,10 @@ git commit -m "feat: add voice memo transcription workflow"
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/transcribe-voice-memos.log</string>
+    <string>/Users/chaseeasterling/selene/logs/transcribe-voice-memos.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/transcribe-voice-memos.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/transcribe-voice-memos.error.log</string>
 </dict>
 </plist>
 ```

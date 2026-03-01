@@ -56,7 +56,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: selene-n8n-dev
+    container_name: selene-dev
     restart: unless-stopped
     ports:
       - "5679:5678"     # Dev on port 5679
@@ -181,8 +181,8 @@ git commit -m "feat: add development docker-compose file"
 
 | Environment | Port | Database | Container |
 |-------------|------|----------|-----------|
-| Production | 5678 | selene.db | selene-n8n |
-| Development | 5679 | selene-dev.db | selene-n8n-dev |
+| Production | 5678 | selene.db | selene |
+| Development | 5679 | selene-dev.db | selene-dev |
 
 ## Switching Environments
 
@@ -257,7 +257,7 @@ docker-compose -f docker-compose.dev.yml up -d
 # Wait for health check
 log_step "Waiting for n8n-dev to be healthy..."
 for i in {1..30}; do
-    if docker exec selene-n8n-dev wget --spider -q http://localhost:5678/healthz 2>/dev/null; then
+    if docker exec selene-dev wget --spider -q http://localhost:5678/healthz 2>/dev/null; then
         log_info "n8n-dev is healthy"
         break
     fi
@@ -286,8 +286,8 @@ cat > .claude/CURRENT-ENV.md << 'EOF'
 
 | Environment | Port | Database | Container |
 |-------------|------|----------|-----------|
-| Production | 5678 | selene.db | selene-n8n |
-| Development | 5679 | selene-dev.db | selene-n8n-dev |
+| Production | 5678 | selene.db | selene |
+| Development | 5679 | selene-dev.db | selene-dev |
 
 ## Switching Environments
 
@@ -308,7 +308,7 @@ EOF
 log_info "Development environment ready!"
 log_info "  n8n UI: http://localhost:5679"
 log_info "  Database: data/selene-dev.db"
-log_info "  Container: selene-n8n-dev"
+log_info "  Container: selene-dev"
 echo ""
 log_info "To stop: ./scripts/dev-stop.sh"
 ```
@@ -374,8 +374,8 @@ cat > .claude/CURRENT-ENV.md << 'EOF'
 
 | Environment | Port | Database | Container |
 |-------------|------|----------|-----------|
-| Production | 5678 | selene.db | selene-n8n |
-| Development | 5679 | selene-dev.db | selene-n8n-dev |
+| Production | 5678 | selene.db | selene |
+| Development | 5679 | selene-dev.db | selene-dev |
 
 ## Switching Environments
 
@@ -723,15 +723,15 @@ fi
 log_step "5/7: Importing to production..."
 
 # Check production container is running
-if ! docker ps --format '{{.Names}}' | grep -q "^selene-n8n$"; then
-    log_error "Production container 'selene-n8n' is not running"
+if ! docker ps --format '{{.Names}}' | grep -q "^selene$"; then
+    log_error "Production container 'selene' is not running"
     log_info "Start with: docker-compose up -d"
     exit 1
 fi
 
 # Get workflow ID from n8n (by name matching)
 log_info "Importing workflow to production n8n..."
-docker exec selene-n8n n8n import:workflow --input="/workflows/$WORKFLOW_JSON" --separate
+docker exec selene n8n import:workflow --input="/workflows/$WORKFLOW_JSON" --separate
 
 log_info "Workflow imported to production"
 
@@ -811,7 +811,7 @@ After `WORKFLOWS_DIR="./workflows"`, add:
 ```bash
 # Dev mode flag
 DEV_MODE=false
-DEV_CONTAINER_NAME="selene-n8n-dev"
+DEV_CONTAINER_NAME="selene-dev"
 ```
 
 **Step 2: Add flag parsing before main function call**
@@ -883,7 +883,7 @@ Add a new section after the Docker Management section:
 ./scripts/dev-start.sh
 
 # Verify dev is running
-docker ps | grep selene-n8n-dev
+docker ps | grep selene-dev
 
 # Check current environment
 cat .claude/CURRENT-ENV.md
@@ -962,8 +962,8 @@ Run: `docker ps --format "table {{.Names}}\t{{.Ports}}"`
 Expected:
 ```
 NAMES              PORTS
-selene-n8n         0.0.0.0:5678->5678/tcp
-selene-n8n-dev     0.0.0.0:5679->5678/tcp
+selene         0.0.0.0:5678->5678/tcp
+selene-dev     0.0.0.0:5679->5678/tcp
 ```
 
 **Step 3: Seed dev database**

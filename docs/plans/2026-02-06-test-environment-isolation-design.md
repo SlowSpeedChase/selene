@@ -27,10 +27,10 @@ A complete test environment with:
 
 | Component | Production | Test |
 |-----------|------------|------|
-| SQLite DB | `~/selene-data/selene.db` | `selene-n8n/data-test/selene.db` |
-| LanceDB vectors | `~/selene-data/vectors.lance` | `selene-n8n/data-test/vectors.lance` |
-| Obsidian vault | `selene-n8n/vault/` | `selene-n8n/data-test/vault/` |
-| Digests | `selene-n8n/data/digests/` | `selene-n8n/data-test/digests/` |
+| SQLite DB | `~/selene-data/selene.db` | `selene/data-test/selene.db` |
+| LanceDB vectors | `~/selene-data/vectors.lance` | `selene/data-test/vectors.lance` |
+| Obsidian vault | `selene/vault/` | `selene/data-test/vault/` |
+| Digests | `selene/data/digests/` | `selene/data-test/digests/` |
 | iMessage | Sends to phone | Writes to file only |
 
 ---
@@ -81,10 +81,10 @@ SELENE_ENV=test  # or "production" (default)
 ### Config Behavior
 
 When `SELENE_ENV=test`, `src/lib/config.ts` returns:
-- `dbPath` → `selene-n8n/data-test/selene.db`
-- `vectorsPath` → `selene-n8n/data-test/vectors.lance`
-- `vaultPath` → `selene-n8n/data-test/vault/`
-- `digestsPath` → `selene-n8n/data-test/digests/`
+- `dbPath` → `selene/data-test/selene.db`
+- `vectorsPath` → `selene/data-test/vectors.lance`
+- `vaultPath` → `selene/data-test/vault/`
+- `digestsPath` → `selene/data-test/digests/`
 - `imessageEnabled` → `false` (writes to file instead)
 
 ### Usage
@@ -109,7 +109,7 @@ Already uses `data-test/` path when running as CLI build (not .app bundle), so n
 Create `.env.development` at project root:
 ```bash
 SELENE_ENV=test
-SELENE_DB_PATH=/Users/chaseeasterling/Documents/GitHub/selene-n8n/data-test/selene.db
+SELENE_DB_PATH=/Users/chaseeasterling/Documents/GitHub/selene/data-test/selene.db
 ```
 
 Claude Code and development tools will source this automatically.

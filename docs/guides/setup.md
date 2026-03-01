@@ -71,7 +71,7 @@ ollama list
 ### Step 1: Clone or Navigate to Project
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 ```
 
 ### Step 2: Configure Environment
@@ -244,7 +244,7 @@ curl http://localhost:5678/healthz
 ### Test 2: Verify Ollama Access from Container
 
 ```bash
-docker exec selene-n8n wget -qO- http://localhost:11434/api/tags
+docker exec selene wget -qO- http://localhost:11434/api/tags
 # Expected: JSON response with model list
 ```
 
@@ -312,7 +312,7 @@ The community package may need manual installation:
 
 ```bash
 # Enter container
-docker exec -it selene-n8n sh
+docker exec -it selene sh
 
 # Install SQLite community node
 npm install -g n8n-nodes-sqlite
@@ -347,7 +347,7 @@ grep "network_mode" docker-compose.yml
 
 The package should be installed globally in the Dockerfile. Verify:
 ```bash
-docker exec selene-n8n npm list -g better-sqlite3
+docker exec selene npm list -g better-sqlite3
 ```
 
 If not installed, rebuild:
@@ -367,7 +367,7 @@ ls -la data/selene.db
 
 2. Check volume mount in container:
 ```bash
-docker exec selene-n8n ls -la /selene/data/
+docker exec selene ls -la /selene/data/
 ```
 
 3. Verify SQLite credential path is: `/selene/data/selene.db`
@@ -484,7 +484,7 @@ docker-compose up -d --build
 ## File Structure
 
 ```
-selene-n8n/
+selene/
 ├── .env                              # Your configuration (create from .env.example)
 ├── .env.example                      # Configuration template
 ├── docker-compose.yml                # Docker orchestration

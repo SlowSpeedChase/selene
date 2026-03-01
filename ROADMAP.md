@@ -128,7 +128,7 @@ Getting started and troubleshooting:
 
 ```bash
 # 1. Navigate to project
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 
 # 2. Read the overview
 cat docs/roadmap/01-OVERVIEW.md

@@ -57,7 +57,7 @@ Current development challenges:
 ## File Organization
 
 ```
-selene-n8n/
+selene/
 ├── docker-compose.yml              # Production stack (existing, minor changes)
 ├── docker-compose.dev.yml          # Development stack (new)
 ├── .claude/
@@ -93,7 +93,7 @@ Existing file with minor additions:
 ```yaml
 services:
   n8n:
-    container_name: selene-n8n
+    container_name: selene
     ports:
       - "5678:5678"
     environment:
@@ -111,7 +111,7 @@ New file:
 ```yaml
 services:
   n8n-dev:
-    container_name: selene-n8n-dev
+    container_name: selene-dev
     build: .
     ports:
       - "5679:5678"
@@ -148,7 +148,7 @@ volumes:
 
 | Aspect | Production | Development |
 |--------|------------|-------------|
-| Container name | `selene-n8n` | `selene-n8n-dev` |
+| Container name | `selene` | `selene-dev` |
 | Port | 5678 | 5679 |
 | Database | `selene.db` | `selene-dev.db` |
 | n8n data volume | `n8n_data` | `n8n_dev_data` |

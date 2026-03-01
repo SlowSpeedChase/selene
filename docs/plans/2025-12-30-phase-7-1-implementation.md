@@ -34,16 +34,16 @@
 **Step 1: Create directories**
 
 ```bash
-mkdir -p /Users/chaseeasterling/selene-n8n/vault/things-pending
-mkdir -p /Users/chaseeasterling/selene-n8n/vault/things-processed
-touch /Users/chaseeasterling/selene-n8n/vault/things-pending/.gitkeep
-touch /Users/chaseeasterling/selene-n8n/vault/things-processed/.gitkeep
+mkdir -p /Users/chaseeasterling/selene/vault/things-pending
+mkdir -p /Users/chaseeasterling/selene/vault/things-processed
+touch /Users/chaseeasterling/selene/vault/things-pending/.gitkeep
+touch /Users/chaseeasterling/selene/vault/things-processed/.gitkeep
 ```
 
 **Step 2: Verify directories exist**
 
 ```bash
-ls -la /Users/chaseeasterling/selene-n8n/vault/things-*
+ls -la /Users/chaseeasterling/selene/vault/things-*
 ```
 
 Expected: Both directories exist with .gitkeep files
@@ -65,7 +65,7 @@ git commit -m "chore: add Things task handoff directories"
 **Step 1: Create the bridge directory**
 
 ```bash
-mkdir -p /Users/chaseeasterling/selene-n8n/scripts/things-bridge
+mkdir -p /Users/chaseeasterling/selene/scripts/things-bridge
 ```
 
 **Step 2: Create the AppleScript**
@@ -141,7 +141,7 @@ end trim
 Create a test JSON file:
 ```bash
 echo '{"title": "Test task from Selene", "notes": "This is a test", "tags": ["test"]}' > /tmp/test-task.json
-osascript /Users/chaseeasterling/selene-n8n/scripts/things-bridge/add-task-to-things.scpt /tmp/test-task.json
+osascript /Users/chaseeasterling/selene/scripts/things-bridge/add-task-to-things.scpt /tmp/test-task.json
 ```
 
 Expected: Task appears in Things inbox, script returns task ID
@@ -173,9 +173,9 @@ Create file `scripts/things-bridge/process-pending-tasks.sh`:
 # Run by launchd or manually
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PENDING_DIR="/Users/chaseeasterling/selene-n8n/vault/things-pending"
-PROCESSED_DIR="/Users/chaseeasterling/selene-n8n/vault/things-processed"
-LOG_FILE="/Users/chaseeasterling/selene-n8n/logs/things-bridge.log"
+PENDING_DIR="/Users/chaseeasterling/selene/vault/things-pending"
+PROCESSED_DIR="/Users/chaseeasterling/selene/vault/things-processed"
+LOG_FILE="/Users/chaseeasterling/selene/logs/things-bridge.log"
 
 # Ensure log directory exists
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -229,29 +229,29 @@ log "Done processing pending tasks"
 **Step 2: Make executable**
 
 ```bash
-chmod +x /Users/chaseeasterling/selene-n8n/scripts/things-bridge/process-pending-tasks.sh
+chmod +x /Users/chaseeasterling/selene/scripts/things-bridge/process-pending-tasks.sh
 ```
 
 **Step 3: Create logs directory**
 
 ```bash
-mkdir -p /Users/chaseeasterling/selene-n8n/logs
-touch /Users/chaseeasterling/selene-n8n/logs/.gitkeep
-echo "logs/*.log" >> /Users/chaseeasterling/selene-n8n/.gitignore
+mkdir -p /Users/chaseeasterling/selene/logs
+touch /Users/chaseeasterling/selene/logs/.gitkeep
+echo "logs/*.log" >> /Users/chaseeasterling/selene/.gitignore
 ```
 
 **Step 4: Test the wrapper script**
 
 ```bash
 # Create test task
-echo '{"title": "Wrapper test task", "notes": "Testing wrapper", "tags": ["test"]}' > /Users/chaseeasterling/selene-n8n/vault/things-pending/test-001.json
+echo '{"title": "Wrapper test task", "notes": "Testing wrapper", "tags": ["test"]}' > /Users/chaseeasterling/selene/vault/things-pending/test-001.json
 
 # Run wrapper
-/Users/chaseeasterling/selene-n8n/scripts/things-bridge/process-pending-tasks.sh
+/Users/chaseeasterling/selene/scripts/things-bridge/process-pending-tasks.sh
 
 # Check results
-cat /Users/chaseeasterling/selene-n8n/logs/things-bridge.log
-ls /Users/chaseeasterling/selene-n8n/vault/things-processed/
+cat /Users/chaseeasterling/selene/logs/things-bridge.log
+ls /Users/chaseeasterling/selene/vault/things-processed/
 ```
 
 Expected: Task in Things, file moved to processed with things_task_id added
@@ -286,22 +286,22 @@ Create file `scripts/things-bridge/com.selene.things-bridge.plist`:
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/chaseeasterling/selene-n8n/scripts/things-bridge/process-pending-tasks.sh</string>
+        <string>/Users/chaseeasterling/selene/scripts/things-bridge/process-pending-tasks.sh</string>
     </array>
 
     <key>WatchPaths</key>
     <array>
-        <string>/Users/chaseeasterling/selene-n8n/vault/things-pending</string>
+        <string>/Users/chaseeasterling/selene/vault/things-pending</string>
     </array>
 
     <key>RunAtLoad</key>
     <false/>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/things-bridge-stdout.log</string>
+    <string>/Users/chaseeasterling/selene/logs/things-bridge-stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/things-bridge-stderr.log</string>
+    <string>/Users/chaseeasterling/selene/logs/things-bridge-stderr.log</string>
 </dict>
 </plist>
 ```
@@ -309,7 +309,7 @@ Create file `scripts/things-bridge/com.selene.things-bridge.plist`:
 **Step 2: Install the launchd job**
 
 ```bash
-cp /Users/chaseeasterling/selene-n8n/scripts/things-bridge/com.selene.things-bridge.plist ~/Library/LaunchAgents/
+cp /Users/chaseeasterling/selene/scripts/things-bridge/com.selene.things-bridge.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.selene.things-bridge.plist
 ```
 
@@ -325,13 +325,13 @@ Expected: `com.selene.things-bridge` appears in list
 
 ```bash
 # Create a task file
-echo '{"title": "LaunchD test", "notes": "Testing file watcher", "tags": ["test"]}' > /Users/chaseeasterling/selene-n8n/vault/things-pending/launchd-test.json
+echo '{"title": "LaunchD test", "notes": "Testing file watcher", "tags": ["test"]}' > /Users/chaseeasterling/selene/vault/things-pending/launchd-test.json
 
 # Wait 2-3 seconds for launchd to trigger
 
 # Check if processed
-ls /Users/chaseeasterling/selene-n8n/vault/things-processed/
-cat /Users/chaseeasterling/selene-n8n/logs/things-bridge.log | tail -5
+ls /Users/chaseeasterling/selene/vault/things-processed/
+cat /Users/chaseeasterling/selene/logs/things-bridge.log | tail -5
 ```
 
 Expected: File moved to processed, task appears in Things
@@ -461,7 +461,7 @@ launchctl list | grep selene
 TEST_RUN="test-run-$(date +%Y%m%d-%H%M%S)"
 echo "Test run: $TEST_RUN"
 
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 INSERT INTO raw_notes (title, content, content_hash, source_type, created_at, status, test_run)
 VALUES (
   'E2E Test - Actionable Task',
@@ -475,11 +475,11 @@ VALUES (
 "
 
 # Get the note ID
-NOTE_ID=$(sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN' ORDER BY id DESC LIMIT 1;")
+NOTE_ID=$(sqlite3 /Users/chaseeasterling/selene/data/selene.db "SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN' ORDER BY id DESC LIMIT 1;")
 echo "Created note ID: $NOTE_ID"
 
 # Create processed_notes entry (required for workflow)
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 INSERT INTO processed_notes (raw_note_id, concepts, primary_theme, processed_at)
 VALUES ($NOTE_ID, '[\"health\", \"communication\"]', 'personal-tasks', datetime('now'));
 "
@@ -500,23 +500,23 @@ curl -X POST http://localhost:5678/webhook/task-extraction \
 sleep 10
 
 # Check classification was stored
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 SELECT classification, planning_status, things_integration_status
 FROM processed_notes
 WHERE raw_note_id = $NOTE_ID;
 "
 
 # Check task metadata was stored
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 SELECT * FROM task_metadata WHERE raw_note_id = $NOTE_ID;
 "
 
 # Check file was written
-ls -la /Users/chaseeasterling/selene-n8n/vault/things-pending/
-ls -la /Users/chaseeasterling/selene-n8n/vault/things-processed/
+ls -la /Users/chaseeasterling/selene/vault/things-pending/
+ls -la /Users/chaseeasterling/selene/vault/things-processed/
 
 # Check Things bridge log
-cat /Users/chaseeasterling/selene-n8n/logs/things-bridge.log | tail -10
+cat /Users/chaseeasterling/selene/logs/things-bridge.log | tail -10
 ```
 
 Expected:
@@ -531,14 +531,14 @@ Expected:
 # Delete from Things manually (the test tasks)
 
 # Cleanup database
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 DELETE FROM task_metadata WHERE test_run = '$TEST_RUN';
 DELETE FROM processed_notes WHERE raw_note_id IN (SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN');
 DELETE FROM raw_notes WHERE test_run = '$TEST_RUN';
 "
 
 # Cleanup processed files
-rm -f /Users/chaseeasterling/selene-n8n/vault/things-processed/*test*
+rm -f /Users/chaseeasterling/selene/vault/things-processed/*test*
 ```
 
 ---
@@ -550,7 +550,7 @@ rm -f /Users/chaseeasterling/selene-n8n/vault/things-processed/*test*
 ```bash
 TEST_RUN="test-run-$(date +%Y%m%d-%H%M%S)"
 
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 INSERT INTO raw_notes (title, content, content_hash, source_type, created_at, status, test_run)
 VALUES (
   'E2E Test - Needs Planning',
@@ -563,9 +563,9 @@ VALUES (
 );
 "
 
-NOTE_ID=$(sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN' ORDER BY id DESC LIMIT 1;")
+NOTE_ID=$(sqlite3 /Users/chaseeasterling/selene/data/selene.db "SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN' ORDER BY id DESC LIMIT 1;")
 
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 INSERT INTO processed_notes (raw_note_id, concepts, primary_theme, processed_at)
 VALUES ($NOTE_ID, '[\"web-design\", \"planning\"]', 'creative-projects', datetime('now'));
 "
@@ -585,21 +585,21 @@ curl -X POST http://localhost:5678/webhook/task-extraction \
 sleep 5
 
 # Should be needs_planning with pending_review status
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 SELECT classification, planning_status
 FROM processed_notes
 WHERE raw_note_id = $NOTE_ID;
 "
 
 # Should have a discussion_thread
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 SELECT id, thread_type, status, prompt
 FROM discussion_threads
 WHERE raw_note_id = $NOTE_ID;
 "
 
 # Should NOT have task_metadata (not actionable)
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 SELECT COUNT(*) FROM task_metadata WHERE raw_note_id = $NOTE_ID;
 "
 ```
@@ -613,7 +613,7 @@ Expected:
 **Step 4: Cleanup**
 
 ```bash
-sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db "
+sqlite3 /Users/chaseeasterling/selene/data/selene.db "
 DELETE FROM discussion_threads WHERE test_run = '$TEST_RUN';
 DELETE FROM processed_notes WHERE raw_note_id IN (SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN');
 DELETE FROM raw_notes WHERE test_run = '$TEST_RUN';

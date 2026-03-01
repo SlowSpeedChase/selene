@@ -14,7 +14,7 @@
 
 ## Prerequisites
 
-**Current location:** `/Users/chaseeasterling/selene-n8n/.worktrees/selenechat-db-integration/SeleneChat`
+**Current location:** `/Users/chaseeasterling/selene/.worktrees/selenechat-db-integration/SeleneChat`
 
 **Verify setup:**
 ```bash

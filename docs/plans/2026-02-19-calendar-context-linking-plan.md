@@ -44,7 +44,7 @@ Expected: `calendar_event TEXT` appears in the schema.
 **Step 4: Run against test database too**
 
 ```bash
-sqlite3 ~/selene-n8n/data-test/selene-test.db < database/migrations/019_calendar_events.sql
+sqlite3 ~/selene/data-test/selene-test.db < database/migrations/019_calendar_events.sql
 ```
 
 **Step 5: Commit**

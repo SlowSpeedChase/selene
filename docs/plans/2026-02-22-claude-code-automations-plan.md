@@ -105,7 +105,7 @@ Create `.claude/settings.json` with this exact content:
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.ts$'; then cd /Users/chaseeasterling/selene-n8n && npx tsc --noEmit --pretty 2>&1 | head -20; fi"
+            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.ts$'; then cd /Users/chaseeasterling/selene && npx tsc --noEmit --pretty 2>&1 | head -20; fi"
           }
         ]
       }
@@ -131,7 +131,7 @@ Read `.claude/settings.local.json` and confirm it only has `permissions` — no 
 
 Run:
 ```bash
-cd /Users/chaseeasterling/selene-n8n && npx tsc --noEmit --pretty 2>&1 | head -20
+cd /Users/chaseeasterling/selene && npx tsc --noEmit --pretty 2>&1 | head -20
 ```
 
 Expected: Either clean output (no errors) or a list of type errors. This verifies `tsc` runs correctly in the project. The hook will run this same command automatically after Claude edits `.ts` files.
@@ -209,7 +209,7 @@ Execute a Selene TypeScript workflow with proper test isolation.
 
 4. **Run the workflow**:
    ```bash
-   cd /Users/chaseeasterling/selene-n8n && TEST_RUN="$TEST_RUN" npx ts-node src/workflows/$ARGUMENTS.ts
+   cd /Users/chaseeasterling/selene && TEST_RUN="$TEST_RUN" npx ts-node src/workflows/$ARGUMENTS.ts
    ```
 
 5. **Check logs** (last 30 lines):
@@ -297,12 +297,12 @@ Diagnose Selene launchd agent status and recent activity.
 
 2. **Check recent stdout log** (last 15 lines):
    ```bash
-   tail -15 /Users/chaseeasterling/selene-n8n/logs/$ARGUMENTS.log
+   tail -15 /Users/chaseeasterling/selene/logs/$ARGUMENTS.log
    ```
 
 3. **Check recent stderr log** (last 10 lines):
    ```bash
-   tail -10 /Users/chaseeasterling/selene-n8n/logs/$ARGUMENTS.error.log
+   tail -10 /Users/chaseeasterling/selene/logs/$ARGUMENTS.error.log
    ```
 
 4. **Report**:
@@ -329,7 +329,7 @@ Diagnose Selene launchd agent status and recent activity.
 
 4. **For any flagged agents**, show recent stderr:
    ```bash
-   tail -5 /Users/chaseeasterling/selene-n8n/logs/<agent>.error.log
+   tail -5 /Users/chaseeasterling/selene/logs/<agent>.error.log
    ```
 ````
 

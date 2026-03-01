@@ -33,7 +33,7 @@ This document provides step-by-step implementation instructions for automaticall
 **Already Installed:**
 - ✅ n8n (running on Docker)
 - ✅ Ollama (with mistral:7b model)
-- ✅ SQLite database (`/Users/chaseeasterling/selene-n8n/data/selene.db`)
+- ✅ SQLite database (`/Users/chaseeasterling/selene/data/selene.db`)
 - ✅ Existing workflows 01-06
 
 **Need to Install:**
@@ -122,7 +122,7 @@ Can you delete the "MCP Test Task"?
 
 ### 2.1 Create Migration Script
 
-**File:** `/Users/chaseeasterling/selene-n8n/database/migrations/007_task_metadata.sql`
+**File:** `/Users/chaseeasterling/selene/database/migrations/007_task_metadata.sql`
 
 ```sql
 -- Migration 007: Task Metadata for Things Integration
@@ -188,7 +188,7 @@ COMMIT;
 
 ```bash
 # Navigate to database directory
-cd /Users/chaseeasterling/selene-n8n/database
+cd /Users/chaseeasterling/selene/database
 
 # Apply migration
 sqlite3 ../data/selene.db < migrations/007_task_metadata.sql
@@ -208,7 +208,7 @@ sqlite3 ../data/selene.db "PRAGMA table_info(task_metadata);"
 
 ### 3.1 Prompt Design
 
-**File:** `/Users/chaseeasterling/selene-n8n/workflows/07-task-extraction/task-extraction-prompt.txt`
+**File:** `/Users/chaseeasterling/selene/workflows/07-task-extraction/task-extraction-prompt.txt`
 
 ```
 You are a task extraction assistant for an ADHD-optimized productivity system.

@@ -100,10 +100,10 @@ On first launch, configure the database path in Settings:
 
 1. Go to **SeleneChat > Settings** (Cmd+,)
 2. Click **Browse** next to Database Path
-3. Navigate to `/path/to/selene-n8n/data/selene.db`
+3. Navigate to `/path/to/selene/data/selene.db`
 4. Click **Test Connection** to verify
 
-Default path: `/Users/chaseeasterling/selene-n8n/data/selene.db`
+Default path: `/Users/chaseeasterling/selene/data/selene.db`
 
 ## Usage
 

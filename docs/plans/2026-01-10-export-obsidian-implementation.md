@@ -766,7 +766,7 @@ git commit -m "feat(export): add /webhook/api/export-obsidian endpoint"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -781,10 +781,10 @@ git commit -m "feat(export): add /webhook/api/export-obsidian endpoint"
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/export-obsidian.log</string>
+    <string>/Users/chaseeasterling/selene/logs/export-obsidian.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/export-obsidian.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/export-obsidian.error.log</string>
 </dict>
 </plist>
 ```

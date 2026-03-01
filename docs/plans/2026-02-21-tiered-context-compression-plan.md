@@ -664,7 +664,7 @@ Create `launchd/com.selene.distill-essences.plist`:
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -680,10 +680,10 @@ Create `launchd/com.selene.distill-essences.plist`:
     <integer>300</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/distill-essences.log</string>
+    <string>/Users/chaseeasterling/selene/logs/distill-essences.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/distill-essences.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/distill-essences.error.log</string>
 </dict>
 </plist>
 ```
@@ -846,7 +846,7 @@ Create `launchd/com.selene.evaluate-fidelity.plist`:
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -867,10 +867,10 @@ Create `launchd/com.selene.evaluate-fidelity.plist`:
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/evaluate-fidelity.log</string>
+    <string>/Users/chaseeasterling/selene/logs/evaluate-fidelity.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/evaluate-fidelity.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/evaluate-fidelity.error.log</string>
 </dict>
 </plist>
 ```
@@ -1050,7 +1050,7 @@ Create `launchd/com.selene.compile-thread-digests.plist`:
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1067,10 +1067,10 @@ Create `launchd/com.selene.compile-thread-digests.plist`:
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compile-thread-digests.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compile-thread-digests.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compile-thread-digests.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compile-thread-digests.error.log</string>
 </dict>
 </plist>
 ```

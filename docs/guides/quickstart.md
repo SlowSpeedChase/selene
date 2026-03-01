@@ -51,7 +51,7 @@ Ollama is running on http://localhost:11434
 Open a **new terminal window** and navigate to the project:
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 
 # Start the Docker container
 docker-compose up -d
@@ -278,7 +278,7 @@ ollama serve
 **Solution:**
 ```bash
 # Install community node
-docker exec selene-n8n sh -c "cd /home/node/.n8n && npm install n8n-nodes-sqlite"
+docker exec selene sh -c "cd /home/node/.n8n && npm install n8n-nodes-sqlite"
 
 # Restart n8n
 docker-compose restart n8n

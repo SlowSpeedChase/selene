@@ -168,7 +168,7 @@ Note the ID for testing.
 **Step 3: Activate workflow**
 
 ```bash
-docker exec selene-n8n n8n update:workflow --id=<ID> --active=true
+docker exec selene n8n update:workflow --id=<ID> --active=true
 ```
 
 ---
@@ -260,6 +260,6 @@ After all tasks:
 
 If workflow breaks:
 
-1. Deactivate: `docker exec selene-n8n n8n update:workflow --id=<ID> --active=false`
+1. Deactivate: `docker exec selene n8n update:workflow --id=<ID> --active=false`
 2. Delete test embeddings: `sqlite3 data/selene.db "DELETE FROM note_embeddings WHERE test_run IS NOT NULL;"`
 3. Review error logs: `docker-compose logs -f n8n`

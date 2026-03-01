@@ -164,7 +164,7 @@ automated: true
 | Label | `com.selene.export-obsidian` |
 | Schedule | Hourly (`:00` of each hour) |
 | Command | `npx ts-node src/workflows/export-obsidian.ts` |
-| Working Directory | `/Users/chaseeasterling/selene-n8n` |
+| Working Directory | `/Users/chaseeasterling/selene` |
 | Logs | `logs/export-obsidian.out.log`, `logs/export-obsidian.err.log` |
 
 ## Obsidian Trigger Options

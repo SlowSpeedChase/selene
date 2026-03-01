@@ -218,8 +218,8 @@ Keep both triggers for flexibility:
    # (edit workflow.json to add "active": true)
 
    # Import updated workflows
-   docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/02-llm-processing/workflow.json
-   docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow.json
+   docker exec selene n8n import:workflow --input=/workflows/workflows/02-llm-processing/workflow.json
+   docker exec selene n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow.json
 
    # Activate in n8n UI or restart n8n
    docker-compose restart
@@ -236,7 +236,7 @@ Keep both triggers for flexibility:
    sleep 15
 
    # Verify sentiment analyzed
-   sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db \
+   sqlite3 /Users/chaseeasterling/selene/data/selene.db \
      "SELECT rn.title, pn.overall_sentiment, pn.emotional_tone
       FROM raw_notes rn
       JOIN processed_notes pn ON pn.raw_note_id = rn.id
@@ -273,8 +273,8 @@ Keep both triggers for flexibility:
 3. **Deploy and Test:**
    ```bash
    # Import updated workflows
-   docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow.json
-   docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/04-obsidian-export/workflow.json
+   docker exec selene n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow.json
+   docker exec selene n8n import:workflow --input=/workflows/workflows/04-obsidian-export/workflow.json
 
    # Activate and restart
    docker-compose restart
@@ -290,7 +290,7 @@ Keep both triggers for flexibility:
 
 1. **n8n CLI Import:**
    ```bash
-   docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/XX/workflow.json
+   docker exec selene n8n import:workflow --input=/workflows/workflows/XX/workflow.json
    ```
    - Fast, reliable, scriptable
    - No UI interaction needed
@@ -304,7 +304,7 @@ Keep both triggers for flexibility:
 3. **Database Location:**
    - Container: `/selene/data/selene.db`
    - Host: `./data/selene.db` (relative to docker-compose directory)
-   - Actual path: `/Users/chaseeasterling/selene-n8n/data/selene.db`
+   - Actual path: `/Users/chaseeasterling/selene/data/selene.db`
 
 4. **Webhook Response Modes:**
    - `responseMode: "onReceived"` - Returns immediately (for quick ack)
@@ -328,7 +328,7 @@ Keep both triggers for flexibility:
 
 2. **Database Path Confusion:**
    - Don't query `/Users/chaseeasterling/selene/data/selene.db` (wrong location!)
-   - Always use `/Users/chaseeasterling/selene-n8n/data/selene.db`
+   - Always use `/Users/chaseeasterling/selene/data/selene.db`
    - Or inside container: `/selene/data/selene.db`
 
 3. **Webhook Path Conflicts:**
@@ -358,7 +358,7 @@ Keep both triggers for flexibility:
    ```bash
    # 1. Add "active": true to workflow JSON
    # 2. Import via CLI
-   docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/XX/workflow.json
+   docker exec selene n8n import:workflow --input=/workflows/workflows/XX/workflow.json
    # 3. Activate in UI
    # 4. Restart n8n
    docker-compose restart

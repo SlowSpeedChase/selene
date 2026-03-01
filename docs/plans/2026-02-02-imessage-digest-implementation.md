@@ -224,7 +224,7 @@ git commit -m "feat: add send-digest workflow for iMessage delivery"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -241,10 +241,10 @@ git commit -m "feat: add send-digest workflow for iMessage delivery"
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/send-digest.log</string>
+    <string>/Users/chaseeasterling/selene/logs/send-digest.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/send-digest.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/send-digest.error.log</string>
 </dict>
 </plist>
 ```

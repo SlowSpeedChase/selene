@@ -93,7 +93,7 @@ For implementation work, read in this order:
 ## Project Structure
 
 ```
-/selene-n8n/
+/selene/
 ├── ROADMAP.md                    # Main entry point (links to this index)
 ├── docs/
 │   ├── THINGS-INTEGRATION-SUMMARY.md   # Phase 7 overview and next steps

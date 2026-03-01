@@ -336,11 +336,11 @@ sqlite3 /selene/data/selene.db ".schema"
 ## Database Location
 
 **Development:** `/selene/data/selene.db`
-**Schema File:** `/Users/chaseeasterling/selene-n8n/database/schema.sql`
+**Schema File:** `/Users/chaseeasterling/selene/database/schema.sql`
 
 To recreate database:
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 sqlite3 database/selene.db < database/schema.sql
 ```
 
@@ -356,7 +356,7 @@ sqlite3 database/selene.db < database/schema.sql
 This schema was copied as-is from the Python project. It's production-ready and well-designed. No changes needed for n8n usage.
 
 **Original Location:** `/selene/data/schema.sql` (Python project)
-**Current Location:** `/selene-n8n/database/schema.sql`
+**Current Location:** `/selene/database/schema.sql`
 
 ## Related Documentation
 

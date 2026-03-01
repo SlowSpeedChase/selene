@@ -54,12 +54,12 @@ CREATE INDEX IF NOT EXISTS idx_memories_last_accessed ON conversation_memories(l
 
 **Step 2: Apply migration to test database**
 
-Run: `sqlite3 ~/selene-n8n/data-test/selene-test.db < database/migrations/015_conversation_memory.sql`
+Run: `sqlite3 ~/selene/data-test/selene-test.db < database/migrations/015_conversation_memory.sql`
 Expected: No output (success)
 
 **Step 3: Verify tables exist**
 
-Run: `sqlite3 ~/selene-n8n/data-test/selene-test.db ".schema conversations"`
+Run: `sqlite3 ~/selene/data-test/selene-test.db ".schema conversations"`
 Expected: Shows CREATE TABLE statement
 
 **Step 4: Commit**
@@ -1038,7 +1038,7 @@ Test sequence:
 
 **Step 4: Verify database**
 
-Run: `sqlite3 ~/selene-n8n/data-test/selene-test.db "SELECT * FROM conversation_memories;"`
+Run: `sqlite3 ~/selene/data-test/selene-test.db "SELECT * FROM conversation_memories;"`
 Expected: Shows extracted memory about dark mode preference
 
 **Step 5: Commit final integration**

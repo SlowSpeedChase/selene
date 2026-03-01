@@ -106,7 +106,7 @@ try? Migration004_SubprojectSuggestions.run(db: db!)
 **Step 3: Verify migration runs**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 
@@ -170,7 +170,7 @@ struct SubprojectSuggestion: Identifiable {
 **Step 2: Verify build**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 
@@ -386,7 +386,7 @@ class SubprojectSuggestionService: ObservableObject {
 
     private func createThingsProject(name: String) async throws -> String {
         let scriptPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("selene-n8n/scripts/things-bridge/create-project.scpt")
+            .appendingPathComponent("selene/scripts/things-bridge/create-project.scpt")
             .path
 
         // Create temp JSON file for project data
@@ -422,7 +422,7 @@ class SubprojectSuggestionService: ObservableObject {
 
     private func assignTaskToProject(taskId: String, projectId: String) async throws {
         let scriptPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("selene-n8n/scripts/things-bridge/assign-to-project.scpt")
+            .appendingPathComponent("selene/scripts/things-bridge/assign-to-project.scpt")
             .path
 
         let process = Process()
@@ -490,7 +490,7 @@ class SubprojectSuggestionService: ObservableObject {
 **Step 2: Verify build**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 
@@ -631,7 +631,7 @@ struct SubprojectSuggestionCard: View {
 **Step 2: Verify build**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 
@@ -766,7 +766,7 @@ _ = try? await suggestionService.detectCandidates()
 **Step 6: Verify build**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 
@@ -798,7 +798,7 @@ SubprojectSuggestionService.shared.configure(with: db!)
 **Step 2: Verify build**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 
@@ -818,7 +818,7 @@ git commit -m "feat(service): configure SubprojectSuggestionService on database 
 **Step 1: Build the app**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/sub-project-suggestions/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/sub-project-suggestions/SeleneChat
 swift build
 ```
 

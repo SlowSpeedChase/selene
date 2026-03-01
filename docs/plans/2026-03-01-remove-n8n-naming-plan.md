@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Remove all "selene-n8n" references from the codebase, renaming to "selene".
+**Goal:** Remove all "selene" references from the codebase, renaming to "selene".
 
-**Architecture:** Global find-and-replace of path references in code, config, and docs — done while still in the `~/selene-n8n/` directory (valid git state). Directory and GitHub rename happen as final manual steps after merge.
+**Architecture:** Global find-and-replace of path references in code, config, and docs — done while still in the `~/selene/` directory (valid git state). Directory and GitHub rename happen as final manual steps after merge.
 
 **Tech Stack:** sed (batch replace), Swift (verify build), launchd (reinstall agents), gh CLI (repo rename)
 
@@ -26,13 +26,13 @@
 
 **Step 1: Replace all occurrences in each Swift file**
 
-In each file listed above, replace every occurrence of `selene-n8n` with `selene`. This covers:
-- Hardcoded paths like `/Users/chaseeasterling/selene-n8n/...`
+In each file listed above, replace every occurrence of `selene` with `selene`. This covers:
+- Hardcoded paths like `/Users/chaseeasterling/selene/...`
 - Comments referencing the project name
 - Test assertions checking the project root path
 
 Use `replace_all` on each file with:
-- old: `selene-n8n`
+- old: `selene`
 - new: `selene`
 
 **Step 2: Verify Swift build compiles**
@@ -49,13 +49,13 @@ Expected: Build succeeds with no errors.
 cd SeleneChat && swift test 2>&1 | tail -30
 ```
 
-Expected: All tests pass. The `ScheduledWorkflowTests` test at line 559 now asserts `selene` instead of `selene-n8n`.
+Expected: All tests pass. The `ScheduledWorkflowTests` test at line 559 now asserts `selene` instead of `selene`.
 
 **Step 4: Commit**
 
 ```bash
 git add SeleneChat/
-git commit -m "refactor: update Swift source paths from selene-n8n to selene"
+git commit -m "refactor: update Swift source paths from selene to selene"
 ```
 
 ---
@@ -69,12 +69,12 @@ git commit -m "refactor: update Swift source paths from selene-n8n to selene"
 
 **Step 1: Replace in all launchd plist files**
 
-In every `.plist` file under `launchd/` and `scripts/things-bridge/`, replace all occurrences of `selene-n8n` with `selene`.
+In every `.plist` file under `launchd/` and `scripts/things-bridge/`, replace all occurrences of `selene` with `selene`.
 
 These are XML files with paths like:
 ```xml
-<string>/Users/chaseeasterling/selene-n8n</string>
-<string>/Users/chaseeasterling/selene-n8n/logs/process-llm.log</string>
+<string>/Users/chaseeasterling/selene</string>
+<string>/Users/chaseeasterling/selene/logs/process-llm.log</string>
 ```
 
 Becomes:
@@ -95,7 +95,7 @@ Expected: All files report "OK".
 
 ```bash
 git add launchd/ scripts/things-bridge/*.plist
-git commit -m "refactor: update launchd plist paths from selene-n8n to selene"
+git commit -m "refactor: update launchd plist paths from selene to selene"
 ```
 
 ---
@@ -109,7 +109,7 @@ git commit -m "refactor: update launchd plist paths from selene-n8n to selene"
 
 Change:
 ```json
-"name": "selene-n8n",
+"name": "selene",
 "description": "ADHD-focused knowledge management system using n8n workflows",
 ```
 
@@ -133,7 +133,7 @@ Expected: "Valid JSON"
 
 ```bash
 git add package.json
-git commit -m "refactor: update package.json name from selene-n8n to selene"
+git commit -m "refactor: update package.json name from selene to selene"
 ```
 
 ---
@@ -151,10 +151,10 @@ git commit -m "refactor: update package.json name from selene-n8n to selene"
 
 **Step 1: Replace all occurrences in each file**
 
-In each file listed above, replace every occurrence of `selene-n8n` with `selene`.
+In each file listed above, replace every occurrence of `selene` with `selene`.
 
 Key changes:
-- `.claude/settings.json`: Hook command `cd /Users/chaseeasterling/selene-n8n &&` → `cd /Users/chaseeasterling/selene &&`
+- `.claude/settings.json`: Hook command `cd /Users/chaseeasterling/selene &&` → `cd /Users/chaseeasterling/selene &&`
 - `.claude/skills/run-workflow/SKILL.md`: Same path pattern
 - `.claude/skills/launchd-check/SKILL.md`: Log file paths
 - `.claude/agents/*.md`: Directory tree diagrams
@@ -165,7 +165,7 @@ Key changes:
 
 ```bash
 git add .claude/
-git commit -m "refactor: update .claude/ config paths from selene-n8n to selene"
+git commit -m "refactor: update .claude/ config paths from selene to selene"
 ```
 
 ---
@@ -181,15 +181,15 @@ git commit -m "refactor: update .claude/ config paths from selene-n8n to selene"
 
 **Step 1: Replace path references in script files**
 
-In `.sh` files, replace `/Users/chaseeasterling/selene-n8n` with `/Users/chaseeasterling/selene`.
+In `.sh` files, replace `/Users/chaseeasterling/selene` with `/Users/chaseeasterling/selene`.
 
-For `scripts/CLAUDE.md`, the Docker container references (`CONTAINER_NAME="selene-n8n"`, `docker exec selene-n8n`, `docker ps | grep -q selene-n8n`) are historical documentation of the old n8n Docker setup. Replace `selene-n8n` with `selene` in directory path references only. The Docker references can be left as-is since they describe the old system — OR update them all for consistency since the old Docker system is completely gone. **Decision: update all for consistency** — the scripts CLAUDE.md should reflect current reality.
+For `scripts/CLAUDE.md`, the Docker container references (`CONTAINER_NAME="selene"`, `docker exec selene`, `docker ps | grep -q selene`) are historical documentation of the old n8n Docker setup. Replace `selene` with `selene` in directory path references only. The Docker references can be left as-is since they describe the old system — OR update them all for consistency since the old Docker system is completely gone. **Decision: update all for consistency** — the scripts CLAUDE.md should reflect current reality.
 
 **Step 2: Commit**
 
 ```bash
 git add scripts/
-git commit -m "refactor: update script paths from selene-n8n to selene"
+git commit -m "refactor: update script paths from selene to selene"
 ```
 
 ---
@@ -203,7 +203,7 @@ git commit -m "refactor: update script paths from selene-n8n to selene"
 
 Change:
 ```
-selene-n8n/
+selene/
 ```
 
 To:
@@ -217,14 +217,14 @@ Note: The version history entry at line 420 ("2026-01-09: Replaced n8n with Type
 
 Add to the Version History section:
 ```
-- **2026-03-01**: Renamed project from selene-n8n to selene (removed legacy n8n naming)
+- **2026-03-01**: Renamed project from selene to selene (removed legacy n8n naming)
 ```
 
 **Step 3: Commit**
 
 ```bash
 git add CLAUDE.md
-git commit -m "refactor: update CLAUDE.md directory name from selene-n8n to selene"
+git commit -m "refactor: update CLAUDE.md directory name from selene to selene"
 ```
 
 ---
@@ -232,17 +232,17 @@ git commit -m "refactor: update CLAUDE.md directory name from selene-n8n to sele
 ## Task 7: Documentation — Batch Replace Path References
 
 **Files:**
-- Modify: 62 files in `docs/` directory that reference `selene-n8n`
+- Modify: 62 files in `docs/` directory that reference `selene`
 
 **Step 1: Batch replace path references across all docs**
 
-Replace `/Users/chaseeasterling/selene-n8n` with `/Users/chaseeasterling/selene` across all files in `docs/`.
+Replace `/Users/chaseeasterling/selene` with `/Users/chaseeasterling/selene` across all files in `docs/`.
 
-Also replace standalone `selene-n8n/` (directory tree references) with `selene/` in these files.
+Also replace standalone `selene/` (directory tree references) with `selene/` in these files.
 
 These are historical plan documents, implementation guides, and roadmap docs. Even though many are "done", their path references should reflect the current directory name to avoid confusion if someone reads them.
 
-**Note on Docker references:** Files like `docs/guides/recovery.md`, `docs/guides/packages.md`, `docs/guides/setup.md` contain `docker exec selene-n8n` commands. These describe the old Docker-based system. Replace `selene-n8n` here too for consistency — the entire Docker setup is archived and these docs should match the `archive/` references.
+**Note on Docker references:** Files like `docs/guides/recovery.md`, `docs/guides/packages.md`, `docs/guides/setup.md` contain `docker exec selene` commands. These describe the old Docker-based system. Replace `selene` here too for consistency — the entire Docker setup is archived and these docs should match the `archive/` references.
 
 **Step 2: Verify no broken markdown**
 
@@ -252,7 +252,7 @@ Spot-check a few files to ensure the replacements didn't break any markdown form
 
 ```bash
 git add docs/
-git commit -m "docs: update selene-n8n references to selene across documentation"
+git commit -m "docs: update selene references to selene across documentation"
 ```
 
 ---
@@ -311,10 +311,10 @@ git status
 
 ## Task 10: Final Verification
 
-**Step 1: Search for any remaining `selene-n8n` references in tracked files**
+**Step 1: Search for any remaining `selene` references in tracked files**
 
 ```bash
-git grep 'selene-n8n' -- ':!archive/'
+git grep 'selene' -- ':!archive/'
 ```
 
 Expected: **Zero matches** outside of `archive/` directory. If any remain, fix them.
@@ -365,7 +365,7 @@ git merge rename/remove-n8n
 
 Or create a PR:
 ```bash
-gh pr create --title "Remove legacy n8n from project naming" --body "Renames selene-n8n to selene across all code, config, and docs"
+gh pr create --title "Remove legacy n8n from project naming" --body "Renames selene to selene across all code, config, and docs"
 ```
 
 ---
@@ -386,7 +386,7 @@ GitHub auto-redirects the old URL, so existing links won't break.
 
 ```bash
 cd ~
-mv selene-n8n selene
+mv selene selene
 cd selene
 ```
 
@@ -428,7 +428,7 @@ Launch SeleneChat and verify it works.
 
 **Step 7: Update Claude Code project path**
 
-The Claude Code project config at `~/.claude/projects/-Users-chaseeasterling-selene-n8n/` needs to be moved/recreated for the new path. This may require:
+The Claude Code project config at `~/.claude/projects/-Users-chaseeasterling-selene/` needs to be moved/recreated for the new path. This may require:
 
 ```bash
 # Check what exists
@@ -441,11 +441,11 @@ ls ~/.claude/projects/ | grep selene
 
 **Step 8: Update auto-memory path**
 
-The memory file at `~/.claude/projects/-Users-chaseeasterling-selene-n8n/memory/MEMORY.md` needs to be accessible from the new project path. Copy it:
+The memory file at `~/.claude/projects/-Users-chaseeasterling-selene/memory/MEMORY.md` needs to be accessible from the new project path. Copy it:
 
 ```bash
 # After Claude Code creates the new project config in ~/selene:
-cp -r ~/.claude/projects/-Users-chaseeasterling-selene-n8n/memory/ \
+cp -r ~/.claude/projects/-Users-chaseeasterling-selene/memory/ \
       ~/.claude/projects/-Users-chaseeasterling-selene/memory/
 ```
 
@@ -455,4 +455,4 @@ cp -r ~/.claude/projects/-Users-chaseeasterling-selene-n8n/memory/ \
 - [ ] `launchctl list | grep selene` shows all agents
 - [ ] SeleneChat opens and responds to queries
 - [ ] `git push` works
-- [ ] `git grep 'selene-n8n' -- ':!archive/'` returns zero matches
+- [ ] `git grep 'selene' -- ':!archive/'` returns zero matches

@@ -114,7 +114,7 @@ See [13-N8N-WORKFLOW-SPECS.md](./13-N8N-WORKFLOW-SPECS.md) for detailed node con
 ## Project Structure
 
 ```
-/Users/chaseeasterling/selene-n8n/
+/Users/chaseeasterling/selene/
 │
 ├── README.md                    # Project overview and quick start
 ├── ROADMAP.md                   # Links to this documentation
@@ -215,4 +215,4 @@ See [13-N8N-WORKFLOW-SPECS.md](./13-N8N-WORKFLOW-SPECS.md) for detailed node con
 - **Ollama API**: https://github.com/ollama/ollama/blob/main/docs/api.md
 - **n8n Docs**: https://docs.n8n.io/
 - **SQLite Docs**: https://www.sqlite.org/docs.html
-- **Project README**: /selene-n8n/README.md
+- **Project README**: /selene/README.md

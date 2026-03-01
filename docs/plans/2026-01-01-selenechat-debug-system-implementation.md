@@ -83,7 +83,7 @@ final class DebugLoggerTests: XCTestCase {
 **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
 ```
 
 Expected: FAIL - "cannot find 'DebugLogger' in scope"
@@ -151,7 +151,7 @@ final class DebugLogger {
 **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
 ```
 
 Expected: PASS
@@ -159,7 +159,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Debug/DebugLogger.swift SeleneChat/Tests/DebugLoggerTests.swift
 git commit -m "feat(debug): add DebugLogger with basic logging"
 ```
@@ -223,7 +223,7 @@ Add to `DebugLoggerTests.swift`:
 **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
 ```
 
 Expected: FAIL - init doesn't accept maxSizeBytes parameter
@@ -320,7 +320,7 @@ final class DebugLogger {
 **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
 ```
 
 Expected: PASS
@@ -328,7 +328,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Debug/DebugLogger.swift SeleneChat/Tests/DebugLoggerTests.swift
 git commit -m "feat(debug): add log rotation at 5MB"
 ```
@@ -390,7 +390,7 @@ class MockSnapshotProvider: DebugSnapshotProvider {
 **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotProviderTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotProviderTests 2>&1 | tail -20
 ```
 
 Expected: FAIL - "cannot find 'DebugSnapshotProvider' in scope"
@@ -417,7 +417,7 @@ protocol DebugSnapshotProvider {
 **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotProviderTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotProviderTests 2>&1 | tail -20
 ```
 
 Expected: PASS
@@ -425,7 +425,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Debug/DebugSnapshotProvider.swift SeleneChat/Tests/DebugSnapshotProviderTests.swift
 git commit -m "feat(debug): add DebugSnapshotProvider protocol"
 ```
@@ -528,7 +528,7 @@ final class DebugSnapshotServiceTests: XCTestCase {
 **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotServiceTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotServiceTests 2>&1 | tail -20
 ```
 
 Expected: FAIL - "cannot find 'DebugSnapshotService' in scope"
@@ -613,7 +613,7 @@ final class DebugSnapshotService {
 **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotServiceTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugSnapshotServiceTests 2>&1 | tail -20
 ```
 
 Expected: PASS
@@ -621,7 +621,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Debug/DebugSnapshotService.swift SeleneChat/Tests/DebugSnapshotServiceTests.swift
 git commit -m "feat(debug): add DebugSnapshotService with file trigger"
 ```
@@ -685,7 +685,7 @@ Add to `DebugLoggerTests.swift`:
 **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
 ```
 
 Expected: FAIL - init doesn't accept errorPath parameter
@@ -797,7 +797,7 @@ final class DebugLogger {
 **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter DebugLoggerTests 2>&1 | tail -20
 ```
 
 Expected: PASS
@@ -805,7 +805,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Debug/DebugLogger.swift SeleneChat/Tests/DebugLoggerTests.swift
 git commit -m "feat(debug): add error alerting to /tmp/selenechat-last-error"
 ```
@@ -890,7 +890,7 @@ final class ActionTrackerTests: XCTestCase {
 **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter ActionTrackerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter ActionTrackerTests 2>&1 | tail -20
 ```
 
 Expected: FAIL - "cannot find 'ActionTracker' in scope"
@@ -954,7 +954,7 @@ final class ActionTracker: DebugSnapshotProvider {
 **Step 4: Run test to verify it passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter ActionTrackerTests 2>&1 | tail -20
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter ActionTrackerTests 2>&1 | tail -20
 ```
 
 Expected: PASS
@@ -962,7 +962,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Debug/ActionTracker.swift SeleneChat/Tests/ActionTrackerTests.swift
 git commit -m "feat(debug): add ActionTracker for recent user actions"
 ```
@@ -1046,7 +1046,7 @@ Solved issues and their solutions for future reference.
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add .claude/skills/log-debug-fix.md docs/debug-journal.md
 git commit -m "feat(debug): add /log-debug-fix skill and debug journal"
 ```
@@ -1123,7 +1123,7 @@ struct SeleneChatApp: App {
 **Step 2: Verify build passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
 ```
 
 Expected: Build complete
@@ -1131,7 +1131,7 @@ Expected: Build complete
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/App/SeleneChatApp.swift
 git commit -m "feat(debug): integrate debug system with app startup"
 ```
@@ -1172,7 +1172,7 @@ DebugLogger.shared.log(.state, "OllamaService.isAvailable: false (status \(httpR
 **Step 2: Verify build passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
 ```
 
 Expected: Build complete
@@ -1180,7 +1180,7 @@ Expected: Build complete
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Services/OllamaService.swift
 git commit -m "feat(debug): add debug logging to OllamaService"
 ```
@@ -1221,7 +1221,7 @@ DebugLogger.shared.log(.state, "DatabaseService.sessions.count: \(oldCount) → 
 **Step 2: Verify build passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
 ```
 
 Expected: Build complete
@@ -1229,7 +1229,7 @@ Expected: Build complete
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Services/DatabaseService.swift
 git commit -m "feat(debug): add debug logging to DatabaseService"
 ```
@@ -1264,7 +1264,7 @@ Pattern for each view:
 **Step 2: Verify build passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
 ```
 
 Expected: Build complete
@@ -1272,7 +1272,7 @@ Expected: Build complete
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/App/ContentView.swift SeleneChat/Sources/Views/ChatView.swift SeleneChat/Sources/Views/PlanningView.swift
 git commit -m "feat(debug): add navigation logging to main views"
 ```
@@ -1312,7 +1312,7 @@ DebugSnapshotService.shared.registerProvider(named: "chatViewModel", provider: c
 **Step 3: Verify build passes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift build 2>&1 | tail -10
 ```
 
 Expected: Build complete
@@ -1320,7 +1320,7 @@ Expected: Build complete
 **Step 4: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Sources/Services/ChatViewModel.swift SeleneChat/Sources/App/SeleneChatApp.swift
 git commit -m "feat(debug): make ChatViewModel a DebugSnapshotProvider"
 ```
@@ -1393,7 +1393,7 @@ final class DebugSystemIntegrationTests: XCTestCase {
 **Step 2: Run all debug tests**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system/SeleneChat && swift test --filter Debug 2>&1 | tail -30
+cd /Users/chaseeasterling/selene/.worktrees/debug-system/SeleneChat && swift test --filter Debug 2>&1 | tail -30
 ```
 
 Expected: All tests pass
@@ -1401,7 +1401,7 @@ Expected: All tests pass
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/Tests/DebugSystemIntegrationTests.swift
 git commit -m "test(debug): add integration test for full debug workflow"
 ```
@@ -1455,7 +1455,7 @@ Add to Key Files section:
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/debug-system
+cd /Users/chaseeasterling/selene/.worktrees/debug-system
 git add SeleneChat/README.md SeleneChat/CLAUDE.md
 git commit -m "docs: add debug system documentation"
 ```

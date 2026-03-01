@@ -8,21 +8,21 @@
 
 ## Problem
 
-The project directory, GitHub repo, package.json, Swift source files, launchd plists, and documentation all reference "selene-n8n" — a name from when the project used n8n for workflow automation. n8n was replaced with a native TypeScript + Fastify backend in January 2026. The name is misleading and should be cleaned up.
+The project directory, GitHub repo, package.json, Swift source files, launchd plists, and documentation all reference "selene" — a name from when the project used n8n for workflow automation. n8n was replaced with a native TypeScript + Fastify backend in January 2026. The name is misleading and should be cleaned up.
 
 ## Decision
 
-Rename everything from `selene-n8n` to `selene`.
+Rename everything from `selene` to `selene`.
 
 ## Approach
 
-**Code-first, then directory rename.** All file content changes happen while still in `~/selene-n8n/` (valid git state), committed, then the directory and GitHub repo are renamed as final steps.
+**Code-first, then directory rename.** All file content changes happen while still in `~/selene/` (valid git state), committed, then the directory and GitHub repo are renamed as final steps.
 
 ## Scope of Changes
 
-### Phase 1: Code Updates (in `~/selene-n8n/`, on feature branch)
+### Phase 1: Code Updates (in `~/selene/`, on feature branch)
 
-**Swift source files** — find-and-replace `/selene-n8n/` to `/selene/`:
+**Swift source files** — find-and-replace `/selene/` to `/selene/`:
 - `SeleneChat/Sources/SeleneChat/Services/ObsidianService.swift`
 - `SeleneChat/Sources/SeleneChat/Services/ThingsURLService.swift`
 - `SeleneChat/Sources/SeleneChat/Services/WorkflowRunner.swift`
@@ -32,11 +32,11 @@ Rename everything from `selene-n8n` to `selene`.
 - `SeleneChat/Tests/ManualIntegrationTest.swift`
 - `SeleneChat/Tests/SeleneChatTests/Models/ScheduledWorkflowTests.swift`
 
-**launchd plists** — find-and-replace `selene-n8n` to `selene` in all 16 plist files (47 references total).
+**launchd plists** — find-and-replace `selene` to `selene` in all 16 plist files (47 references total).
 
 **package.json** — update `name` to `selene`, update `description` to remove "n8n", remove `"n8n"` from keywords.
 
-**.claude/ config files** — update `selene-n8n` to `selene` in:
+**.claude/ config files** — update `selene` to `selene` in:
 - `.claude/settings.json` — hook command path
 - `.claude/skills/run-workflow/SKILL.md` — workflow runner path
 - `.claude/skills/launchd-check/SKILL.md` — log paths (3 references)
@@ -45,7 +45,7 @@ Rename everything from `selene-n8n` to `selene`.
 - `.claude/CURRENT-ENV.md` — old container name references
 - `.claude/PROJECT-STATUS.md` — location reference
 
-**Scripts** — update `selene-n8n` to `selene` in:
+**Scripts** — update `selene` to `selene` in:
 - `scripts/verify-production-clean.sh` — database path
 - `scripts/clean-production-database.sh` — database + backup paths
 - `scripts/setup-git-hooks.sh` — project root path
@@ -54,7 +54,7 @@ Rename everything from `selene-n8n` to `selene`.
 
 **CLAUDE.md** — directory tree diagram + version history entry
 
-**Documentation** — batch replace `selene-n8n` path references across 62 files in `docs/`
+**Documentation** — batch replace `selene` path references across 62 files in `docs/`
 
 **Cleanup** — delete `.n8n-local/` directory (dead Docker artifacts). Remove stale worktrees.
 
@@ -65,7 +65,7 @@ Merge feature branch to main.
 ### Phase 3: Infrastructure (post-merge, manual)
 
 1. `gh repo rename selene` — rename GitHub repository
-2. `cd ~ && mv selene-n8n selene` — rename local directory
+2. `cd ~ && mv selene selene` — rename local directory
 3. `cd ~/selene && git remote set-url origin https://github.com/SlowSpeedChase/selene.git`
 4. `git push` — verify remote works
 5. `./scripts/install-launchd.sh` — reinstall launchd agents with corrected paths
@@ -81,7 +81,7 @@ Merge feature branch to main.
 
 ## Acceptance Criteria
 
-- [ ] No file in active codebase references `/selene-n8n/` as a path
+- [ ] No file in active codebase references `/selene/` as a path
 - [ ] `swift build` succeeds after path updates
 - [ ] GitHub repo is named `selene`
 - [ ] Local directory is `~/selene/`
@@ -103,5 +103,5 @@ Estimated: < 1 day. Mostly mechanical find-and-replace with a few manual infrast
 ## Risks
 
 - **Worktrees:** Any active `.worktrees/` directories will have stale paths after the directory rename. Should be cleaned up before Phase 3.
-- **Claude Code:** The `.claude/projects/` path includes `selene-n8n` and needs updating.
-- **Third-party references:** Any bookmarks, terminal aliases, or scripts outside this repo that reference `~/selene-n8n/` will need manual updates.
+- **Claude Code:** The `.claude/projects/` path includes `selene` and needs updating.
+- **Third-party references:** Any bookmarks, terminal aliases, or scripts outside this repo that reference `~/selene/` will need manual updates.

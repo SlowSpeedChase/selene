@@ -507,7 +507,7 @@ These are explicitly NOT part of this implementation but could be added later:
 
 ## References
 
-- **Existing codebase**: `/Users/chaseeasterling/selene-n8n/SeleneChat/`
+- **Existing codebase**: `/Users/chaseeasterling/selene/SeleneChat/`
 - **Database**: `/selene/data/selene.db` (SQLite)
 - **Related roadmap phase**: [SeleneChat Enhancements](../roadmap/02-CURRENT-STATUS.md#-selenechat-enhancements)
 - **Privacy architecture**: See `PrivacyRouter.swift` for tier system

@@ -433,7 +433,7 @@ Selene is a knowledge management system built on n8n workflows that processes pe
 ```
 Host Machine
 ├── Docker Desktop
-│   └── selene-n8n container
+│   └── selene container
 │       ├── n8n (port 5678)
 │       ├── better-sqlite3 (globally installed)
 │       ├── n8n-nodes-sqlite (community package)
@@ -460,7 +460,7 @@ Host Machine
 ### File System Layout
 
 ```
-/Users/chaseeasterling/selene-n8n/
+/Users/chaseeasterling/selene/
 ├── docker-compose.yml        # Container orchestration
 ├── Dockerfile                 # Custom n8n image
 ├── .env                       # Configuration (gitignored)

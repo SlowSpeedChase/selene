@@ -240,7 +240,7 @@ git commit -m "feat: include environment and port in health endpoint"
 
 **Step 1: Update defaultDatabasePath()**
 
-Change the CLI detection to point to `~/selene-data-dev/` instead of `~/selene-n8n/data-test/`:
+Change the CLI detection to point to `~/selene-data-dev/` instead of `~/selene/data-test/`:
 
 ```swift
 private static func defaultDatabasePath() -> String {

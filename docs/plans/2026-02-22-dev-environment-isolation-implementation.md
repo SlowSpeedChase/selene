@@ -97,7 +97,7 @@ Why this structure instead of one line per workflow:
 **Step 2: Test Overmind starts both processes**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 overmind start -f Procfile.dev
 ```
 
@@ -240,7 +240,7 @@ Expected: `536`
 
 ```bash
 # 4. SeleneChat CLI uses dev DB
-cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift build 2>&1 | tail -3
+cd /Users/chaseeasterling/selene/SeleneChat && swift build 2>&1 | tail -3
 ```
 
 Expected: Build succeeds. (CLI binary will use `~/selene-data-dev/selene.db` when not in `.app` bundle.)
@@ -261,7 +261,7 @@ Expected: > 0 files
 ```bash
 # 7. Reset works
 # (Don't actually run this — just verify the script exists and parses correctly)
-bash -n /Users/chaseeasterling/selene-n8n/scripts/reset-dev-data.sh && echo "OK"
+bash -n /Users/chaseeasterling/selene/scripts/reset-dev-data.sh && echo "OK"
 ```
 
 Expected: `OK`
@@ -269,7 +269,7 @@ Expected: `OK`
 ```bash
 # 8. Production data never read
 # Verify .env.development sets SELENE_ENV=development (which config.ts auto-loads for non-prod)
-grep SELENE_ENV /Users/chaseeasterling/selene-n8n/.env.development
+grep SELENE_ENV /Users/chaseeasterling/selene/.env.development
 ```
 
 Expected: `SELENE_ENV=development`

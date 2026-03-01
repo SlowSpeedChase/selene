@@ -1568,7 +1568,7 @@ git commit -m "feat: update daily-summary to use essences instead of truncation"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1584,10 +1584,10 @@ git commit -m "feat: update daily-summary to use essences instead of truncation"
     <integer>300</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/distill-essences.log</string>
+    <string>/Users/chaseeasterling/selene/logs/distill-essences.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/distill-essences.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/distill-essences.error.log</string>
 </dict>
 </plist>
 ```
@@ -1610,7 +1610,7 @@ git commit -m "feat: update daily-summary to use essences instead of truncation"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1631,10 +1631,10 @@ git commit -m "feat: update daily-summary to use essences instead of truncation"
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/evaluate-fidelity.log</string>
+    <string>/Users/chaseeasterling/selene/logs/evaluate-fidelity.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/evaluate-fidelity.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/evaluate-fidelity.error.log</string>
 </dict>
 </plist>
 ```
@@ -1657,7 +1657,7 @@ git commit -m "feat: update daily-summary to use essences instead of truncation"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1673,10 +1673,10 @@ git commit -m "feat: update daily-summary to use essences instead of truncation"
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compile-thread-digests.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compile-thread-digests.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compile-thread-digests.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compile-thread-digests.error.log</string>
 </dict>
 </plist>
 ```

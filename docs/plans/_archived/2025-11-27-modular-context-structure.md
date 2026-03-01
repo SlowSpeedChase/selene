@@ -940,7 +940,7 @@ docker-compose restart n8n
 docker-compose ps
 
 # Shell into container
-docker exec -it selene-n8n /bin/sh
+docker exec -it selene /bin/sh
 ```
 
 ### n8n Workflow Management
@@ -1286,7 +1286,7 @@ curl http://localhost:11434/api/generate \
   -d '{"model": "mistral:7b", "prompt": "test", "stream": false}'
 
 # From n8n container
-docker exec selene-n8n curl http://host.docker.internal:11434/api/generate \
+docker exec selene curl http://host.docker.internal:11434/api/generate \
   -d '{"model": "mistral:7b", "prompt": "test", "stream": false}'
 ```
 
@@ -1434,10 +1434,10 @@ ollama run mistral:7b "test prompt"
 
 ```bash
 # Check if installed in container
-docker exec selene-n8n ls /home/node/.n8n/node_modules/better-sqlite3
+docker exec selene ls /home/node/.n8n/node_modules/better-sqlite3
 
 # Reinstall if missing
-docker exec selene-n8n npm install -g better-sqlite3
+docker exec selene npm install -g better-sqlite3
 
 # Restart container
 docker-compose restart n8n
@@ -2587,7 +2587,7 @@ sqlite3 data/selene.db ".schema raw_notes"
 ### Key Directories
 
 ```
-selene-n8n/
+selene/
 ├── .claude/                 # Context files for AI development
 │   ├── README.md           # Context navigation guide (START HERE)
 │   ├── DEVELOPMENT.md      # Architecture and decisions

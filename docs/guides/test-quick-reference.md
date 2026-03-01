@@ -42,7 +42,7 @@ Activate at: http://localhost:5678
 ## 🎯 Feature Development Flow
 
 1. Modify test workflow (e.g., `workflow-test.json`)
-2. Import: `docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/XX/workflow-test.json`
+2. Import: `docker exec selene n8n import:workflow --input=/workflows/workflows/XX/workflow-test.json`
 3. Restart: `docker-compose restart n8n`
 4. Test: `./scripts/test-ingest.sh "feature_v1"`
 5. Verify: `./scripts/test-verify.sh "feature_v1"`

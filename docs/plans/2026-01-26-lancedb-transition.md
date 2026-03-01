@@ -1607,13 +1607,13 @@ If `com.selene.compute-embeddings.plist` exists, update it. Otherwise create `la
         <string>src/workflows/index-vectors.ts</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
     <key>StartInterval</key>
     <integer>600</integer>
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/index-vectors.out.log</string>
+    <string>/Users/chaseeasterling/selene/logs/index-vectors.out.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/index-vectors.err.log</string>
+    <string>/Users/chaseeasterling/selene/logs/index-vectors.err.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

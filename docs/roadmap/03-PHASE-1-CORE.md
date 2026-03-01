@@ -92,7 +92,7 @@ Phase 1 establishes the foundational pipeline: Drafts → n8n → Ollama → SQL
 ### ✅ 1. Project Directory Structure
 
 ```bash
-/Users/chaseeasterling/selene-n8n/
+/Users/chaseeasterling/selene/
 ├── database/
 │   ├── schema.sql
 │   └── selene.db

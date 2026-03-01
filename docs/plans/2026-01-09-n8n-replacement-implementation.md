@@ -1369,11 +1369,11 @@ Create `launchd/com.selene.server.plist`:
     <array>
         <string>/usr/local/bin/npx</string>
         <string>ts-node</string>
-        <string>/Users/chaseeasterling/selene-n8n/src/server.ts</string>
+        <string>/Users/chaseeasterling/selene/src/server.ts</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>KeepAlive</key>
     <true/>
@@ -1382,10 +1382,10 @@ Create `launchd/com.selene.server.plist`:
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/server.out.log</string>
+    <string>/Users/chaseeasterling/selene/logs/server.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/server.err.log</string>
+    <string>/Users/chaseeasterling/selene/logs/server.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1411,20 +1411,20 @@ Create `launchd/com.selene.process-llm.plist`:
     <array>
         <string>/usr/local/bin/npx</string>
         <string>ts-node</string>
-        <string>/Users/chaseeasterling/selene-n8n/src/workflows/process-llm.ts</string>
+        <string>/Users/chaseeasterling/selene/src/workflows/process-llm.ts</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>StartInterval</key>
     <integer>300</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/process-llm.out.log</string>
+    <string>/Users/chaseeasterling/selene/logs/process-llm.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/process-llm.err.log</string>
+    <string>/Users/chaseeasterling/selene/logs/process-llm.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1454,20 +1454,20 @@ Create `launchd/com.selene.compute-associations.plist`:
     <array>
         <string>/usr/local/bin/npx</string>
         <string>ts-node</string>
-        <string>/Users/chaseeasterling/selene-n8n/src/workflows/compute-associations.ts</string>
+        <string>/Users/chaseeasterling/selene/src/workflows/compute-associations.ts</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>StartInterval</key>
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compute-associations.out.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compute-associations.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compute-associations.err.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compute-associations.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -1491,11 +1491,11 @@ Create `launchd/com.selene.daily-summary.plist`:
     <array>
         <string>/usr/local/bin/npx</string>
         <string>ts-node</string>
-        <string>/Users/chaseeasterling/selene-n8n/src/workflows/daily-summary.ts</string>
+        <string>/Users/chaseeasterling/selene/src/workflows/daily-summary.ts</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>StartCalendarInterval</key>
     <dict>
@@ -1506,10 +1506,10 @@ Create `launchd/com.selene.daily-summary.plist`:
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/daily-summary.out.log</string>
+    <string>/Users/chaseeasterling/selene/logs/daily-summary.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/daily-summary.err.log</string>
+    <string>/Users/chaseeasterling/selene/logs/daily-summary.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>

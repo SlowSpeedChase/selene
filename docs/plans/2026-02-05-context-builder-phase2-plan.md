@@ -60,7 +60,7 @@ final class ThinkingPartnerQueryTypeTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerQueryTypeTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerQueryTypeTests`
 Expected: FAIL - "ThinkingPartnerQueryType not found"
 
 **Step 3: Write minimal implementation**
@@ -96,13 +96,13 @@ enum ThinkingPartnerQueryType: String {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerQueryTypeTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerQueryTypeTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add SeleneChat/Sources/Models/ThinkingPartnerQueryType.swift SeleneChat/Tests/SeleneChatTests/Models/ThinkingPartnerQueryTypeTests.swift
 git commit -m "$(cat <<'EOF'
 feat(selenechat): add ThinkingPartnerQueryType enum
@@ -165,7 +165,7 @@ final class ThinkingPartnerContextBuilderTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: FAIL - "ThinkingPartnerContextBuilder not found"
 
 **Step 3: Write minimal implementation**
@@ -216,13 +216,13 @@ class ThinkingPartnerContextBuilder {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add SeleneChat/Sources/Services/ThinkingPartnerContextBuilder.swift SeleneChat/Tests/SeleneChatTests/Services/ThinkingPartnerContextBuilderTests.swift
 git commit -m "$(cat <<'EOF'
 feat(selenechat): add ThinkingPartnerContextBuilder service
@@ -320,7 +320,7 @@ func testBriefingContextRespectsTokenBudget() {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: FAIL - "buildBriefingContext method not found"
 
 **Step 3: Write minimal implementation**
@@ -384,13 +384,13 @@ private func formatDate(_ date: Date) -> String {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add SeleneChat/Sources/Services/ThinkingPartnerContextBuilder.swift SeleneChat/Tests/SeleneChatTests/Services/ThinkingPartnerContextBuilderTests.swift
 git commit -m "$(cat <<'EOF'
 feat(selenechat): add buildBriefingContext for morning briefing
@@ -474,7 +474,7 @@ func testBuildSynthesisContext() {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: FAIL - "buildSynthesisContext method not found"
 
 **Step 3: Write minimal implementation**
@@ -526,13 +526,13 @@ func buildSynthesisContext(threads: [Thread], notesPerThread: [Int64: [Note]]) -
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add SeleneChat/Sources/Services/ThinkingPartnerContextBuilder.swift SeleneChat/Tests/SeleneChatTests/Services/ThinkingPartnerContextBuilderTests.swift
 git commit -m "$(cat <<'EOF'
 feat(selenechat): add buildSynthesisContext for cross-thread prioritization
@@ -627,7 +627,7 @@ func testDeepDiveContextRespectsTokenBudget() {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: FAIL - "buildDeepDiveContext method not found"
 
 **Step 3: Write minimal implementation**
@@ -683,13 +683,13 @@ func buildDeepDiveContext(thread: Thread, notes: [Note]) -> String {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextBuilderTests`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add SeleneChat/Sources/Services/ThinkingPartnerContextBuilder.swift SeleneChat/Tests/SeleneChatTests/Services/ThinkingPartnerContextBuilderTests.swift
 git commit -m "$(cat <<'EOF'
 feat(selenechat): add buildDeepDiveContext for thread exploration
@@ -828,13 +828,13 @@ final class ThinkingPartnerContextIntegrationTests: XCTestCase {
 
 **Step 2: Run tests**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ThinkingPartnerContextIntegrationTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ThinkingPartnerContextIntegrationTests`
 Expected: PASS
 
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add SeleneChat/Tests/SeleneChatTests/Integration/ThinkingPartnerContextIntegrationTests.swift
 git commit -m "$(cat <<'EOF'
 test(selenechat): add ThinkingPartnerContextBuilder integration tests
@@ -894,7 +894,7 @@ Add achievement entry:
 **Step 3: Commit**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 git add docs/plans/2026-02-05-selene-thinking-partner-design.md .claude/PROJECT-STATUS.md
 git commit -m "$(cat <<'EOF'
 docs: mark Thinking Partner Phase 2 complete

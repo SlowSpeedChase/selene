@@ -274,7 +274,7 @@ Add to `ThingsURLService.swift`:
 
     /// Path to the get-task-status AppleScript
     private var getTaskStatusScriptPath: String {
-        "/Users/chaseeasterling/selene-n8n/scripts/things-bridge/get-task-status.scpt"
+        "/Users/chaseeasterling/selene/scripts/things-bridge/get-task-status.scpt"
     }
 
     /// Parse JSON response from get-task-status.scpt

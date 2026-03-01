@@ -889,7 +889,7 @@ git commit -m "feat: add merge detection phase to thread lifecycle"
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -909,10 +909,10 @@ git commit -m "feat: add merge detection phase to thread lifecycle"
     </dict>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/thread-lifecycle.log</string>
+    <string>/Users/chaseeasterling/selene/logs/thread-lifecycle.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/thread-lifecycle.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/thread-lifecycle.error.log</string>
 </dict>
 </plist>
 ```

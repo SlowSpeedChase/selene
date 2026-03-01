@@ -7,7 +7,7 @@
 
 ## Problem
 
-SeleneChat has a single hardcoded default database path (`~/selene-n8n/data/selene.db`), which contains Claude's test data. The user's real notes are in `/Users/chaseeasterling/selene-data/selene.db`.
+SeleneChat has a single hardcoded default database path (`~/selene/data/selene.db`), which contains Claude's test data. The user's real notes are in `/Users/chaseeasterling/selene-data/selene.db`.
 
 This causes:
 - Production app shows fake/test notes instead of real notes
@@ -21,7 +21,7 @@ Auto-detect runtime environment and select appropriate database:
 | Run Method | Detection | Database |
 |------------|-----------|----------|
 | `/Applications/SeleneChat.app` | Executable path contains `.app/Contents/MacOS` | `/Users/chaseeasterling/selene-data/selene.db` |
-| `swift run` | Executable path in `.build/` | `~/selene-n8n/data/selene.db` |
+| `swift run` | Executable path in `.build/` | `~/selene/data/selene.db` |
 
 ## Implementation
 
@@ -46,7 +46,7 @@ private static func defaultDatabasePath() -> String {
         return "/Users/chaseeasterling/selene-data/selene.db"
     } else {
         return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("selene-n8n/data/selene.db")
+            .appendingPathComponent("selene/data/selene.db")
             .path
     }
 }
@@ -96,7 +96,7 @@ DebugLogger.shared.log(.state, "DatabaseService.defaultPath: \(Self.defaultDatab
 
 1. Run `swift run` from `SeleneChat/` directory
 2. Open Settings, verify orange "Development" badge
-3. Verify database path shows `selene-n8n/data/selene.db`
+3. Verify database path shows `selene/data/selene.db`
 4. Build and install: `./build-app.sh && cp -R .build/release/SeleneChat.app /Applications/`
 5. Open `/Applications/SeleneChat.app`
 6. Verify green "Production" badge

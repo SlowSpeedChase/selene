@@ -58,7 +58,7 @@ final class QueryAnalyzerDeepDiveTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter QueryAnalyzerDeepDiveTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter QueryAnalyzerDeepDiveTests`
 Expected: FAIL with "has no member 'detectDeepDiveIntent'" or "has no member 'deepDive'"
 
 **Step 3: Add implementation to QueryAnalyzer.swift**
@@ -129,7 +129,7 @@ if detectDeepDiveIntent(query) != nil {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter QueryAnalyzerDeepDiveTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter QueryAnalyzerDeepDiveTests`
 Expected: PASS
 
 **Step 5: Commit**
@@ -210,7 +210,7 @@ final class DeepDivePromptBuilderTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter DeepDivePromptBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter DeepDivePromptBuilderTests`
 Expected: FAIL with "Cannot find 'DeepDivePromptBuilder'"
 
 **Step 3: Write implementation**
@@ -284,7 +284,7 @@ class DeepDivePromptBuilder {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter DeepDivePromptBuilderTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter DeepDivePromptBuilderTests`
 Expected: PASS
 
 **Step 5: Commit**
@@ -369,7 +369,7 @@ final class ActionExtractorTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ActionExtractorTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ActionExtractorTests`
 Expected: FAIL
 
 **Step 3: Write implementation**
@@ -452,7 +452,7 @@ class ActionExtractor {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ActionExtractorTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ActionExtractorTests`
 Expected: PASS
 
 **Step 5: Commit**
@@ -531,7 +531,7 @@ final class ActionServiceTests: XCTestCase {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ActionServiceTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ActionServiceTests`
 Expected: FAIL
 
 **Step 3: Write implementation**
@@ -605,7 +605,7 @@ actor ActionService {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter ActionServiceTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter ActionServiceTests`
 Expected: PASS
 
 **Step 5: Commit**
@@ -697,7 +697,7 @@ if let deepDiveIntent = queryAnalyzer.detectDeepDiveIntent(content) {
 
 **Step 2: Verify build**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift build`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift build`
 Expected: Build succeeds
 
 **Step 3: Commit**
@@ -850,7 +850,7 @@ final class DeepDiveIntegrationTests: XCTestCase {
 
 **Step 2: Run tests**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/SeleneChat && swift test --filter DeepDiveIntegrationTests`
+Run: `cd /Users/chaseeasterling/selene/SeleneChat && swift test --filter DeepDiveIntegrationTests`
 Expected: PASS
 
 **Step 3: Commit**

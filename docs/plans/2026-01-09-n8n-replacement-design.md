@@ -36,7 +36,7 @@ Replace n8n with plain TypeScript scripts that Claude edits directly.
 ### Project Structure
 
 ```
-selene-n8n/
+selene/
 ├── src/
 │   ├── server.ts              # Webhook server (runs continuously)
 │   ├── workflows/
@@ -329,20 +329,20 @@ Example plist:
     <array>
         <string>/usr/local/bin/npx</string>
         <string>ts-node</string>
-        <string>/Users/chaseeasterling/selene-n8n/src/workflows/process-llm.ts</string>
+        <string>/Users/chaseeasterling/selene/src/workflows/process-llm.ts</string>
     </array>
 
     <key>StartInterval</key>
     <integer>300</integer>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/process-llm.out.log</string>
+    <string>/Users/chaseeasterling/selene/logs/process-llm.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/process-llm.err.log</string>
+    <string>/Users/chaseeasterling/selene/logs/process-llm.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>

@@ -30,7 +30,7 @@ The current `manage-workflow.sh update` command uses the `--separate` flag, whic
 ## File Structure
 
 ```
-selene-n8n/
+selene/
 ├── .workflow-ids.json          # Maps logical names → n8n IDs (gitignored)
 ├── .workflow-ids.example.json  # Template showing expected format
 ├── workflows/

@@ -30,7 +30,7 @@ This document describes how to recover from n8n database corruption and provides
 mkdir -p backup-$(date +%Y%m%d-%H%M%S)
 
 # Backup the corrupted database (just in case)
-docker cp selene-n8n:/home/node/.n8n/database.sqlite backup-TIMESTAMP/database-backup.sqlite
+docker cp selene:/home/node/.n8n/database.sqlite backup-TIMESTAMP/database-backup.sqlite
 
 # Verify workflow JSON backups exist
 find workflows/ -name "workflow.json" -o -name "workflow-test.json"
@@ -73,7 +73,7 @@ version: '3.8'  # No longer needed in modern Docker Compose
 docker-compose up -d --build
 
 # Wait for migrations to complete (watch logs)
-docker logs -f selene-n8n
+docker logs -f selene
 ```
 
 ### Phase 5: Create Owner Account
@@ -84,27 +84,27 @@ docker logs -f selene-n8n
 ### Phase 6: Import Workflows
 ```bash
 # Import all production workflows
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/01-ingestion/workflow.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/02-llm-processing/workflow.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/03-pattern-detection/workflow.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/04-obsidian-export/workflow.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/06-connection-network/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/01-ingestion/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/02-llm-processing/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/03-pattern-detection/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/04-obsidian-export/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/06-connection-network/workflow.json
 
 # Import test workflows
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/01-ingestion/workflow-test.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/02-llm-processing/workflow-test.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/04-obsidian-export/workflow-test.json
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow-test.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/01-ingestion/workflow-test.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/02-llm-processing/workflow-test.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/04-obsidian-export/workflow-test.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/05-sentiment-analysis/workflow-test.json
 
 # Import Apple variant
-docker exec selene-n8n n8n import:workflow --input=/workflows/workflows/02-llm-processing_apple/workflow.json
+docker exec selene n8n import:workflow --input=/workflows/workflows/02-llm-processing_apple/workflow.json
 ```
 
 ### Phase 7: Activate Production Workflows
 ```bash
 # Activate the 4 main production workflows
-docker exec selene-n8n sqlite3 /home/node/.n8n/database.sqlite \
+docker exec selene sqlite3 /home/node/.n8n/database.sqlite \
   "UPDATE workflow_entity SET active = 1 WHERE name IN (
     '01-Note-Ingestion | Selene',
     '02-LLM-Processing | Selene',
@@ -178,30 +178,30 @@ See `scripts/recover-n8n.sh` (to be created) for one-command recovery.
 ### n8n CLI Commands
 ```bash
 # Export a workflow
-docker exec selene-n8n n8n export:workflow --id=WORKFLOW_ID --output=/workflows/backup.json
+docker exec selene n8n export:workflow --id=WORKFLOW_ID --output=/workflows/backup.json
 
 # Export all workflows
-docker exec selene-n8n n8n export:workflow --all --output=/workflows/
+docker exec selene n8n export:workflow --all --output=/workflows/
 
 # List workflows
-docker exec selene-n8n n8n list:workflow
+docker exec selene n8n list:workflow
 
 # Update workflow (activate/deactivate)
-docker exec selene-n8n n8n update:workflow --id=WORKFLOW_ID --active=true
+docker exec selene n8n update:workflow --id=WORKFLOW_ID --active=true
 ```
 
 ### Database Inspection (Safe Read-Only)
 ```bash
 # View workflows
-docker exec selene-n8n sqlite3 /home/node/.n8n/database.sqlite \
+docker exec selene sqlite3 /home/node/.n8n/database.sqlite \
   "SELECT id, name, active FROM workflow_entity;"
 
 # View users
-docker exec selene-n8n sqlite3 /home/node/.n8n/database.sqlite \
+docker exec selene sqlite3 /home/node/.n8n/database.sqlite \
   "SELECT email, firstName, lastName FROM user;"
 
 # Database backup
-docker exec selene-n8n sqlite3 /home/node/.n8n/database.sqlite \
+docker exec selene sqlite3 /home/node/.n8n/database.sqlite \
   ".backup /home/node/.n8n/backup-$(date +%Y%m%d).sqlite"
 ```
 

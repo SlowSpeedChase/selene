@@ -15,7 +15,7 @@ Connect SeleneChat's conversational AI to the processed notes from the Selene n8
 ## Goals
 
 ### Primary Goals
-1. Enable SeleneChat to query and analyze processed notes from `/Users/chaseeasterling/selene-n8n/database/selene.db`
+1. Enable SeleneChat to query and analyze processed notes from `/Users/chaseeasterling/selene/database/selene.db`
 2. Provide intelligent, context-aware responses about note patterns, content, and insights
 3. Support multiple query types: pattern detection, search, knowledge retrieval, and general questions
 4. Maintain clean, ADHD-friendly interface with inline citations for source tracking
@@ -850,7 +850,7 @@ if notes.count > 200 {
 ## Dependencies
 
 ### Existing Systems
-- ✅ Selene n8n database at `/Users/chaseeasterling/selene-n8n/database/selene.db`
+- ✅ Selene n8n database at `/Users/chaseeasterling/selene/database/selene.db`
 - ✅ DatabaseService with note query methods
 - ✅ OllamaService with generate() method
 - ✅ Note model with all metadata fields

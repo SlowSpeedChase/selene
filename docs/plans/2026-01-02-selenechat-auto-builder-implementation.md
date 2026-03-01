@@ -91,7 +91,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 ```bash
 #!/bin/bash
-# Setup script: Install git hooks for selene-n8n
+# Setup script: Install git hooks for selene
 
 set -e
 

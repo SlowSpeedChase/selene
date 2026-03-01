@@ -33,7 +33,7 @@ The **Documentation Agent** is a Claude Code agent that autonomously monitors yo
 
 ```bash
 # Navigate to project
-cd /Users/chaseeasterling/selene-n8n
+cd /Users/chaseeasterling/selene
 
 # Setup Git hooks (optional but recommended)
 ./scripts/setup-git-hooks.sh
@@ -306,7 +306,7 @@ To run the agent daily:
 crontab -e
 
 # Add this line (runs daily at 9am)
-0 9 * * * /Users/chaseeasterling/selene-n8n/scripts/run-doc-agent.sh --force >> /Users/chaseeasterling/selene-n8n/.claude/doc-agent-cron.log 2>&1
+0 9 * * * /Users/chaseeasterling/selene/scripts/run-doc-agent.sh --force >> /Users/chaseeasterling/selene/.claude/doc-agent-cron.log 2>&1
 ```
 
 ---

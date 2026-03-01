@@ -32,12 +32,12 @@ Enhance SeleneChat's citation system to make citations clickable. When users cli
 ## Current State
 
 ### Database
-- **Location:** `/Users/chaseeasterling/selene-n8n/data/selene.db`
+- **Location:** `/Users/chaseeasterling/selene/data/selene.db`
 - **Tables:** `raw_notes`, `processed_notes`
 - **Note:** No `file_path` column exists - must search vault by date/title
 
 ### Obsidian Vault
-- **Location:** `/Users/chaseeasterling/selene-n8n/vault/Selene/`
+- **Location:** `/Users/chaseeasterling/selene/vault/Selene/`
 - **Structure:** `By-Concept/<concept>/<YYYY-MM-DD>-<truncated-title>.md`
 - **Vault Name:** "Selene"
 
@@ -101,7 +101,7 @@ ChatView
 class ObsidianService {
     static let shared = ObsidianService()
 
-    private let vaultPath = "/Users/chaseeasterling/selene-n8n/vault/Selene"
+    private let vaultPath = "/Users/chaseeasterling/selene/vault/Selene"
     private let vaultName = "Selene"
 
     /// Find markdown file in vault for a given note
@@ -862,7 +862,7 @@ if let note = CitationParser.findNote(for: citation, in: notes) {
 - ✅ Note model with all metadata fields
 - ✅ Message model with `relatedNotes` field
 - ✅ Ollama generating citations in responses
-- ✅ Obsidian vault at `/Users/chaseeasterling/selene-n8n/vault/Selene/`
+- ✅ Obsidian vault at `/Users/chaseeasterling/selene/vault/Selene/`
 
 ### New Dependencies
 - None - uses Swift standard library and SwiftUI

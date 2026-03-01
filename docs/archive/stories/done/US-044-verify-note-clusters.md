@@ -140,4 +140,4 @@ Fixed `process.env` → `$env` in workflow 11-Association-Computation for n8n 1.
 ## Links
 
 - **Branch:** US-044/verify-note-clusters
-- **PR:** https://github.com/SlowSpeedChase/selene-n8n/pull/26
+- **PR:** https://github.com/SlowSpeedChase/selene/pull/26

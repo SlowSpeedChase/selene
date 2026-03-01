@@ -140,7 +140,7 @@ kitchenOsVaultPath: getKitchenOsVaultPath(),
 
 **Step 3: Verify no TypeScript errors**
 
-Run: `cd /Users/chaseeasterling/selene-n8n && npx tsc --noEmit src/lib/config.ts`
+Run: `cd /Users/chaseeasterling/selene && npx tsc --noEmit src/lib/config.ts`
 Expected: No errors
 
 **Step 4: Commit**

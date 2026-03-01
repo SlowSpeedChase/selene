@@ -232,7 +232,7 @@ Ensures we have the latest state before archiving.
 
 **Step 3: Deactivate in n8n**
 ```bash
-docker exec selene-n8n n8n update:workflow --id=<workflow-id> --active=false
+docker exec selene n8n update:workflow --id=<workflow-id> --active=false
 ```
 
 **Step 4: Create Archive Directory (if needed)**
@@ -262,7 +262,7 @@ Create `workflows/_archived/XX-name/ARCHIVED.md`:
 **Step 7: Delete from n8n (Optional)**
 Only if user explicitly wants it removed from n8n entirely:
 ```bash
-docker exec selene-n8n n8n delete:workflow --id=<workflow-id>
+docker exec selene n8n delete:workflow --id=<workflow-id>
 ```
 Skip this step if user might want to restore later.
 

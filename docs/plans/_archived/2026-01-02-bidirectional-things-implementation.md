@@ -284,7 +284,7 @@ class ThingsStatusService: ObservableObject {
         // Find script relative to app or project
         let paths = [
             // Development: project root
-            "/Users/chaseeasterling/selene-n8n/scripts/things-bridge/get-task-status.scpt",
+            "/Users/chaseeasterling/selene/scripts/things-bridge/get-task-status.scpt",
             // Could add app bundle path for distribution
         ]
 
@@ -582,7 +582,7 @@ class ResurfaceTriggerService: ObservableObject {
 
     private static func loadConfig() -> ResurfaceConfig {
         let configPaths = [
-            "/Users/chaseeasterling/selene-n8n/config/resurface-triggers.yaml",
+            "/Users/chaseeasterling/selene/config/resurface-triggers.yaml",
             // Fallback paths if needed
         ]
 

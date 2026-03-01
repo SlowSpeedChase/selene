@@ -53,7 +53,7 @@ struct ThreadSummary: Identifiable {
 
 **Step 2: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -201,7 +201,7 @@ class TodayService {
 
 **Step 2: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -291,7 +291,7 @@ class TodayViewModel: ObservableObject {
 
 **Step 2: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -622,7 +622,7 @@ struct ThreadCard: View {
 
 **Step 2: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -707,7 +707,7 @@ Update the detail section to handle `.today`:
 
 **Step 5: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -751,7 +751,7 @@ In the `.onAppear` modifier, add logic to prefill the input:
 
 **Step 3: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -779,7 +779,7 @@ import SQLite
 
 **Step 2: Verify it compiles**
 
-Run: `cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
+Run: `cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat && swift build 2>&1 | tail -5`
 
 Expected: `Build complete!`
 
@@ -797,7 +797,7 @@ git commit -m "fix(today): add SQLite import to TodayViewModel"
 **Step 1: Build and run the app**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat
 swift build
 swift run
 ```
@@ -825,7 +825,7 @@ swift run
 **Step 1: Verify all changes compile**
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/.worktrees/today-view/SeleneChat
+cd /Users/chaseeasterling/selene/.worktrees/today-view/SeleneChat
 swift build
 ```
 

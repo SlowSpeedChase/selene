@@ -69,4 +69,4 @@ This is pure infrastructure - no user-facing changes, but critical for Phase 1.
 ## Links
 
 - **Branch:** `US-040/thread-system-migration` (merged)
-- **PR:** https://github.com/SlowSpeedChase/selene-n8n/pull/21
+- **PR:** https://github.com/SlowSpeedChase/selene/pull/21

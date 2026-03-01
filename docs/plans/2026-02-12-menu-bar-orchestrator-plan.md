@@ -212,7 +212,7 @@ struct ScheduledWorkflow: Identifiable {
         }
     }
 
-    static let projectRoot = "/Users/chaseeasterling/selene-n8n"
+    static let projectRoot = "/Users/chaseeasterling/selene"
 
     static var allWorkflows: [ScheduledWorkflow] {
         [

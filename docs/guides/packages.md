@@ -97,7 +97,7 @@ If you need to manually install packages inside a running container:
 
 **Enter the container:**
 ```bash
-docker exec -it selene-n8n sh
+docker exec -it selene sh
 ```
 
 **Install better-sqlite3:**
@@ -123,7 +123,7 @@ docker-compose restart n8n
 ### Verify better-sqlite3
 
 ```bash
-docker exec selene-n8n npm list -g better-sqlite3
+docker exec selene npm list -g better-sqlite3
 ```
 
 **Expected output:**
@@ -135,7 +135,7 @@ docker exec selene-n8n npm list -g better-sqlite3
 ### Verify n8n-nodes-sqlite
 
 ```bash
-docker exec selene-n8n npm list -g n8n-nodes-sqlite
+docker exec selene npm list -g n8n-nodes-sqlite
 ```
 
 Or check in n8n UI:
@@ -152,7 +152,7 @@ Or check in n8n UI:
 sqlite3 data/selene.db "SELECT sqlite_version();"
 
 # Check from container
-docker exec selene-n8n sqlite3 /selene/data/selene.db "SELECT sqlite_version();"
+docker exec selene sqlite3 /selene/data/selene.db "SELECT sqlite_version();"
 ```
 
 ## Package Configuration
@@ -232,7 +232,7 @@ docker-compose down
 docker-compose up -d --build
 
 # Or install manually
-docker exec -it selene-n8n npm install -g better-sqlite3
+docker exec -it selene npm install -g better-sqlite3
 docker-compose restart n8n
 ```
 
@@ -245,10 +245,10 @@ docker-compose restart n8n
 **Solution:**
 ```bash
 # Check if package is installed
-docker exec selene-n8n npm list -g n8n-nodes-sqlite
+docker exec selene npm list -g n8n-nodes-sqlite
 
 # If not installed
-docker exec -it selene-n8n sh
+docker exec -it selene sh
 npm install -g n8n-nodes-sqlite
 exit
 docker-compose restart n8n
@@ -287,7 +287,7 @@ chmod 666 data/selene.db
 chmod 777 data/
 
 # Verify volume mount
-docker exec selene-n8n ls -la /selene/data/
+docker exec selene ls -la /selene/data/
 ```
 
 ## Package Update Strategy
@@ -313,7 +313,7 @@ From n8n UI:
 
 Or manually:
 ```bash
-docker exec selene-n8n npm update -g n8n-nodes-sqlite
+docker exec selene npm update -g n8n-nodes-sqlite
 docker-compose restart n8n
 ```
 

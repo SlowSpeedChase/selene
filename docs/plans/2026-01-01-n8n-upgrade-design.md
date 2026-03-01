@@ -200,7 +200,7 @@ docker-compose build --no-cache
 docker-compose up -d
 
 # 5. Verify version
-docker exec selene-n8n n8n --version
+docker exec selene n8n --version
 # Expected output: 2.1.4
 
 # 6. Check logs for errors

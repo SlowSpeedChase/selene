@@ -398,7 +398,7 @@ git commit -m "feat(phase3): add reconsolidate-threads workflow
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -413,10 +413,10 @@ git commit -m "feat(phase3): add reconsolidate-threads workflow
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/reconsolidate-threads.log</string>
+    <string>/Users/chaseeasterling/selene/logs/reconsolidate-threads.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/reconsolidate-threads.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/reconsolidate-threads.error.log</string>
 </dict>
 </plist>
 ```

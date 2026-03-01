@@ -15,12 +15,12 @@ Congratulations! You now have a fully functional **Phase 1** native macOS chatbo
 ### Method 1: Quick Start
 
 ```bash
-cd /Users/chaseeasterling/selene-n8n/SeleneChat
+cd /Users/chaseeasterling/selene/SeleneChat
 swift run
 ```
 
 The app will launch and automatically try to connect to your Selene database at:
-`/Users/chaseeasterling/selene-n8n/data/selene.db`
+`/Users/chaseeasterling/selene/data/selene.db`
 
 ### Method 2: Build and Run
 
@@ -46,7 +46,7 @@ Then press **Cmd+R** to build and run in Xcode.
 2. **If not connected**:
    - Go to **SeleneChat > Settings** (Cmd+,)
    - Click **Browse** next to Database Path
-   - Navigate to `/Users/chaseeasterling/selene-n8n/data/selene.db`
+   - Navigate to `/Users/chaseeasterling/selene/data/selene.db`
    - Click **Test Connection**
 
 3. **Verify connection**:
@@ -155,7 +155,7 @@ The app is already built with a three-tier privacy model:
 
 ```bash
 # Clean and rebuild
-cd /Users/chaseeasterling/selene-n8n/SeleneChat
+cd /Users/chaseeasterling/selene/SeleneChat
 swift package clean
 swift build
 swift run
@@ -165,12 +165,12 @@ swift run
 
 1. Check the database exists:
    ```bash
-   ls -lh /Users/chaseeasterling/selene-n8n/data/selene.db
+   ls -lh /Users/chaseeasterling/selene/data/selene.db
    ```
 
 2. Check file permissions:
    ```bash
-   chmod 644 /Users/chaseeasterling/selene-n8n/data/selene.db
+   chmod 644 /Users/chaseeasterling/selene/data/selene.db
    ```
 
 3. Verify in Settings (Cmd+,) - should show green "Connected"
@@ -179,7 +179,7 @@ swift run
 
 1. Verify Selene has processed notes:
    ```bash
-   sqlite3 /Users/chaseeasterling/selene-n8n/data/selene.db \
+   sqlite3 /Users/chaseeasterling/selene/data/selene.db \
      "SELECT COUNT(*) FROM raw_notes;"
    ```
 
@@ -278,9 +278,9 @@ As you use the app, note:
 
 ## Resources
 
-- **Selene Database**: `/Users/chaseeasterling/selene-n8n/data/selene.db`
-- **Obsidian Vault**: `/Users/chaseeasterling/selene-n8n/vault/Selene/`
-- **Project Code**: `/Users/chaseeasterling/selene-n8n/SeleneChat/`
+- **Selene Database**: `/Users/chaseeasterling/selene/data/selene.db`
+- **Obsidian Vault**: `/Users/chaseeasterling/selene/vault/Selene/`
+- **Project Code**: `/Users/chaseeasterling/selene/SeleneChat/`
 
 ## Summary
 

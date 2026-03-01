@@ -1,7 +1,7 @@
 -- Open the newest version of SeleneChat
 
-set appPath to "/Users/chaseeasterling/selene-n8n/SeleneChat/.build/arm64-apple-macosx/release/SeleneChat.app"
-set projectPath to "/Users/chaseeasterling/selene-n8n/SeleneChat"
+set appPath to "/Users/chaseeasterling/selene/SeleneChat/.build/arm64-apple-macosx/release/SeleneChat.app"
+set projectPath to "/Users/chaseeasterling/selene/SeleneChat"
 
 try
 	do shell script "test -d " & quoted form of appPath

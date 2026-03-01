@@ -566,11 +566,11 @@ git commit -m "docs: add database path helper reference for workflow nodes"
 
 **Step 2: Update all function nodes with database access**
 
-For each function node that contains `new Database('/Users/chaseeasterling/selene-n8n/data/selene.db')`:
+For each function node that contains `new Database('/Users/chaseeasterling/selene/data/selene.db')`:
 
 Replace:
 ```javascript
-const db = new Database('/Users/chaseeasterling/selene-n8n/data/selene.db');
+const db = new Database('/Users/chaseeasterling/selene/data/selene.db');
 ```
 
 With:

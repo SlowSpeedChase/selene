@@ -667,7 +667,7 @@ git commit -m "feat(09): add automatic backlog generation
 **Step 1: Ensure Docker is running**
 
 Run: `docker-compose ps`
-Expected: selene-n8n container running
+Expected: selene container running
 
 **Step 2: Ensure Ollama is running**
 

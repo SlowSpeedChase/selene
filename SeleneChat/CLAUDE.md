@@ -237,7 +237,7 @@ cd SeleneChat
 swift build
 swift run
 ```
-Note: CLI builds use `~/selene-n8n/data-test/selene-test.db`, not production data.
+Note: CLI builds use `~/selene/data-test/selene-test.db`, not production data.
 
 ### Release (CLI)
 ```bash
@@ -252,7 +252,7 @@ open SeleneChat.xcodeproj
 ```
 
 ### Database Selection
-- **CLI binary** → test database (`~/selene-n8n/data-test/selene-test.db`)
+- **CLI binary** → test database (`~/selene/data-test/selene-test.db`)
 - **.app bundle** → production database (`~/selene-data/selene.db`)
 
 Detection is automatic via `isRunningFromAppBundle()` in DatabaseService.
