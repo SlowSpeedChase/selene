@@ -7,21 +7,21 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/chaseeasterling/selene-n8n/scripts/things-bridge/process-pending-projects.sh</string>
+        <string>/Users/chaseeasterling/selene/scripts/things-bridge/process-pending-projects.sh</string>
     </array>
 
     <key>WatchPaths</key>
     <array>
-        <string>/Users/chaseeasterling/selene-n8n/vault/projects-pending</string>
+        <string>/Users/chaseeasterling/selene/vault/projects-pending</string>
     </array>
 
     <key>RunAtLoad</key>
     <false/>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/projects-bridge-stdout.log</string>
+    <string>/Users/chaseeasterling/selene/logs/projects-bridge-stdout.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/projects-bridge-stderr.log</string>
+    <string>/Users/chaseeasterling/selene/logs/projects-bridge-stderr.log</string>
 </dict>
 </plist>

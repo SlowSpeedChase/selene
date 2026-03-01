@@ -13,7 +13,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -29,9 +29,9 @@
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compile-thread-digests.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compile-thread-digests.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/compile-thread-digests.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/compile-thread-digests.error.log</string>
 </dict>
 </plist>

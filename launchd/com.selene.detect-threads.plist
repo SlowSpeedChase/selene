@@ -14,7 +14,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -31,9 +31,9 @@
     <integer>1800</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/detect-threads.log</string>
+    <string>/Users/chaseeasterling/selene/logs/detect-threads.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/detect-threads.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/detect-threads.error.log</string>
 </dict>
 </plist>

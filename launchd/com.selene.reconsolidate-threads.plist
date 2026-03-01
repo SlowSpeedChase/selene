@@ -14,7 +14,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -25,7 +25,7 @@
         <key>SELENE_DB_PATH</key>
         <string>/Users/chaseeasterling/selene-data/selene.db</string>
         <key>OBSIDIAN_VAULT_PATH</key>
-        <string>/Users/chaseeasterling/selene-n8n/vault</string>
+        <string>/Users/chaseeasterling/selene/vault</string>
     </dict>
 
     <!-- Run every hour (3600 seconds) -->
@@ -33,9 +33,9 @@
     <integer>3600</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/reconsolidate-threads.log</string>
+    <string>/Users/chaseeasterling/selene/logs/reconsolidate-threads.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/reconsolidate-threads.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/reconsolidate-threads.error.log</string>
 </dict>
 </plist>

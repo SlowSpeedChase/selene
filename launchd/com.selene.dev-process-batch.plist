@@ -8,7 +8,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>cd /Users/chaseeasterling/selene-n8n &amp;&amp; ./scripts/dev-process-batch.sh 15</string>
+        <string>cd /Users/chaseeasterling/selene &amp;&amp; ./scripts/dev-process-batch.sh 15</string>
     </array>
     <key>StartInterval</key>
     <integer>3600</integer>

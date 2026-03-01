@@ -13,7 +13,7 @@
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/chaseeasterling/selene-n8n</string>
+    <string>/Users/chaseeasterling/selene</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -29,9 +29,9 @@
     <integer>300</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/extract-tasks.log</string>
+    <string>/Users/chaseeasterling/selene/logs/extract-tasks.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/chaseeasterling/selene-n8n/logs/extract-tasks.error.log</string>
+    <string>/Users/chaseeasterling/selene/logs/extract-tasks.error.log</string>
 </dict>
 </plist>
