@@ -1,6 +1,6 @@
 # Design Documents Index
 
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-03-01
 
 Design docs are the planning unit for Selene development. Each doc captures an idea, architecture, and implementation plan.
 
@@ -54,7 +54,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 | 2026-02-19 | 2026-02-19-calendar-context-linking-design.md | ingestion, calendar | Auto-link notes to Apple Calendar events via Swift CLI + EventKit |
 | 2026-02-22 | 2026-02-22-voice-memo-llm-title-design.md | voice, llm | LLM-generated titles for voice memos instead of timestamp titles |
 | 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
-| 2026-03-01 | 2026-03-01-remove-n8n-naming-design.md | infra, naming | Remove legacy n8n from project name, GitHub repo, paths, docs |
 
 ---
 
@@ -85,6 +84,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-03-01 | 2026-03-01-remove-n8n-naming-design.md | 2026-03-01 | Rename selene-n8n to selene across 108 files, 665 tests passing |
 | 2026-02-28 | 2026-02-28-thread-context-isolation-design.md | 2026-03-01 | Remove global fallback, thread-scoped memories, active project default, golden walkthrough (665 tests) |
 | 2026-02-24 | 2026-02-24-selene-intelligence-upgrade-design.md | 2026-02-27 | Layers 1+2: ContextualRetriever, zen prompt rewrite, 53 planning patterns, 743 tests |
 | 2026-02-21 | 2026-02-21-tiered-context-compression-design.md | 2026-02-22 | ContextBuilder, 3 new workflows, tier evaluation, essence backfill, health endpoint |

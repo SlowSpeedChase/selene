@@ -1,7 +1,7 @@
 # Remove n8n from Project Naming
 
 **Date:** 2026-03-01
-**Status:** Ready
+**Status:** Done
 **Topic:** infra, naming
 
 ---
