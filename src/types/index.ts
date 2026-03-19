@@ -7,6 +7,7 @@ export interface IngestInput {
   content: string;
   created_at?: string;
   test_run?: string;
+  capture_type?: string;
 }
 
 export interface IngestResult {

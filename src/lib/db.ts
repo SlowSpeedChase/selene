@@ -65,6 +65,7 @@ export interface RawNote {
   exported_to_obsidian: number;
   test_run: string | null;
   calendar_event: string | null;
+  capture_type: string;
 }
 
 // Helper: Get pending notes for processing
@@ -98,6 +99,7 @@ export function insertNote(note: {
   tags: string[];
   createdAt: string;
   testRun?: string;
+  captureType?: string;
 }): number {
   const wordCount = note.content.split(/\s+/).filter(Boolean).length;
   const characterCount = note.content.length;
@@ -105,8 +107,8 @@ export function insertNote(note: {
   const result = db
     .prepare(
       `INSERT INTO raw_notes
-       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
+       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     )
     .run(
       note.title,
@@ -116,7 +118,8 @@ export function insertNote(note: {
       wordCount,
       characterCount,
       note.createdAt,
-      note.testRun || null
+      note.testRun || null,
+      note.captureType || 'drafts'
     );
 
   return result.lastInsertRowid as number;
