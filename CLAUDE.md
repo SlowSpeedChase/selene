@@ -127,6 +127,9 @@ src/
     distill-essences.ts             # Essence backfill + retry
     evaluate-fidelity.ts            # Fidelity tier assignment (daily)
     compile-thread-digests.ts       # Thread digest compilation
+    render-daily-sheet.ts           # Daily planning sheet PDF
+  templates/
+    daily-sheet.html        # Planning sheet HTML template
 
 launchd/
   com.selene.server.plist                  # Webhook server (always running)
@@ -145,6 +148,7 @@ launchd/
   com.selene.distill-essences.plist          # Every 5 minutes
   com.selene.evaluate-fidelity.plist         # Daily at 3am
   com.selene.compile-thread-digests.plist    # Hourly
+  com.selene.render-daily-sheet.plist        # Daily at 5:30am
 ```
 
 **Why this architecture?** See `@.claude/DEVELOPMENT.md` (System Architecture section)
@@ -236,6 +240,10 @@ npx ts-node src/workflows/transcribe-voice-memos.ts
 npx ts-node src/workflows/distill-essences.ts
 npx ts-node src/workflows/evaluate-fidelity.ts
 npx ts-node src/workflows/compile-thread-digests.ts
+npx ts-node src/workflows/render-daily-sheet.ts
+
+# Open today's sheet
+open ~/selene-data/digests/daily-sheets/selene-daily-$(date +%Y-%m-%d).pdf
 
 # View workflow logs
 tail -f logs/selene.log | npx pino-pretty
