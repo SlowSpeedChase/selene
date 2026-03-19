@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: letter; margin: 0.5in; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11pt; color: #1a1a1a; line-height: 1.4;
+      width: 7.5in; height: 10in;
+      display: flex; flex-direction: column;
+    }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 8pt; border-bottom: 1.5pt solid #1a1a1a; margin-bottom: 12pt;
+    }
+    .header h1 { font-size: 14pt; font-weight: 600; letter-spacing: 2pt; text-transform: uppercase; }
+    .header .date { font-size: 11pt; font-weight: 400; color: #555; }
+    .header .qr { width: 48pt; height: 48pt; }
+    .section { margin-bottom: 12pt; }
+    .section-title {
+      font-size: 9pt; font-weight: 600; letter-spacing: 1.5pt;
+      text-transform: uppercase; color: #888; margin-bottom: 6pt;
+    }
+    .task-list { list-style: none; }
+    .task-list li { padding: 3pt 0; padding-left: 20pt; position: relative; font-size: 10.5pt; }
+    .task-list li::before {
+      content: ''; position: absolute; left: 0; top: 5pt;
+      width: 12pt; height: 12pt; border: 1.5pt solid #1a1a1a; border-radius: 50%;
+    }
+    .thread-list { list-style: none; }
+    .thread-list li { padding: 4pt 0; display: flex; align-items: baseline; gap: 6pt; font-size: 10.5pt; }
+    .momentum { font-size: 10pt; width: 14pt; text-align: center; flex-shrink: 0; }
+    .momentum.rising { color: #2d7d2d; }
+    .momentum.stable { color: #666; }
+    .momentum.cooling { color: #999; }
+    .thread-name { font-weight: 500; }
+    .thread-summary { color: #666; font-size: 9.5pt; }
+    .capture-list { list-style: none; }
+    .capture-list li { padding: 2pt 0; padding-left: 12pt; position: relative; font-size: 9.5pt; color: #444; }
+    .capture-list li::before { content: '\00b7'; position: absolute; left: 0; font-weight: bold; }
+    .capture-time { color: #999; font-size: 8.5pt; }
+    .scratch {
+      flex: 1; min-height: 200pt; border: 1pt solid #ddd; border-radius: 4pt; position: relative;
+    }
+    .scratch-label {
+      position: absolute; top: 6pt; left: 8pt;
+      font-size: 8pt; color: #ccc; letter-spacing: 1pt; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Selene</h1>
+      <span class="date">{{DATE}}</span>
+    </div>
+    <img class="qr" src="{{QR_DATA_URI}}" alt="QR" />
+  </div>
+  <div class="section">
+    <div class="section-title">Tasks</div>
+    <ul class="task-list">{{TASKS}}</ul>
+  </div>
+  <div class="section">
+    <div class="section-title">Threads</div>
+    <ul class="thread-list">{{THREADS}}</ul>
+  </div>
+  <div class="section">
+    <div class="section-title">Recent Captures</div>
+    <ul class="capture-list">{{CAPTURES}}</ul>
+  </div>
+  <div class="scratch">
+    <span class="scratch-label">Scratch</span>
+  </div>
+</body>
+</html>

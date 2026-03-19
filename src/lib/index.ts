@@ -14,8 +14,9 @@ export {
   getNotesSince,
   getThreadAssignmentsForNotes,
   updateCalendarEvent,
+  getActiveThreads,
 } from './db';
-export type { RawNote } from './db';
+export type { RawNote, Thread } from './db';
 export { generate, embed, isAvailable } from './ollama';
 export {
   getLanceDb,

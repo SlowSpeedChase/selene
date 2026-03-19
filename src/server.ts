@@ -99,9 +99,9 @@ server.addHook('onRequest', async (request, reply) => {
 
 // POST /webhook/api/drafts - Note ingestion (called by Drafts app)
 server.post<{ Body: IngestInput }>('/webhook/api/drafts', async (request, reply) => {
-  const { title, content, created_at, test_run } = request.body;
+  const { title, content, created_at, test_run, capture_type } = request.body;
 
-  logger.info({ title, test_run }, 'Webhook received');
+  logger.info({ title, test_run, capture_type }, 'Webhook received');
 
   // Validate required fields
   if (!title || !content) {
@@ -111,7 +111,7 @@ server.post<{ Body: IngestInput }>('/webhook/api/drafts', async (request, reply)
   }
 
   try {
-    const result = await ingest({ title, content, created_at, test_run });
+    const result = await ingest({ title, content, created_at, test_run, capture_type });
 
     if (result.duplicate) {
       logger.info({ title, existingId: result.existingId }, 'Duplicate skipped');

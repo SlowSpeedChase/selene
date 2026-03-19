@@ -47,6 +47,7 @@ AGENTS=(
     "com.selene.reconsolidate-threads"
     "com.selene.thread-lifecycle"
     "com.selene.transcribe-voice-memos"
+    "com.selene.render-daily-sheet"
 )
 
 echo "Step 1: Unloading existing agents..."

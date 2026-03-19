@@ -75,6 +75,17 @@ Respond in JSON array format:
 
 JSON response:`;
 
+function getCaptureTypeHint(captureType: string | null): string {
+  switch (captureType) {
+    case 'whiteboard':
+      return '\n\nContext: This was captured from a whiteboard photo. Whiteboards typically contain planning, brainstorming, and high-level ideas rather than individual tasks. Bias toward needs_planning unless you see explicit checkbox-style tasks.\n\n';
+    case 'daily_sheet_annotation':
+      return '\n\nContext: This contains handwritten annotations from a daily planning sheet. Look for: completed tasks (checked items), new ideas (scratch zone notes), and thread-related observations.\n\n';
+    default:
+      return '';
+  }
+}
+
 export async function extractTasks(limit = 10): Promise<WorkflowResult> {
   log.info({ limit }, 'Starting task extraction run');
 
@@ -86,14 +97,14 @@ export async function extractTasks(limit = 10): Promise<WorkflowResult> {
   // Get processed notes that haven't had tasks extracted yet
   const notes = db
     .prepare(
-      `SELECT rn.id, rn.title, rn.content
+      `SELECT rn.id, rn.title, rn.content, rn.capture_type
        FROM raw_notes rn
        JOIN processed_notes pn ON rn.id = pn.raw_note_id
        WHERE rn.status = 'processed'
        AND (pn.things_integration_status IS NULL OR pn.things_integration_status = 'pending')
        LIMIT ?`
     )
-    .all(limit) as Array<{ id: number; title: string; content: string }>;
+    .all(limit) as Array<{ id: number; title: string; content: string; capture_type: string | null }>;
 
   log.info({ noteCount: notes.length }, 'Found notes needing classification');
 
@@ -109,7 +120,8 @@ export async function extractTasks(limit = 10): Promise<WorkflowResult> {
       log.info({ noteId: note.id, title: note.title }, 'Classifying note');
 
       // Classify the note
-      const classifyPrompt = CLASSIFY_PROMPT.replace('{content}', note.content);
+      const captureHint = getCaptureTypeHint(note.capture_type);
+      const classifyPrompt = CLASSIFY_PROMPT.replace('{content}', captureHint + note.content);
       const classification = (await generate(classifyPrompt)).trim().toLowerCase();
 
       const validClassifications = ['actionable', 'needs_planning', 'archive_only'];

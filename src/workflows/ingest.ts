@@ -6,7 +6,7 @@ import type { IngestInput, IngestResult } from '../types';
 const log = createWorkflowLogger('ingest');
 
 export async function ingest(input: IngestInput): Promise<IngestResult> {
-  const { title, content, created_at, test_run } = input;
+  const { title, content, created_at, test_run, capture_type } = input;
 
   log.info({ title, test_run }, 'Processing ingest request');
 
@@ -35,6 +35,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
     tags,
     createdAt,
     testRun: test_run,
+    captureType: capture_type,
   });
 
   // Calendar enrichment (best-effort, never blocks ingestion)
