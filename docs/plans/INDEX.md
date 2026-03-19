@@ -54,6 +54,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 | 2026-02-19 | 2026-02-19-calendar-context-linking-design.md | ingestion, calendar | Auto-link notes to Apple Calendar events via Swift CLI + EventKit |
 | 2026-02-22 | 2026-02-22-voice-memo-llm-title-design.md | voice, llm | LLM-generated titles for voice memos instead of timestamp titles |
 | 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
+| 2026-03-18 | 2026-03-18-physical-digital-bridge-design.md | capture, output | Claude Vision whiteboard capture, daily planning sheet PDF, annotation closed loop |
 
 ---
 
