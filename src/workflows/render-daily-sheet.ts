@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import puppeteer from 'puppeteer';
-import { createWorkflowLogger, db, config, getActiveThreads, getRecentNotes } from '../lib';
+import { createWorkflowLogger, db, config, getActiveThreads } from '../lib';
 import type { Thread } from '../lib/db';
 
 const log = createWorkflowLogger('render-daily-sheet');
@@ -75,8 +75,16 @@ function gatherData(): DailySheetData {
   // Active threads with momentum
   const threads = getActiveThreads(8);
 
-  // Recent captures (last 24 hours)
-  const captures = getRecentNotes(1, 10);
+  // Last 8 notes (regardless of age — shows what Selene has been holding)
+  const captures = db
+    .prepare(
+      `SELECT title, created_at
+       FROM raw_notes
+       WHERE test_run IS NULL
+       ORDER BY created_at DESC
+       LIMIT 8`
+    )
+    .all() as Array<{ title: string; created_at: string }>;
 
   return {
     date: dateStr,
@@ -108,10 +116,7 @@ function renderHtml(data: DailySheetData): string {
   const threadsHtml = data.threads.length > 0
     ? data.threads.map((t) => {
         const m = getMomentumIndicator(t.momentum_score);
-        const summary = t.summary
-          ? ` — <span class="thread-summary">${escapeHtml(t.summary.slice(0, 80))}</span>`
-          : '';
-        return `<li><span class="momentum ${m.cssClass}">${m.symbol}</span> <span class="thread-name">${escapeHtml(t.name)}</span>${summary}</li>`;
+        return `<li><span class="momentum ${m.cssClass}">${m.symbol}</span> <span class="thread-name">${escapeHtml(t.name)}</span></li>`;
       }).join('\n      ')
     : '<li style="color: #999;">No active threads</li>';
   html = html.replace('{{THREADS}}', threadsHtml);
