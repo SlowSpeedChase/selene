@@ -45,8 +45,8 @@ function formatRelativeTime(dateStr: string): string {
 interface DailySheetData {
   date: string;
   tasks: Array<{ title: string }>;
-  threads: Array<{ name: string; summary: string | null; momentum_score: number | null }>;
-  captures: Array<{ title: string; created_at: string }>;
+  threads: Array<{ name: string; why: string | null; note_count: number; last_activity_at: string | null; momentum_score: number | null }>;
+  captures: Array<{ title: string; content: string; created_at: string; essence: string | null }>;
 }
 
 function gatherData(): DailySheetData {
@@ -75,28 +75,33 @@ function gatherData(): DailySheetData {
   // Active threads with momentum
   const threads = getActiveThreads(8);
 
-  // Last 8 notes (regardless of age — shows what Selene has been holding)
+  // Last 8 notes — use essence for display (especially voice memos with useless titles)
   const captures = db
     .prepare(
-      `SELECT title, created_at
-       FROM raw_notes
-       WHERE test_run IS NULL
-       ORDER BY created_at DESC
+      `SELECT rn.title, rn.content, rn.created_at, pn.essence
+       FROM raw_notes rn
+       LEFT JOIN processed_notes pn ON rn.id = pn.raw_note_id
+       WHERE rn.test_run IS NULL
+       ORDER BY rn.created_at DESC
        LIMIT 8`
     )
-    .all() as Array<{ title: string; created_at: string }>;
+    .all() as Array<{ title: string; content: string; created_at: string; essence: string | null }>;
 
   return {
     date: dateStr,
     tasks: tasks.map((t) => ({ title: t.title })),
     threads: threads.map((t: Thread) => ({
       name: t.name,
-      summary: t.summary,
+      why: t.why,
+      note_count: t.note_count,
+      last_activity_at: t.last_activity_at,
       momentum_score: t.momentum_score,
     })),
     captures: captures.map((n) => ({
       title: n.title,
+      content: n.content,
       created_at: n.created_at,
+      essence: n.essence,
     })),
   };
 }
@@ -116,16 +121,26 @@ function renderHtml(data: DailySheetData): string {
   const threadsHtml = data.threads.length > 0
     ? data.threads.map((t) => {
         const m = getMomentumIndicator(t.momentum_score);
-        return `<li><span class="momentum ${m.cssClass}">${m.symbol}</span> <span class="thread-name">${escapeHtml(t.name)}</span></li>`;
+        const status = t.why
+          ? ` — <span class="thread-summary">${escapeHtml(t.why.slice(0, 60))}</span>`
+          : '';
+        const meta = ` <span class="capture-time">${t.note_count} notes · ${t.last_activity_at ? formatRelativeTime(t.last_activity_at) : 'no activity'}</span>`;
+        return `<li><span class="momentum ${m.cssClass}">${m.symbol}</span> <span class="thread-name">${escapeHtml(t.name)}</span>${status}${meta}</li>`;
       }).join('\n      ')
     : '<li style="color: #999;">No active threads</li>';
   html = html.replace('{{THREADS}}', threadsHtml);
 
   const capturesHtml = data.captures.length > 0
-    ? data.captures.map((c) =>
-        `<li>${escapeHtml(c.title)} <span class="capture-time">${formatRelativeTime(c.created_at)}</span></li>`
-      ).join('\n      ')
-    : '<li style="color: #999;">No recent captures</li>';
+    ? data.captures.map((c) => {
+        const isVoiceMemo = c.title.startsWith('Voice Memo');
+        const displayText = c.essence
+          ? c.essence.slice(0, 90)
+          : isVoiceMemo
+            ? c.content.slice(0, 90)
+            : c.title;
+        return `<li>${escapeHtml(displayText)} <span class="capture-time">${formatRelativeTime(c.created_at)}</span></li>`;
+      }).join('\n      ')
+    : '<li style="color: #999;">No notes yet</li>';
   html = html.replace('{{CAPTURES}}', capturesHtml);
 
   return html;
