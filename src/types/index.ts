@@ -68,23 +68,3 @@ export interface CalendarLookupResult {
   events: CalendarEvent[];
   matchType: 'during' | 'just_ended' | 'none';
 }
-
-// Voice memo transcription types
-export interface ProcessedFileEntry {
-  transcribedAt: string;
-  archivedTo: string;
-  markdownPath: string;
-  ingestedToSelene: boolean;
-  draftsTitle?: string;
-}
-
-export interface ProcessedManifest {
-  files: Record<string, ProcessedFileEntry>;
-}
-
-export interface VoiceMemoWorkflowResult {
-  processed: number;
-  errors: number;
-  retried: number;
-  details: Array<{ filename: string; success: boolean; error?: string }>;
-}
