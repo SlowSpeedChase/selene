@@ -63,6 +63,15 @@ function ensureDir(dirPath: string): void {
   }
 }
 
+function sanitizeContent(content: string): string {
+  // Strip old processing metadata blocks embedded in note content
+  // Pattern: "---\n✅ Processed by Selene...\n🤖...\n📊...\n🗃️...\n" (sometimes repeated)
+  return content
+    .replace(/\n---\n✅ Processed by Selene[^\n]*\n(?:[^\n]*\n)*?(?=\n---\n✅|\s*$)/g, '')
+    .replace(/\n---\n✅ Processed by Selene[\s\S]*$/g, '')
+    .trim();
+}
+
 // --- Phase 1: Export Notes ---
 
 function exportNotes(vaultPath: string): { exported: number; errors: number } {
@@ -104,8 +113,9 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
         : '  - uncategorized';
       const titleEscaped = note.title.replace(/"/g, '\\"');
 
-      // Content in blockquote
-      const blockquotedContent = note.content
+      // Content in blockquote (strip old processing metadata)
+      const cleanContent = sanitizeContent(note.content);
+      const blockquotedContent = cleanContent
         .split('\n')
         .map((line) => `> ${line}`)
         .join('\n');
