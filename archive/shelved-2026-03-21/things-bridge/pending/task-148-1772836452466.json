@@ -1,0 +1,5 @@
+{
+  "title": "Investigate any launchd errors or logs",
+  "notes": "Review error logs and system diagnostics to identify any issues related to the launchd agents.",
+  "heading": "Research"
+}

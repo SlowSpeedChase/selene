@@ -1,0 +1,5 @@
+{
+  "title": "Verify all launchd agents are functioning properly",
+  "notes": "Check that the reinstallation of launchd agents did not cause any issues and they are all running as expected.",
+  "heading": "Actions"
+}
