@@ -1,7 +1,7 @@
 import assert from 'assert';
 
 async function runTests() {
-  const { buildEssencePrompt } = await import('./process-llm');
+  const { buildEssencePrompt } = await import('../lib/prompts');
 
   // Test 1: Prompt includes title, content, and existing concepts
   {

@@ -1,5 +1,5 @@
 import { createWorkflowLogger, db, generate, isAvailable } from '../lib';
-import { buildEssencePrompt } from './process-llm';
+import { buildEssencePrompt } from '../lib/prompts';
 import type { WorkflowResult } from '../types';
 
 const log = createWorkflowLogger('distill-essences');
