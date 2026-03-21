@@ -9,6 +9,14 @@ import {
 import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
 import type { WorkflowResult } from '../types';
 
+// --- Migration (harmless no-op if columns exist) ---
+try {
+  db.exec('ALTER TABLE processed_notes ADD COLUMN category TEXT');
+} catch { /* column already exists */ }
+try {
+  db.exec('ALTER TABLE processed_notes ADD COLUMN cross_ref_categories TEXT');
+} catch { /* column already exists */ }
+
 const log = createWorkflowLogger('process-llm');
 
 export async function processLlm(limit = 10): Promise<WorkflowResult> {
@@ -59,14 +67,16 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
           overall_sentiment: 'neutral',
           emotional_tone: null,
           energy_level: 'medium',
+          category: null,
+          cross_ref_categories: [],
         };
       }
 
       // Store in processed_notes table
       db.prepare(
         `INSERT OR REPLACE INTO processed_notes
-         (raw_note_id, concepts, primary_theme, secondary_themes, overall_sentiment, emotional_tone, energy_level, processed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (raw_note_id, concepts, primary_theme, secondary_themes, overall_sentiment, emotional_tone, energy_level, category, cross_ref_categories, processed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         note.id,
         JSON.stringify(extracted.concepts || []),
@@ -75,6 +85,8 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         extracted.overall_sentiment || 'neutral',
         extracted.emotional_tone || null,
         extracted.energy_level || 'medium',
+        extracted.category || null,
+        JSON.stringify(extracted.cross_ref_categories || []),
         new Date().toISOString()
       );
 
