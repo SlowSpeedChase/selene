@@ -17,7 +17,6 @@ ADHD-focused knowledge management system using TypeScript workflows, SQLite, and
 - **launchd** - macOS job scheduling for background workflows
 - **SQLite** + better-sqlite3 - Database for note storage
 - **Ollama** + mistral:7b/nomic-embed-text - Local LLM for concept extraction and embeddings
-- **Swift** + SwiftUI - SeleneChat macOS app
 - **Drafts** - iOS/Mac note capture app
 
 ---
@@ -73,27 +72,21 @@ git worktree list
 
 ## Architecture Overview
 
-### Three-Tier System
+### Two-Tier System
 
 ```
 +-------------------------------------------------------------+
 | TIER 1: CAPTURE                                             |
-| Drafts App / Voice Memos -> Webhook -> SQLite + LanceDB    |
+| Drafts App -> Webhook -> SQLite                             |
 | Design: One-click capture, zero friction                    |
 +-------------------------------------------------------------+
 
 +-------------------------------------------------------------+
-| TIER 2: PROCESS                                             |
+| TIER 2: PROCESS + BROWSE                                    |
 | TypeScript Scripts -> Ollama LLM -> Extract patterns        |
-| Scheduled via SeleneChat WorkflowScheduler + launchd        |
+| Scheduled via launchd                                       |
+| Output: Obsidian vault + Apple Notes daily digest           |
 | Design: Automatic organization, visual patterns             |
-+-------------------------------------------------------------+
-
-+-------------------------------------------------------------+
-| TIER 3: RETRIEVE                                            |
-| SeleneChat (macOS menu bar) + Obsidian -> Query & Explore   |
-| SeleneMobile (iOS) -> Query via Tailscale REST API          |
-| Design: Information visible without mental overhead         |
 +-------------------------------------------------------------+
 ```
 
@@ -101,57 +94,45 @@ git worktree list
 
 ```
 src/
-  server.ts           # Fastify webhook server (port 5678)
+  server.ts           # Fastify webhook server (health + ingestion + export-obsidian)
   lib/
     config.ts         # Environment configuration
     db.ts             # better-sqlite3 database utilities
     logger.ts         # Pino structured logging
     ollama.ts         # Ollama API client
     auth.ts           # Bearer token auth middleware
-    apns.ts           # APNs push notification client
     context-builder.ts    # Tiered context assembly utility
+    lancedb.ts        # LanceDB vector utilities
+    prompts.ts        # LLM prompt templates
   workflows/
-    ingest.ts                   # Note ingestion (called by webhook)
-    process-llm.ts              # LLM concept extraction
-    extract-tasks.ts            # Task classification and routing
-    index-vectors.ts            # LanceDB vector indexing
-    compute-associations.ts     # Pairwise note similarity (LanceDB)
-    compute-relationships.ts    # Typed note relationships
-    detect-threads.ts           # Thread detection
-    reconsolidate-threads.ts    # Thread summary + momentum
-    thread-lifecycle.ts         # Archive/split/merge threads
-    export-obsidian.ts          # Obsidian vault sync
-    daily-summary.ts            # Daily summary generation
-    send-digest.ts              # Apple Notes digest delivery
-    transcribe-voice-memos.ts   # whisper.cpp voice transcription
-    distill-essences.ts             # Essence backfill + retry
-    evaluate-fidelity.ts            # Fidelity tier assignment (daily)
-    compile-thread-digests.ts       # Thread digest compilation
-    render-daily-sheet.ts           # Daily planning sheet PDF
-  templates/
-    daily-sheet.html        # Planning sheet HTML template
+    ingest.ts             # Note ingestion (called by webhook)
+    process-llm.ts        # LLM concept extraction
+    distill-essences.ts   # Essence backfill + retry
+    export-obsidian.ts    # Obsidian vault sync
+    daily-summary.ts      # Daily summary generation
+    send-digest.ts        # Apple Notes digest delivery
 
 launchd/
-  com.selene.server.plist                  # Webhook server (always running)
-  com.selene.process-llm.plist             # Every 5 minutes
-  com.selene.extract-tasks.plist           # Every 5 minutes
-  com.selene.index-vectors.plist           # Every 10 minutes
-  com.selene.compute-relationships.plist   # Every 10 minutes
-  com.selene.detect-threads.plist          # Every 30 minutes
-  com.selene.reconsolidate-threads.plist   # Hourly
-  com.selene.export-obsidian.plist         # Hourly
-  com.selene.daily-summary.plist           # Daily at midnight
-  com.selene.thread-lifecycle.plist        # Daily at 2am
-  com.selene.send-digest.plist             # Daily at 6am
-  com.selene.transcribe-voice-memos.plist  # WatchPaths trigger
-  com.selene.dev-process-batch.plist       # Dev: hourly batch processing
-  com.selene.distill-essences.plist          # Every 5 minutes
-  com.selene.evaluate-fidelity.plist         # Daily at 3am
-  com.selene.compile-thread-digests.plist    # Hourly
-  com.selene.render-daily-sheet.plist        # Daily at 5:30am
+  com.selene.server.plist             # Webhook server (always running)
+  com.selene.process-llm.plist        # Every 5 minutes
+  com.selene.distill-essences.plist   # Every 5 minutes
+  com.selene.export-obsidian.plist    # Hourly
+  com.selene.daily-summary.plist      # Daily at midnight
+  com.selene.send-digest.plist        # Daily at 6am
+
+archive/
+  shelved-2026-03-21/   # Shelved features preserved with README
 ```
 
 **Why this architecture?** See `@.claude/DEVELOPMENT.md` (System Architecture section)
+
+---
+
+## Archive
+
+Shelved features are preserved in `archive/shelved-2026-03-21/` with a README.
+All design docs remain in `docs/plans/`. Git history preserves everything.
+To rebuild a feature, start from the design doc and build against the clean core.
 
 ---
 
@@ -201,7 +182,7 @@ launchd/
 - Never skip duplicate detection in ingestion
 
 **Code Quality:**
-- Never use ANY type in TypeScript/Swift - Always specify types
+- Never use ANY type in TypeScript - Always specify types
 - Always use parameterized SQL queries (prevent injection)
 
 **See:** `@.claude/OPERATIONS.md` for detailed procedures
@@ -226,30 +207,13 @@ launchctl kickstart -k gui/$(id -u)/com.selene.server
 ```bash
 # Run workflows manually
 npx ts-node src/workflows/process-llm.ts
-npx ts-node src/workflows/extract-tasks.ts
-npx ts-node src/workflows/index-vectors.ts
-npx ts-node src/workflows/compute-associations.ts
-npx ts-node src/workflows/compute-relationships.ts
-npx ts-node src/workflows/detect-threads.ts
-npx ts-node src/workflows/reconsolidate-threads.ts
-npx ts-node src/workflows/thread-lifecycle.ts
+npx ts-node src/workflows/distill-essences.ts
 npx ts-node src/workflows/export-obsidian.ts
 npx ts-node src/workflows/daily-summary.ts
 npx ts-node src/workflows/send-digest.ts
-npx ts-node src/workflows/transcribe-voice-memos.ts
-npx ts-node src/workflows/distill-essences.ts
-npx ts-node src/workflows/evaluate-fidelity.ts
-npx ts-node src/workflows/compile-thread-digests.ts
-npx ts-node src/workflows/render-daily-sheet.ts
-
-# Open today's sheet
-open ~/selene-data/digests/daily-sheets/selene-daily-$(date +%Y-%m-%d).pdf
 
 # View workflow logs
 tail -f logs/selene.log | npx pino-pretty
-
-# Check compression progress
-curl http://localhost:5678/health/compression
 ```
 
 ### Launchd Management
@@ -281,9 +245,6 @@ SELENE_ENV=development ./scripts/dev-process-batch.sh
 
 # Set up from scratch
 ./scripts/create-dev-db.sh && npx ts-node scripts/seed-dev-data.ts
-
-# View dev batch logs
-tail -f ~/selene-data-dev/logs/batch-process.log
 ```
 
 ### Testing
@@ -310,27 +271,16 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 - Server infrastructure - Fastify webhook server with health checks
 - Ingestion - Note capture with duplicate detection
 - LLM Processing - Concept extraction working
-- Vector Search - LanceDB integration (replaced brute-force similarity)
-- Note Associations - Pairwise similarity via LanceDB vector search
-- Relationships - Typed note relationships with incremental computation
-- Dev Environment - Parallel dev environment with 536 fictional notes, hourly batch processing
-- Thread System - Detection, reconsolidation, lifecycle (archive/split/merge), Obsidian export
-- SeleneChat - Database integration, Ollama AI, thread queries, thread workspace
-- Thinking Partner - Conversation memory, context builder, deep-dive, synthesis
-- Voice Input - Apple Speech recognition, push-to-talk, URL scheme
-- Voice Memo Transcription - whisper.cpp pipeline, auto-detect, Selene ingestion
-- Menu Bar Orchestrator - Silver Crystal icon, WorkflowScheduler, animated states
-- Morning Briefing - Structured cards with deep context chat
-- Apple Notes Digest - Replaced iMessage with pinned daily note
-- Phase 7.2 - SeleneChat Planning Integration
-- SeleneMobile iOS App - Full parity chat, threads, briefing, voice input over Tailscale
-- Server REST API - Auth middleware, ~30 endpoints, Ollama proxy, APNs push notifications
+- Obsidian Export - Notes and summaries synced to vault
+- Daily Summary + Apple Notes Digest - Daily insights delivered
+- Essence Distillation - LLM-generated note essences
+- Codebase Simplification (2026-03-21) - Reduced from ~20,000 to ~3,500 lines. Archived 11 workflows, SeleneChat/SeleneMobile apps, 7 API route modules, and ~50 scripts. Core capture-process-browse pipeline preserved. All shelved code in `archive/shelved-2026-03-21/`.
 
-**Next Up (see `docs/plans/INDEX.md` for status):**
-- Thread Workspace Phase 3 - Feedback loop (Things sync, momentum updates)
-- Voice Input Phase 2+ - Global hotkey, Voxtral, TTS
-- SeleneChat UI Redesign - Forest Study design system
-- Phase 7.3 - Cloud AI Integration (sanitization layer)
+**Previously Completed (now archived):**
+- Vector Search, Note Associations, Relationships, Thread System, Task Extraction
+- SeleneChat macOS app, SeleneMobile iOS app, Server REST API (~30 endpoints)
+- Voice Input, Voice Memo Transcription, Morning Briefing, Menu Bar Orchestrator
+- Tiered Context Compression, Intelligence Upgrade, Thread Workspace
 
 **Details:** `@.claude/PROJECT-STATUS.md`
 
@@ -352,20 +302,18 @@ selene/
 +-- src/                     # TypeScript source code
 |   +-- server.ts           # Fastify webhook server
 |   +-- lib/                # Shared utilities
-|   +-- workflows/          # Background processing scripts
+|   +-- workflows/          # Background processing scripts (6 active)
 |   +-- types/              # TypeScript type definitions
-+-- launchd/                 # macOS launch agent plists
-+-- scripts/                 # Project-wide utilities
++-- launchd/                 # macOS launch agent plists (6 active)
++-- scripts/                 # Project utilities (6 active)
 |   +-- CLAUDE.md           # Script documentation
 |   +-- install-launchd.sh  # Install launchd agents
 |   +-- cleanup-tests.sh    # Remove test data
 +-- docs/                    # Reference documentation
 |   +-- INDEX.md            # Documentation navigation
-|   +-- plans/              # Design documents
-+-- SeleneChat/              # Swift package (3 targets)
-|   +-- Sources/SeleneShared/  # Shared models, protocols, utilities
-|   +-- Sources/SeleneChat/    # macOS menu bar app
-|   +-- Sources/SeleneMobile/  # iOS app (Tailscale REST client)
+|   +-- plans/              # Design documents (all preserved)
++-- archive/                 # Shelved features
+|   +-- shelved-2026-03-21/ # Workflows, apps, scripts with README
 +-- data/                    # SQLite database
     +-- selene.db
 ```
@@ -396,7 +344,6 @@ selene/
 - Check `@.claude/PROJECT-STATUS.md`
 - Verify server running: `curl http://localhost:5678/health`
 - Check launchd agents: `launchctl list | grep selene`
-- Review `@ROADMAP.md` for next tasks
 
 **During:**
 - Test frequently with `test_run` markers
@@ -424,6 +371,7 @@ selene/
 
 ## Version History
 
+- **2026-03-21**: Codebase simplification - archived 11 workflows, SeleneChat/SeleneMobile, ~50 scripts. Core: 6 workflows, 6 launchd agents, 6 scripts.
 - **2026-03-01**: Renamed project from selene-n8n to selene (removed legacy n8n naming)
 - **2026-01-27**: Simplified to two-layer system (design docs + GitOps). Archived user stories.
 - **2026-01-09**: Replaced n8n with TypeScript backend (Fastify + launchd)

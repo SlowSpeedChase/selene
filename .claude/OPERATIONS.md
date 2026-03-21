@@ -13,7 +13,7 @@
 
 ### Server Operations
 
-**The Fastify webhook server runs on port 5678, same as the old n8n endpoint.**
+**The Fastify webhook server runs on port 5678 with health check, ingestion, and export-obsidian trigger.**
 
 ```bash
 # Check if server is running
@@ -40,7 +40,7 @@ npx ts-node src/server.ts
 
 ### Launchd Operations
 
-**All background workflows run via macOS launchd agents.**
+**All background workflows run via macOS launchd agents (6 active).**
 
 ```bash
 # List all Selene agents
@@ -69,10 +69,10 @@ launchctl unload ~/Library/LaunchAgents/com.selene.server.plist
 |-------|----------|
 | com.selene.server | Always running (KeepAlive) |
 | com.selene.process-llm | Every 5 minutes |
-| com.selene.extract-tasks | Every 5 minutes |
-| com.selene.compute-embeddings | Every 10 minutes |
-| com.selene.compute-associations | Every 10 minutes |
+| com.selene.distill-essences | Every 5 minutes |
+| com.selene.export-obsidian | Hourly |
 | com.selene.daily-summary | Daily at midnight |
+| com.selene.send-digest | Daily at 6am |
 
 ### Workflow Operations
 
@@ -81,10 +81,10 @@ launchctl unload ~/Library/LaunchAgents/com.selene.server.plist
 ```bash
 # Run individual workflows
 npx ts-node src/workflows/process-llm.ts
-npx ts-node src/workflows/extract-tasks.ts
-npx ts-node src/workflows/compute-embeddings.ts
-npx ts-node src/workflows/compute-associations.ts
+npx ts-node src/workflows/distill-essences.ts
+npx ts-node src/workflows/export-obsidian.ts
 npx ts-node src/workflows/daily-summary.ts
+npx ts-node src/workflows/send-digest.ts
 
 # Run with debug logging
 DEBUG=selene:* npx ts-node src/workflows/process-llm.ts
@@ -222,13 +222,11 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 
 # 2. Run processing workflows
 npx ts-node src/workflows/process-llm.ts
-npx ts-node src/workflows/compute-embeddings.ts
-npx ts-node src/workflows/compute-associations.ts
+npx ts-node src/workflows/distill-essences.ts
 
 # 3. Verify each stage
 sqlite3 data/selene.db "SELECT status FROM raw_notes WHERE test_run = '$TEST_RUN';"
 sqlite3 data/selene.db "SELECT COUNT(*) FROM processed_notes WHERE test_run = '$TEST_RUN';"
-sqlite3 data/selene.db "SELECT COUNT(*) FROM note_embeddings WHERE note_id IN (SELECT id FROM raw_notes WHERE test_run = '$TEST_RUN');"
 
 # 4. Cleanup
 ./scripts/cleanup-tests.sh "$TEST_RUN"
@@ -452,7 +450,6 @@ LOG_FILE=./logs/selene.log
 - [ ] Verify server running: `curl http://localhost:5678/health`
 - [ ] Check launchd agents: `launchctl list | grep selene`
 - [ ] Pull latest: `git pull`
-- [ ] Review what's next in `@ROADMAP.md`
 
 ### During Work
 
@@ -486,7 +483,6 @@ A full parallel dev environment exists at `~/selene-data-dev/` with 536 fictiona
   vectors.lance/      # Dev LanceDB vector store
   digests/            # Dev digest output
   logs/               # Dev processing logs
-  voice-memos/        # Dev voice memo output
 ```
 
 ### Quick Start
@@ -494,60 +490,12 @@ A full parallel dev environment exists at `~/selene-data-dev/` with 536 fictiona
 ```bash
 # Set up dev environment from scratch
 ./scripts/create-dev-db.sh                    # Create empty dev database
-npx ts-node scripts/seed-dev-data.ts          # Seed 536 fictional notes + LLM process
 
 # Check dev processing status
 ./scripts/dev-process-batch.sh --status
 
-# Run one batch manually (default 15 notes per step)
+# Run one batch manually
 SELENE_ENV=development ./scripts/dev-process-batch.sh
-
-# Run with custom batch size
-SELENE_ENV=development ./scripts/dev-process-batch.sh 25
-
-# Reset everything (wipe and reseed)
-./scripts/reset-dev-data.sh
-```
-
-### Automated Processing
-
-The dev environment has an hourly launchd agent that processes notes in batches:
-
-```bash
-# Check if dev batch agent is running
-launchctl list com.selene.dev-process-batch
-
-# Manually trigger a batch
-launchctl start com.selene.dev-process-batch
-
-# View dev batch logs
-tail -f ~/selene-data-dev/logs/batch-process.log
-
-# Install/reload the agent
-cp launchd/com.selene.dev-process-batch.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.selene.dev-process-batch.plist
-```
-
-### Dev Pipeline Steps
-
-The batch processor runs these 6 steps sequentially:
-
-| Step | Workflow | What It Does |
-|------|----------|-------------|
-| 1 | `index-vectors.ts` | Embed notes into LanceDB |
-| 2 | `compute-associations.ts` | Pairwise similarity via vector search |
-| 3 | `compute-relationships.ts` | Temporal, thread, project relationships |
-| 4 | `detect-threads.ts` | Cluster notes into threads |
-| 5 | `reconsolidate-threads.ts` | Thread summaries + momentum scores |
-| 6 | `export-obsidian.ts` | Sync to dev Obsidian vault |
-
-### Running Individual Dev Workflows
-
-```bash
-# Any workflow can be run against dev by setting SELENE_ENV
-SELENE_ENV=development npx ts-node src/workflows/index-vectors.ts 50
-SELENE_ENV=development npx ts-node src/workflows/compute-associations.ts 20
-SELENE_ENV=development npx ts-node src/workflows/detect-threads.ts
 ```
 
 ### Dev Database Queries
@@ -558,9 +506,6 @@ DEV_DB=~/selene-data-dev/selene.db
 # Check processing progress
 sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM raw_notes;"
 sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM processed_notes;"
-sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM note_associations;"
-sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM threads;"
-sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM raw_notes WHERE exported_to_obsidian = 1;"
 
 # Verify it's a dev database
 sqlite3 "$DEV_DB" "SELECT value FROM _selene_metadata WHERE key='environment';"
