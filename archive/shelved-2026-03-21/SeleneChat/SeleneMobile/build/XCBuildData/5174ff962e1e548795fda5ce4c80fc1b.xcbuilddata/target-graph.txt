@@ -1,0 +1,6 @@
+Target dependency graph (3 targets)
+Target 'SeleneMobile' in project 'SeleneMobile'
+➜ Explicit dependency on target 'SeleneShared' in project 'SeleneChat'
+Target 'SeleneShared' in project 'SeleneChat'
+➜ Explicit dependency on target 'SeleneShared' in project 'SeleneChat'
+Target 'SeleneShared' in project 'SeleneChat' (no dependencies)

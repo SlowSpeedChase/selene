@@ -1,0 +1,16 @@
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/ConnectionManager.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/App/MobileAppDelegate.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileBriefingView.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileChatView.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/MobileChatViewModel.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileSettingsView.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/MobileSpeechService.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileThreadsView.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/PushNotificationService.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/RemoteDataService.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/RemoteOllamaService.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/RemoteServiceError.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Activities/SeleneChatActivity.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/App/SeleneMobileApp.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/ServerSetupView.swift
+/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/TabRootView.swift

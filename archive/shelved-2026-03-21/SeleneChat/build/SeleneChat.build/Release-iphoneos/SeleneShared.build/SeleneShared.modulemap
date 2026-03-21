@@ -1,0 +1,4 @@
+module SeleneShared {
+header "SeleneShared-Swift.h"
+export *
+}

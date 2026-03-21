@@ -1,0 +1,169 @@
+{
+  "" : {
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobile-primary.dia",
+    "emit-module-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobile-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobile-primary-emit-module.dia",
+    "pch" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobile-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobile-primary.swiftdeps"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Activities/SeleneChatActivity.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneChatActivity~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/App/MobileAppDelegate.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileAppDelegate~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/App/SeleneMobileApp.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/SeleneMobileApp~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/ConnectionManager.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ConnectionManager~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/MobileChatViewModel.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatViewModel~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/MobileSpeechService.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSpeechService~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/PushNotificationService.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/PushNotificationService~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/RemoteDataService.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteDataService~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/RemoteOllamaService.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteOllamaService~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Services/RemoteServiceError.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/RemoteServiceError~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileBriefingView.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileBriefingView~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileChatView.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileChatView~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileSettingsView.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileSettingsView~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/MobileThreadsView.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/MobileThreadsView~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/ServerSetupView.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/ServerSetupView~partial.swiftmodule"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneMobile/Views/TabRootView.swift" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.dia",
+    "index-unit-output-path" : "/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.o",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView.swiftdeps",
+    "swiftmodule" : "/Users/chaseeasterling/selene-n8n/SeleneChat/SeleneMobile/build/SeleneMobile.build/Debug-iphoneos/SeleneMobile.build/Objects-normal/arm64/TabRootView~partial.swiftmodule"
+  }
+}

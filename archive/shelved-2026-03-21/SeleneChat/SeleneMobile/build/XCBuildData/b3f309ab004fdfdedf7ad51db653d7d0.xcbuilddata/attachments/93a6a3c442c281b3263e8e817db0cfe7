@@ -1,0 +1,196 @@
+{
+  "" : {
+    "const-values" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary.swiftconstvalues",
+    "dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary.d",
+    "diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary.dia",
+    "emit-module-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary-emit-module.dia",
+    "pch" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared-primary.swiftdeps"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/AIProvider.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/AIProvider.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/AIProvider.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/AIProvider.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/BriefingState.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/BriefingState.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/BriefingState.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/BriefingState.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/ChatSession.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChatSession.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChatSession.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChatSession.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/ConversationMemory.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ConversationMemory.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ConversationMemory.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ConversationMemory.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/DiscussionThread.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DiscussionThread.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DiscussionThread.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DiscussionThread.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/InboxNote.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/InboxNote.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/InboxNote.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/InboxNote.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/Message.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Message.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Message.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Message.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/Note.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Note.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Note.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Note.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/NoteChunk.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/NoteChunk.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/NoteChunk.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/NoteChunk.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/NoteType.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/NoteType.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/NoteType.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/NoteType.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/Project.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Project.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Project.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Project.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/ScheduledWorkflow.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ScheduledWorkflow.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ScheduledWorkflow.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ScheduledWorkflow.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/SessionContext.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SessionContext.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SessionContext.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SessionContext.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/SubprojectSuggestion.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SubprojectSuggestion.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SubprojectSuggestion.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SubprojectSuggestion.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/ThingsTaskStatus.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThingsTaskStatus.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThingsTaskStatus.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThingsTaskStatus.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/ThinkingPartnerQueryType.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThinkingPartnerQueryType.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThinkingPartnerQueryType.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThinkingPartnerQueryType.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/Thread.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Thread.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Thread.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/Thread.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/ThreadTask.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThreadTask.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThreadTask.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThreadTask.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Models/TodayModels.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/TodayModels.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/TodayModels.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/TodayModels.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Protocols/DataProvider.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DataProvider.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DataProvider.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DataProvider.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Protocols/LLMProvider.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/LLMProvider.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/LLMProvider.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/LLMProvider.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/SeleneShared.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SeleneShared.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ActionExtractor.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ActionExtractor.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ActionExtractor.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ActionExtractor.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/BriefingContextBuilder.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/BriefingContextBuilder.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/BriefingContextBuilder.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/BriefingContextBuilder.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ChunkRetrievalService.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChunkRetrievalService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChunkRetrievalService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChunkRetrievalService.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ChunkingService.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChunkingService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChunkingService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ChunkingService.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ContextBuilder.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ContextBuilder.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ContextBuilder.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ContextBuilder.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/DeepDivePromptBuilder.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DeepDivePromptBuilder.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DeepDivePromptBuilder.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/DeepDivePromptBuilder.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/LLMRouter.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/LLMRouter.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/LLMRouter.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/LLMRouter.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/PrivacyRouter.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/PrivacyRouter.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/PrivacyRouter.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/PrivacyRouter.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/QueryAnalyzer.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/QueryAnalyzer.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/QueryAnalyzer.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/QueryAnalyzer.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ResurfaceTriggerService.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ResurfaceTriggerService.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ResurfaceTriggerService.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ResurfaceTriggerService.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/SynthesisPromptBuilder.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SynthesisPromptBuilder.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SynthesisPromptBuilder.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/SynthesisPromptBuilder.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ThinkingPartnerContextBuilder.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThinkingPartnerContextBuilder.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThinkingPartnerContextBuilder.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThinkingPartnerContextBuilder.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Services/ThreadWorkspacePromptBuilder.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThreadWorkspacePromptBuilder.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThreadWorkspacePromptBuilder.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/ThreadWorkspacePromptBuilder.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Utilities/CitationParser.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/CitationParser.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/CitationParser.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/CitationParser.o"
+  },
+  "/Users/chaseeasterling/selene-n8n/SeleneChat/Sources/SeleneShared/Utilities/VectorUtility.swift" : {
+    "index-unit-output-path" : "/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/VectorUtility.o",
+    "llvm-bc" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/VectorUtility.bc",
+    "object" : "/Users/chaseeasterling/selene-n8n/SeleneChat/build/SeleneChat.build/Release-iphoneos/SeleneShared.build/Objects-normal/arm64/VectorUtility.o"
+  }
+}
