@@ -52,6 +52,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 | 2026-02-13 | 2026-02-13-voice-conversation-design.md | selenechat | Voice Phase 2: TTS responses, voice-in = voice-out conversation mode |
 | 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
 | 2026-03-21 | 2026-03-21-eink-notebook-ingestion-design.md | capture, ocr, eink | Local Ollama vision OCR for Kindle Scribe handwritten notebooks → Selene pipeline |
+| 2026-03-21 | 2026-03-21-close-the-loop-design.md | executive-function, threads, things | Unified task-thread feedback: thread_activity table, Things completion sync, momentum from real progress |
 
 ---
 
