@@ -50,10 +50,8 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 | 2026-02-13 | 2026-02-13-kitchenos-selene-integration-design.md | integrations, meal-planning | KitchenOS recipe indexing + conversational meal planning in SeleneChat |
 | 2026-02-13 | 2026-02-13-trmnl-daily-digest-design.md | integrations | Push morning digest to TRMNL e-ink display |
 | 2026-02-13 | 2026-02-13-voice-conversation-design.md | selenechat | Voice Phase 2: TTS responses, voice-in = voice-out conversation mode |
-| 2026-02-13 | 2026-02-13-selene-mobile-ios-design.md | selenechat, mobile | Native iOS app with full parity, Tailscale networking, push + live activities |
-| 2026-02-19 | 2026-02-19-calendar-context-linking-design.md | ingestion, calendar | Auto-link notes to Apple Calendar events via Swift CLI + EventKit |
-| 2026-02-22 | 2026-02-22-voice-memo-llm-title-design.md | voice, llm | LLM-generated titles for voice memos instead of timestamp titles |
 | 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
+| 2026-03-21 | 2026-03-21-eink-notebook-ingestion-design.md | capture, ocr, eink | Local Ollama vision OCR for Kindle Scribe handwritten notebooks → Selene pipeline |
 
 ---
 
@@ -84,6 +82,9 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-03-21 | 2026-02-22-voice-memo-llm-title-design.md | 2026-03-21 | Already implemented in transcribe-voice-memos.ts, moved from Ready |
+| 2026-03-21 | 2026-02-19-calendar-context-linking-design.md | 2026-03-21 | Full chain: Swift CLI + ingestion + SeleneChat/Mobile UI + AI context, moved from Ready |
+| 2026-02-14 | 2026-02-13-selene-mobile-ios-design.md | 2026-02-14 | Full parity iOS app, Tailscale networking, push + live activities, moved from Ready |
 | 2026-03-18 | 2026-03-18-physical-digital-bridge-design.md | 2026-03-18 | Claude Vision whiteboard capture, daily planning sheet PDF, annotation closed loop |
 | 2026-03-01 | 2026-03-01-remove-n8n-naming-design.md | 2026-03-01 | Rename selene-n8n to selene across 108 files, 665 tests passing |
 | 2026-02-28 | 2026-02-28-thread-context-isolation-design.md | 2026-03-01 | Remove global fallback, thread-scoped memories, active project default, golden walkthrough (665 tests) |
