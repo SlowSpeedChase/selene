@@ -76,6 +76,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
+| 2026-03-21 | [2026-03-21-codebase-simplification-design.md](2026-03-21-codebase-simplification-design.md) | TBD | Strip to clean core (capture + process + browse + visibility), archive everything else |
 
 ---
 
