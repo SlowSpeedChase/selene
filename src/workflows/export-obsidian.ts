@@ -1,7 +1,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { createWorkflowLogger, db, config, generate, isAvailable } from '../lib';
-import { TOPIC_INDEX_PROMPT, DASHBOARD_PROMPT } from '../lib/prompts';
+import { MOC_PROMPT, CATEGORIES } from '../lib/prompts';
 
 const log = createWorkflowLogger('export-obsidian');
 
@@ -25,17 +25,20 @@ interface ExportableNote {
   essence: string | null;
 }
 
-interface TopicData {
-  theme: string;
-  noteCount: number;
+interface MocNote {
+  id: number;
+  title: string;
+  created_at: string;
+  essence: string | null;
+  primary_theme: string | null;
+  filename: string;
+}
+
+interface CategoryData {
+  category: string;
+  notes: MocNote[];
+  crossRefNotes: MocNote[];
   lastActivity: string;
-  notes: Array<{
-    id: number;
-    title: string;
-    created_at: string;
-    essence: string | null;
-    filename: string;
-  }>;
 }
 
 // --- Helpers ---
@@ -172,21 +175,22 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
   return { exported, errors };
 }
 
-// --- Phase 2: Curate Library ---
+// --- Phase 2: Generate MOCs ---
 
-async function curateLibrary(vaultPath: string): Promise<{ topics: number; dashboard: boolean }> {
+async function generateMocs(vaultPath: string): Promise<{ mocs: number; dashboard: boolean }> {
   const ollamaUp = await isAvailable();
   if (!ollamaUp) {
-    log.warn('Ollama not available, skipping curation');
-    return { topics: 0, dashboard: false };
+    log.warn('Ollama not available, skipping MOC generation');
+    return { mocs: 0, dashboard: false };
   }
 
-  // Query all exported non-test notes
+  // Query all exported non-test notes with category data
   const allNotes = db
     .prepare(
       `SELECT
         rn.id, rn.title, rn.created_at,
-        pn.primary_theme, pn.concepts, pn.essence
+        pn.primary_theme, pn.concepts, pn.essence,
+        pn.category, pn.cross_ref_categories
       FROM raw_notes rn
       JOIN processed_notes pn ON rn.id = pn.raw_note_id
       WHERE rn.exported_to_obsidian = 1
@@ -194,139 +198,163 @@ async function curateLibrary(vaultPath: string): Promise<{ topics: number; dashb
         AND rn.status = 'processed'
       ORDER BY rn.created_at DESC`
     )
-    .all() as ExportableNote[];
+    .all() as Array<ExportableNote & { category: string | null; cross_ref_categories: string | null }>;
 
-  log.info({ totalNotes: allNotes.length }, 'Queried exported notes for curation');
+  log.info({ totalNotes: allNotes.length }, 'Queried exported notes for MOC generation');
 
   if (allNotes.length === 0) {
-    return { topics: 0, dashboard: false };
+    return { mocs: 0, dashboard: false };
   }
 
-  // Group by primary_theme
-  const topicMap = new Map<string, TopicData>();
-  const twoWeeksAgo = new Date();
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  for (const note of allNotes) {
-    const theme = note.primary_theme || 'uncategorized';
+  // Build filename for each note
+  const noteWithFilename = allNotes.map((note) => {
     const dateStr = new Date(note.created_at).toISOString().split('T')[0];
     const slug = createSlug(note.title);
-    const filename = `${dateStr}-${slug}`;
+    return {
+      ...note,
+      filename: `${dateStr}-${slug}`,
+    };
+  });
 
-    if (!topicMap.has(theme)) {
-      topicMap.set(theme, {
-        theme,
-        noteCount: 0,
-        lastActivity: note.created_at,
-        notes: [],
+  // Group notes by primary category
+  const categoryMap = new Map<string, CategoryData>();
+
+  // Initialize all categories
+  for (const cat of CATEGORIES) {
+    categoryMap.set(cat, { category: cat, notes: [], crossRefNotes: [], lastActivity: '' });
+  }
+
+  for (const note of noteWithFilename) {
+    const cat = note.category || 'Daily Systems'; // fallback for uncategorized
+    const data = categoryMap.get(cat);
+    if (data) {
+      data.notes.push({
+        id: note.id,
+        title: note.title,
+        created_at: note.created_at,
+        essence: note.essence,
+        primary_theme: note.primary_theme,
+        filename: note.filename,
       });
+      if (!data.lastActivity || note.created_at > data.lastActivity) {
+        data.lastActivity = note.created_at;
+      }
     }
 
-    const topic = topicMap.get(theme)!;
-    topic.noteCount++;
-    topic.notes.push({
-      id: note.id,
-      title: note.title,
-      created_at: note.created_at,
-      essence: note.essence,
-      filename,
-    });
-
-    // lastActivity is the most recent note (notes are ordered DESC)
-    if (topic.notes.length === 1) {
-      topic.lastActivity = note.created_at;
+    // Add to cross-ref categories
+    const crossRefs = parseJson<string[]>(note.cross_ref_categories, []);
+    for (const xref of crossRefs) {
+      const xrefData = categoryMap.get(xref);
+      if (xrefData) {
+        xrefData.crossRefNotes.push({
+          id: note.id,
+          title: note.title,
+          created_at: note.created_at,
+          essence: note.essence,
+          primary_theme: note.primary_theme,
+          filename: note.filename,
+        });
+      }
     }
   }
 
-  // Generate topic pages
-  const topicsDir = join(vaultPath, 'Selene', 'Topics');
-  ensureDir(topicsDir);
+  // Generate MOC pages
+  const mapsDir = join(vaultPath, 'Selene', 'Maps');
+  ensureDir(mapsDir);
 
-  let topicCount = 0;
+  let mocCount = 0;
 
-  for (const [theme, topicData] of topicMap) {
-    if (topicData.noteCount < 2) continue;
+  for (const [category, data] of categoryMap) {
+    if (data.notes.length === 0) continue;
 
     try {
-      // Build notes list for the prompt
-      const notesList = topicData.notes
+      const notesList = data.notes
         .map((n) => {
           const essence = n.essence ? ` — ${n.essence}` : '';
+          const theme = n.primary_theme ? ` [${n.primary_theme}]` : '';
           const date = new Date(n.created_at).toISOString().split('T')[0];
-          return `- ${n.filename} (${date}): "${n.title}"${essence}`;
+          return `- [[${n.filename}]] (${date}): "${n.title}"${theme}${essence}`;
         })
         .join('\n');
 
-      const prompt = TOPIC_INDEX_PROMPT
-        .replace('{theme}', theme)
-        .replace('{notes}', notesList);
+      const crossRefList = data.crossRefNotes.length > 0
+        ? data.crossRefNotes
+            .map((n) => {
+              const essence = n.essence ? ` — ${n.essence}` : '';
+              return `- [[${n.filename}]]: "${n.title}"${essence}`;
+            })
+            .join('\n')
+        : '(none)';
+
+      const prompt = MOC_PROMPT
+        .replace('{category}', category)
+        .replace('{notes_list}', notesList)
+        .replace('{cross_ref_notes}', crossRefList);
 
       const body = await generate(prompt, { timeoutMs: 120000 });
 
       const now = new Date().toISOString().split('T')[0];
-      const topicMarkdown = [
+      const mocMarkdown = [
         `---`,
-        `type: topic`,
+        `type: moc`,
+        `category: ${category}`,
         `updated: ${now}`,
-        `note_count: ${topicData.noteCount}`,
+        `note_count: ${data.notes.length}`,
         `---`,
         ``,
-        `# ${theme}`,
+        `# ${category}`,
         ``,
         body.trim(),
       ].join('\n');
 
-      const topicFile = join(topicsDir, `${theme}.md`);
-      writeFileSync(topicFile, topicMarkdown, 'utf-8');
-      log.info({ theme, noteCount: topicData.noteCount }, 'Generated topic page');
-      topicCount++;
+      const mocFile = join(mapsDir, `${category}.md`);
+      writeFileSync(mocFile, mocMarkdown, 'utf-8');
+      log.info({ category, noteCount: data.notes.length }, 'Generated MOC page');
+      mocCount++;
     } catch (err) {
       const error = err as Error;
-      log.error({ theme, err: error }, 'Failed to generate topic page');
+      log.error({ category, err: error }, 'Failed to generate MOC page');
     }
   }
 
-  // Generate dashboard
+  // Generate code-based dashboard (no LLM)
   let dashboardGenerated = false;
   try {
-    const recentNotes = allNotes.filter(
-      (n) => new Date(n.created_at) >= sevenDaysAgo
-    );
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const recentNotesList = recentNotes
-      .map((n) => {
-        const dateStr = new Date(n.created_at).toISOString().split('T')[0];
-        const slug = createSlug(n.title);
-        const filename = `${dateStr}-${slug}`;
-        const essence = n.essence ? ` — ${n.essence}` : '';
-        return `- ${filename}: "${n.title}"${essence}`;
+    // Recent 10 notes
+    const recentNotes = noteWithFilename.slice(0, 10);
+
+    // Category table rows
+    const categoryRows = CATEGORIES
+      .map((cat) => {
+        const catData = categoryMap.get(cat)!;
+        if (catData.notes.length === 0) return null;
+        const lastDate = catData.lastActivity
+          ? new Date(catData.lastActivity).toISOString().split('T')[0]
+          : '—';
+        return `| [[${cat}]] | ${catData.notes.length} | ${lastDate} |`;
       })
-      .join('\n') || '(no notes in the last 7 days)';
+      .filter(Boolean);
 
-    const topicActivity = Array.from(topicMap.values())
-      .map((t) => {
-        const recentCount = t.notes.filter(
-          (n) => new Date(n.created_at) >= sevenDaysAgo
-        ).length;
-        const lastDate = new Date(t.lastActivity).toISOString().split('T')[0];
-        return `- ${t.theme}: ${t.noteCount} total, ${recentCount} recent, last activity ${lastDate}`;
+    // Quiet categories (no notes in last 30 days)
+    const quietCategories = CATEGORIES.filter((cat) => {
+      const catData = categoryMap.get(cat)!;
+      if (catData.notes.length === 0) return false;
+      return !catData.lastActivity || new Date(catData.lastActivity) < thirtyDaysAgo;
+    });
+
+    const recentList = recentNotes
+      .map((n) => {
+        const essence = n.essence ? n.essence : n.title;
+        return `- [[${n.filename}]] — ${essence}`;
       })
       .join('\n');
 
-    const stats = [
-      `Total notes: ${allNotes.length}`,
-      `Topics: ${topicMap.size}`,
-      `Notes this week: ${recentNotes.length}`,
-    ].join('\n');
-
-    const prompt = DASHBOARD_PROMPT
-      .replace('{stats}', stats)
-      .replace('{recent_notes}', recentNotesList)
-      .replace('{topic_activity}', topicActivity);
-
-    const body = await generate(prompt, { timeoutMs: 180000 });
+    const quietSection = quietCategories.length > 0
+      ? `It's been quiet in ${quietCategories.join(', ')}. Maybe worth revisiting?`
+      : 'All categories have recent activity!';
 
     const now = new Date().toISOString();
     const dashboardMarkdown = [
@@ -337,7 +365,19 @@ async function curateLibrary(vaultPath: string): Promise<{ topics: number; dashb
       ``,
       `# Selene Library`,
       ``,
-      body.trim(),
+      `## Your Maps of Content`,
+      ``,
+      `| Category | Notes | Last Activity |`,
+      `|---|---|---|`,
+      ...categoryRows,
+      ``,
+      `## Recently Captured`,
+      ``,
+      recentList,
+      ``,
+      `## Quiet Areas`,
+      ``,
+      quietSection,
     ].join('\n');
 
     const seleneDir = join(vaultPath, 'Selene');
@@ -350,7 +390,7 @@ async function curateLibrary(vaultPath: string): Promise<{ topics: number; dashb
     log.error({ err: error }, 'Failed to generate dashboard');
   }
 
-  return { topics: topicCount, dashboard: dashboardGenerated };
+  return { mocs: mocCount, dashboard: dashboardGenerated };
 }
 
 // --- Main Export Function ---
@@ -369,18 +409,22 @@ export async function exportObsidian(noteId?: number): Promise<{
   // Phase 1: Export notes (always runs)
   const phase1 = exportNotes(vaultPath);
 
-  // Phase 2: Curate library (failures don't block note export)
-  let phase2 = { topics: 0, dashboard: false };
-  try {
-    phase2 = await curateLibrary(vaultPath);
-  } catch (err) {
-    const error = err as Error;
-    log.error({ err: error }, 'Library curation failed (non-blocking)');
+  // Phase 2: Generate MOCs (only if new notes were exported)
+  let phase2 = { mocs: 0, dashboard: false };
+  if (phase1.exported > 0) {
+    try {
+      phase2 = await generateMocs(vaultPath);
+    } catch (err) {
+      const error = err as Error;
+      log.error({ err: error }, 'MOC generation failed (non-blocking)');
+    }
+  } else {
+    log.info('No new notes exported, skipping MOC generation');
   }
 
   const message = [
     `Exported ${phase1.exported} notes`,
-    phase2.topics > 0 ? `${phase2.topics} topic pages` : null,
+    phase2.mocs > 0 ? `${phase2.mocs} MOC pages` : null,
     phase2.dashboard ? 'dashboard updated' : null,
   ]
     .filter(Boolean)
