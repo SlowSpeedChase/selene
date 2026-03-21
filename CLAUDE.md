@@ -108,7 +108,7 @@ src/
     ingest.ts             # Note ingestion (called by webhook)
     process-llm.ts        # LLM concept extraction
     distill-essences.ts   # Essence backfill + retry
-    export-obsidian.ts    # Obsidian vault sync
+    export-obsidian.ts    # LLM-curated Obsidian library (notes + topic indexes + dashboard)
     daily-summary.ts      # Daily summary generation
     send-digest.ts        # Apple Notes digest delivery
 
