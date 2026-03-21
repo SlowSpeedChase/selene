@@ -76,7 +76,8 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
-| 2026-03-21 | [2026-03-21-codebase-simplification-design.md](2026-03-21-codebase-simplification-design.md) | TBD | Strip to clean core (capture + process + browse + visibility), archive everything else |
+| 2026-03-21 | [2026-03-21-codebase-simplification-design.md](2026-03-21-codebase-simplification-design.md) | main | Strip to clean core — DONE, not yet moved to Done section |
+| 2026-03-21 | [2026-03-21-obsidian-librarian-design.md](2026-03-21-obsidian-librarian-design.md) | TBD | LLM-curated Obsidian library: clean notes, topic indexes, dashboard |
 
 ---
 
