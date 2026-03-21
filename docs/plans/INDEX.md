@@ -78,6 +78,7 @@ Branch exists, actively being worked on.
 |------|----------|--------|-------|
 | 2026-03-21 | [2026-03-21-codebase-simplification-design.md](2026-03-21-codebase-simplification-design.md) | main | Strip to clean core — DONE, not yet moved to Done section |
 | 2026-03-21 | [2026-03-21-obsidian-librarian-design.md](2026-03-21-obsidian-librarian-design.md) | TBD | LLM-curated Obsidian library: clean notes, topic indexes, dashboard |
+| 2026-03-21 | [2026-03-21-obsidian-moc-design.md](2026-03-21-obsidian-moc-design.md) | TBD | Maps of Content: 8 fixed categories, sub-sections, code-generated dashboard |
 
 ---
 
