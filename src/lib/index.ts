@@ -33,5 +33,5 @@ export {
   type SearchOptions,
 } from './lancedb';
 export { ContextBuilder, type NoteContext, type ThreadContext, type FidelityTier } from './context-builder';
-export { EXTRACT_PROMPT, ESSENCE_PROMPT, buildEssencePrompt, TOPIC_INDEX_PROMPT, DASHBOARD_PROMPT, MOC_PROMPT, CATEGORIES } from './prompts';
+export { EXTRACT_PROMPT, ESSENCE_PROMPT, buildEssencePrompt, MOC_PROMPT, CATEGORIES } from './prompts';
 export type { Category } from './prompts';
