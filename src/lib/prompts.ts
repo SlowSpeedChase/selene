@@ -50,3 +50,52 @@ export function buildEssencePrompt(
     .replace('{content}', content)
     .replace('{context}', contextStr);
 }
+
+export const TOPIC_INDEX_PROMPT = `You are writing a topic index page for a personal knowledge library. The topic is "{theme}".
+
+Here are the notes in this topic:
+
+{notes}
+
+Write a topic index page with these sections:
+1. A 2-3 sentence summary in second person ("You've been thinking about...") that captures the theme
+2. A "## Recent" section listing notes from the last 2 weeks as "- [[{filename}]] — one-line description"
+3. A "## Earlier" section listing older notes in the same format
+4. A "## Connections" line suggesting 2-3 related topics that might link to this one
+
+Rules:
+- Do NOT include frontmatter or a top-level heading (we add those ourselves)
+- Use the note titles and essences to write accurate descriptions
+- If all notes are recent, skip the "Earlier" section
+- If all notes are older, skip the "Recent" section
+- Keep descriptions concise — one line each
+- Use wiki-link format [[filename]] exactly as provided`;
+
+export const DASHBOARD_PROMPT = `You are writing a dashboard page for a personal knowledge library. Here are the current stats and activity:
+
+{stats}
+
+Recent notes (last 7 days):
+{recent_notes}
+
+Topic activity:
+{topic_activity}
+
+Write a dashboard with these sections:
+## What's New
+A natural language summary of recent activity (2-3 sentences), followed by a linked list of recent notes as "- [[{filename}]] — description"
+
+## Active Topics
+A markdown table with columns: Topic, Recent Notes, Last Activity
+
+## Emerging Patterns
+What themes are recurring, growing, or new? 2-3 bullet points about patterns you notice.
+
+## Quiet Topics
+Topics without recent notes. A gentle reminder in 1-2 sentences about what hasn't been touched lately.
+
+Rules:
+- Do NOT include frontmatter or a top-level heading
+- Use second person, conversational tone ("You've been focused on...")
+- Use wiki-link format [[filename]] exactly as provided
+- Keep it scannable — this is for someone with ADHD who needs a quick overview`;
