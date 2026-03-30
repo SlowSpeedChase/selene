@@ -66,6 +66,35 @@ async function pushToTrmnl(digestText: string): Promise<void> {
   }
 }
 
+function sendViaImessage(digestText: string): void {
+  if (!config.imessageDigestEnabled) {
+    return;
+  }
+
+  try {
+    const recipient = config.imessageDigestRecipient;
+    const fullMessage = `Selene Daily Digest\n\n${digestText}`;
+
+    // Escape for AppleScript shell embedding
+    const escaped = fullMessage
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/'/g, "'\"'\"'")
+      .replace(/\n/g, '\\n');
+
+    const script = `osascript -e 'tell application "Messages"' \
+      -e 'set targetService to 1st account whose service type = iMessage' \
+      -e 'set targetBuddy to participant "${recipient}" of targetService' \
+      -e 'send "${escaped}" to targetBuddy' \
+      -e 'end tell'`;
+
+    execSync(script, { timeout: 15000, stdio: 'pipe' });
+    log.info('Digest sent via iMessage');
+  } catch (err) {
+    log.error({ err }, 'Failed to send digest via iMessage');
+  }
+}
+
 function updateAppleNote(htmlBody: string): void {
   // Escape for AppleScript: backslashes, double quotes, single quotes, newlines
   const escaped = htmlBody
@@ -141,6 +170,12 @@ export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: str
   // Push to TRMNL if enabled (independent of Apple Notes)
   await pushToTrmnl(message);
   if (config.trmnlDigestEnabled) {
+    anySent = true;
+  }
+
+  // Send via iMessage if enabled (independent of other channels)
+  sendViaImessage(message);
+  if (config.imessageDigestEnabled) {
     anySent = true;
   }
 

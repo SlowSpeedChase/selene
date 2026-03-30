@@ -5,9 +5,9 @@ import { notifyBriefingReady } from '../lib/apns';
 
 const log = createWorkflowLogger('daily-summary');
 
-const SUMMARY_PROMPT = `Generate a brief weekly summary for someone with ADHD.
+const SUMMARY_PROMPT = `Generate a brief summary of recent notes for someone with ADHD.
 
-Notes captured this past week ({count} notes):
+Most recent notes ({count} notes):
 {notes}
 
 Key themes detected:
@@ -30,25 +30,17 @@ export async function dailySummary(): Promise<{ success: boolean; path?: string;
 
   const obsidianPath = process.env.OBSIDIAN_VAULT_PATH || join(config.projectRoot, 'vault');
 
-  // Get past week's date range
-  const now = new Date();
-  const endOfDay = new Date(now);
-  endOfDay.setHours(23, 59, 59, 999);
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(startOfWeek.getDate() - 7);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  // Get notes from the past week
+  // Get the last 10 notes (most recent first, then reversed to chronological)
   const notes = db
     .prepare(
       `SELECT rn.title, rn.content, pn.primary_theme, pn.secondary_themes, pn.concepts, pn.essence
        FROM raw_notes rn
        LEFT JOIN processed_notes pn ON rn.id = pn.raw_note_id
-       WHERE rn.created_at BETWEEN ? AND ?
-         AND rn.test_run IS NULL
-       ORDER BY rn.created_at`
+       WHERE rn.test_run IS NULL
+       ORDER BY rn.created_at DESC
+       LIMIT 10`
     )
-    .all(startOfWeek.toISOString(), endOfDay.toISOString()) as Array<{
+    .all() as Array<{
     title: string;
     content: string;
     primary_theme: string | null;
@@ -57,10 +49,13 @@ export async function dailySummary(): Promise<{ success: boolean; path?: string;
     essence: string | null;
   }>;
 
-  log.info({ noteCount: notes.length }, 'Found notes for past week');
+  // Reverse to chronological order for the prompt
+  notes.reverse();
+
+  log.info({ noteCount: notes.length }, 'Found recent notes for summary');
 
   if (notes.length === 0) {
-    log.info('No notes this week, skipping summary');
+    log.info('No notes found, skipping summary');
     return { success: true };
   }
 

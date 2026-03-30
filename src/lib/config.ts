@@ -122,6 +122,10 @@ export const config = {
   trmnlWebhookUrl: process.env.TRMNL_WEBHOOK_URL || '',
   trmnlDigestEnabled: !isTestEnv && !isDevEnv && !!process.env.TRMNL_WEBHOOK_URL && process.env.TRMNL_DIGEST_ENABLED !== 'false',
 
+  // iMessage digest delivery
+  imessageDigestEnabled: !isTestEnv && !isDevEnv && !!process.env.IMESSAGE_DIGEST_RECIPIENT && process.env.IMESSAGE_DIGEST_ENABLED !== 'false',
+  imessageDigestRecipient: process.env.IMESSAGE_DIGEST_RECIPIENT || '',
+
   // API authentication
   apiToken: process.env.SELENE_API_TOKEN || '',
 
