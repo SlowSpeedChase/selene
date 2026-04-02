@@ -177,13 +177,7 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
 
 // --- Phase 2: Generate MOCs ---
 
-async function generateMocs(vaultPath: string): Promise<{ mocs: number; dashboard: boolean }> {
-  const ollamaUp = await isAvailable();
-  if (!ollamaUp) {
-    log.warn('Ollama not available, skipping MOC generation');
-    return { mocs: 0, dashboard: false };
-  }
-
+async function generateMocs(vaultPath: string, hasNewNotes: boolean): Promise<{ mocs: number; dashboard: boolean }> {
   // Query all exported non-test notes with category data
   const allNotes = db
     .prepare(
@@ -258,12 +252,17 @@ async function generateMocs(vaultPath: string): Promise<{ mocs: number; dashboar
     }
   }
 
-  // Generate MOC pages
+  // Generate MOC pages (only when new notes were exported and Ollama is up)
   const mapsDir = join(vaultPath, 'Selene', 'Maps');
   ensureDir(mapsDir);
 
   let mocCount = 0;
 
+  if (!hasNewNotes) {
+    log.info('No new notes exported, skipping MOC regeneration');
+  } else if (!(await isAvailable())) {
+    log.warn('Ollama not available, skipping MOC generation');
+  } else {
   for (const [category, data] of categoryMap) {
     if (data.notes.length === 0) continue;
 
@@ -316,8 +315,9 @@ async function generateMocs(vaultPath: string): Promise<{ mocs: number; dashboar
       log.error({ category, err: error }, 'Failed to generate MOC page');
     }
   }
+  } // end MOC generation gate
 
-  // Generate code-based dashboard (no LLM)
+  // Generate code-based dashboard (no LLM — always runs)
   let dashboardGenerated = false;
   try {
     const thirtyDaysAgo = new Date();
@@ -409,17 +409,14 @@ export async function exportObsidian(noteId?: number): Promise<{
   // Phase 1: Export notes (always runs)
   const phase1 = exportNotes(vaultPath);
 
-  // Phase 2: Generate MOCs (only if new notes were exported)
+  // Phase 2: Generate MOCs and dashboard
+  // MOCs only regenerate when new notes are exported, but dashboard always regenerates
   let phase2 = { mocs: 0, dashboard: false };
-  if (phase1.exported > 0) {
-    try {
-      phase2 = await generateMocs(vaultPath);
-    } catch (err) {
-      const error = err as Error;
-      log.error({ err: error }, 'MOC generation failed (non-blocking)');
-    }
-  } else {
-    log.info('No new notes exported, skipping MOC generation');
+  try {
+    phase2 = await generateMocs(vaultPath, phase1.exported > 0);
+  } catch (err) {
+    const error = err as Error;
+    log.error({ err: error }, 'MOC generation failed (non-blocking)');
   }
 
   const message = [
