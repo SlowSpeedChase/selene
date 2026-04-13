@@ -1,0 +1,23 @@
+import assert from 'assert';
+
+async function runTests() {
+  const mod = await import('./{{NAME}}');
+  const fn = mod.{{FUNCTION_NAME}};
+
+  // Test 1: Function exists and is callable
+  {
+    assert.strictEqual(typeof fn, 'function', '{{FUNCTION_NAME}} must be exported');
+    console.log('  ✓ {{FUNCTION_NAME}} is exported');
+  }
+
+  // TODO: Add workflow-specific tests here.
+  // Keep tests hermetic — do NOT hit the production database.
+  // Use test_run markers if you must insert data, and clean up after.
+
+  console.log('\nAll {{NAME}} tests passed!');
+}
+
+runTests().catch((err) => {
+  console.error('Tests failed:', err);
+  process.exit(1);
+});

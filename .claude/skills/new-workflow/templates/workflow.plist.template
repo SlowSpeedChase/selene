@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.selene.{{NAME}}</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/npx</string>
+        <string>ts-node</string>
+        <string>src/workflows/{{NAME}}.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/chaseeasterling/selene</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>SELENE_ENV</key>
+        <string>production</string>
+        <key>SELENE_DB_PATH</key>
+        <string>/Users/chaseeasterling/selene-data/selene.db</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>{{INTERVAL}}</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/chaseeasterling/selene/logs/{{NAME}}.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/chaseeasterling/selene/logs/{{NAME}}.error.log</string>
+</dict>
+</plist>

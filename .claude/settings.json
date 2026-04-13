@@ -1,5 +1,15 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/worktree-sync-check.sh"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
@@ -18,6 +28,15 @@
           {
             "type": "command",
             "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -q '\\.ts$'; then cd /Users/chaseeasterling/selene && npx tsc --noEmit --pretty 2>&1 | head -20; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/test-run-warn.sh"
           }
         ]
       }

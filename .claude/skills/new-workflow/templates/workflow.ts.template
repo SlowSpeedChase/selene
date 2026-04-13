@@ -1,0 +1,54 @@
+import {
+  createWorkflowLogger,
+  isAvailable,
+  db,
+} from '../lib';
+import type { WorkflowResult } from '../types';
+
+const log = createWorkflowLogger('{{NAME}}');
+
+export async function {{FUNCTION_NAME}}(): Promise<WorkflowResult> {
+  log.info('Starting {{NAME}} run');
+
+  if (!(await isAvailable())) {
+    log.error('Ollama is not available');
+    return { processed: 0, errors: 0, details: [] };
+  }
+
+  const result: WorkflowResult = {
+    processed: 0,
+    errors: 0,
+    details: [],
+  };
+
+  try {
+    // TODO: Implement workflow logic here.
+    // Example DB access:
+    //   const rows = db.prepare('SELECT ... FROM raw_notes WHERE ...').all();
+    //
+    // For each item, wrap in try/catch and push to result.details
+    // with { id, success: boolean, error?: string }.
+  } catch (err) {
+    const error = err as Error;
+    log.error({ err: error }, '{{NAME}} run failed');
+    result.errors++;
+  }
+
+  log.info(
+    { processed: result.processed, errors: result.errors },
+    '{{NAME}} run complete'
+  );
+  return result;
+}
+
+if (require.main === module) {
+  {{FUNCTION_NAME}}()
+    .then((result) => {
+      console.log('{{NAME}} complete:', result);
+      process.exit(result.errors > 0 ? 1 : 0);
+    })
+    .catch((err) => {
+      console.error('{{NAME}} failed:', err);
+      process.exit(1);
+    });
+}

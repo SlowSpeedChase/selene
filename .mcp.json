@@ -19,6 +19,15 @@
         "/Users/chaseeasterling/selene-data-dev/selene.db"
       ],
       "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "env": {}
     }
   }
 }
