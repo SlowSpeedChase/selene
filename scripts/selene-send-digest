@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /usr/local/bin/npx ts-node src/workflows/send-digest.ts

@@ -7,9 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/npx</string>
-        <string>ts-node</string>
-        <string>src/workflows/daily-summary.ts</string>
+        <string>/Users/chaseeasterling/selene/scripts/selene-daily-summary</string>
     </array>
 
     <key>WorkingDirectory</key>

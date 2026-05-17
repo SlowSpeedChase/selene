@@ -7,9 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/npx</string>
-        <string>ts-node</string>
-        <string>src/workflows/distill-essences.ts</string>
+        <string>/Users/chaseeasterling/selene/scripts/selene-distill-essences</string>
     </array>
 
     <key>WorkingDirectory</key>

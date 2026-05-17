@@ -7,9 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/npx</string>
-        <string>ts-node</string>
-        <string>src/workflows/export-obsidian.ts</string>
+        <string>/Users/chaseeasterling/selene/scripts/selene-export-obsidian</string>
     </array>
 
     <key>WorkingDirectory</key>

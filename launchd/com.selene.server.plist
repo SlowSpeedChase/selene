@@ -7,9 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/npm</string>
-        <string>run</string>
-        <string>start</string>
+        <string>/Users/chaseeasterling/selene/scripts/selene-server</string>
     </array>
 
     <key>WorkingDirectory</key>
