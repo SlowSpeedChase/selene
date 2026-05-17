@@ -1,7 +1,7 @@
 # TRMNL Daily Digest Display
 
 **Date:** 2026-02-13
-**Status:** Ready
+**Status:** Done
 **Topic:** integrations
 
 ---

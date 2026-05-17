@@ -50,7 +50,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 |------|----------|-------|-------|
 | 2026-02-15 | 2026-02-15-thinking-partner-upgrade-design.md | selenechat, cloud-ai | Partially superseded by intelligence-upgrade (Phase 1). Phase 2 (cloud + file workspace) deferred. |
 | 2026-02-13 | 2026-02-13-kitchenos-selene-integration-design.md | integrations, meal-planning | KitchenOS recipe indexing + conversational meal planning in SeleneChat |
-| 2026-02-13 | 2026-02-13-trmnl-daily-digest-design.md | integrations | Push morning digest to TRMNL e-ink display |
 | 2026-02-13 | 2026-02-13-voice-conversation-design.md | selenechat | Voice Phase 2: TTS responses, voice-in = voice-out conversation mode |
 | 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
 | 2026-03-21 | 2026-03-21-eink-notebook-ingestion-design.md | capture, ocr, eink | Local Ollama vision OCR for Kindle Scribe handwritten notebooks → Selene pipeline |
@@ -110,6 +109,7 @@ Branch exists, actively being worked on.
 | 2026-01-26 | today-view-design.md | 2026-01-26 | ADHD landing page with new captures and heating threads |
 | 2026-02-05 | 2026-02-05-voice-input-design.md | 2026-02-05 | Voice input Phase 1: Apple Speech, push-to-talk, URL scheme |
 | 2026-02-05 | 2026-02-05-selene-thinking-partner-design.md | 2026-02-05 | Proactive briefing, cross-thread synthesis, deep-dive dialogue |
+| 2026-05-17 | 2026-02-13-trmnl-daily-digest-design.md | 2026-05-17 | Push morning digest to TRMNL e-ink display at 6am |
 | 2026-02-02 | 2026-02-02-imessage-daily-digest-design.md | 2026-02-02 | iMessage daily digest at 6am via AppleScript |
 | 2026-01-27 | 2026-01-27-selenechat-vector-search-design.md | 2026-01-27 | SeleneChat vector search integration |
 | 2026-01-26 | 2026-01-26-lancedb-transition.md | 2026-01-27 | LanceDB vector DB, typed relationships |
