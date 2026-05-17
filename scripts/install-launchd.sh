@@ -41,6 +41,7 @@ AGENTS=(
     "com.selene.export-obsidian"
     "com.selene.daily-summary"
     "com.selene.send-digest"
+    "com.selene.voice-ingest"
 )
 
 echo "Step 1: Unloading existing agents..."

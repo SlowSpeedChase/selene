@@ -28,8 +28,9 @@ ADHD-focused knowledge management system using TypeScript workflows, SQLite, and
 | Task | Primary Context | Supporting Context |
 |------|-----------------|-------------------|
 | **Plan new work** | `@docs/plans/INDEX.md` | `@.claude/GITOPS.md` |
+| **Check roadmap** | `@docs/plans/INDEX.md` | — |
 | **Modify workflows** | `@src/workflows/` | `@.claude/OPERATIONS.md` |
-| **Understand architecture** | `@.claude/DEVELOPMENT.md` | `@ROADMAP.md` |
+| **Understand architecture** | `@.claude/DEVELOPMENT.md` | `@docs/plans/INDEX.md` |
 | **Run tests** | `@.claude/OPERATIONS.md` | - |
 | **Design ADHD features** | `@.claude/ADHD_Principles.md` | `@.claude/DEVELOPMENT.md` |
 | **Daily operations** | `@.claude/OPERATIONS.md` | `@scripts/CLAUDE.md` |
@@ -383,6 +384,7 @@ selene/
 - **2025-11-13**: Added SeleneChat enhancements phase
 - **2025-11-01**: Added Phase 1.5 (UUID Tracking Foundation)
 - **2025-10-30**: Phase 1 completed (10 notes processed)
+- **2026-05-17**: Removed stale ROADMAP.md — `docs/plans/INDEX.md` is the single source of truth for roadmap and design docs
 - **2025-10-18**: Initial roadmap created
 
 ---
