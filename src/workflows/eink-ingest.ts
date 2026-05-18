@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'path';
 import { tmpdir } from 'os';
 import { createWorkflowLogger } from '../lib';
 import { config } from '../lib/config';
+import { ingest } from './ingest';
 
 const log = createWorkflowLogger('eink-ingest');
 
@@ -13,8 +14,7 @@ interface ManifestEntry {
   processedAt: string;
   pageCount: number;
   archivedTo: string;
-  sentToDrafts: boolean;
-  draftsTitle: string;
+  noteId: number;
 }
 
 interface Manifest {
@@ -153,18 +153,25 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
     const noteBody = combinePages(noteTitle, pageTexts);
 
     if (dryRun) {
-      log.info({ filename, chars: noteBody.length }, 'Dry run — skipping Drafts send and archive');
+      log.info({ filename, chars: noteBody.length }, 'Dry run — skipping ingest and archive');
       result.success = true;
       return result;
     }
 
-    // 4. Send to Drafts for human review
+    // 4. Ingest directly into Selene
+    let noteId: number;
     try {
-      sendToDrafts(noteTitle, noteBody);
-      log.info({ filename, title: noteTitle }, 'Sent to Drafts for review');
+      const ingestResult = await ingest({
+        title: noteTitle,
+        content: noteBody,
+        created_at: new Date().toISOString(),
+        capture_type: 'eink',
+      });
+      noteId = ingestResult.id ?? ingestResult.existingId ?? 0;
+      log.info({ filename, noteId, duplicate: ingestResult.duplicate }, 'Ingested into Selene');
     } catch (err) {
-      result.error = `Drafts send failed: ${(err as Error).message}`;
-      log.error({ filename, err: result.error }, 'Drafts send failed');
+      result.error = `Ingest failed: ${(err as Error).message}`;
+      log.error({ filename, err: result.error }, 'Ingest failed');
       return result;
     }
 
@@ -184,8 +191,7 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
       processedAt: new Date().toISOString(),
       pageCount: imagePaths.length,
       archivedTo: archivePath,
-      sentToDrafts: true,
-      draftsTitle: noteTitle,
+      noteId,
     });
 
     result.success = true;
@@ -257,13 +263,6 @@ function combinePages(title: string, pageTexts: string[]): string {
     .map((text, i) => `--- Page ${i + 1} ---\n${text}`)
     .join('\n\n');
   return `# ${title}\n\n${pages}\n\n#eink #selene`;
-}
-
-// ── Drafts ────────────────────────────────────────────────────────────────────
-
-function sendToDrafts(title: string, content: string): void {
-  const url = `drafts://create?title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}&tags=eink`;
-  execSync(`open "${url}"`, { stdio: 'pipe' });
 }
 
 // ── Archive ───────────────────────────────────────────────────────────────────
