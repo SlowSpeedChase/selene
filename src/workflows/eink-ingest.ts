@@ -164,7 +164,7 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
       const ingestResult = await ingest({
         title: noteTitle,
         content: noteBody,
-        created_at: new Date().toISOString(),
+        created_at: parseDateFromFilename(filename),
         capture_type: 'eink',
       });
       noteId = ingestResult.id ?? ingestResult.existingId ?? 0;
@@ -251,6 +251,18 @@ async function recognizePage(imagePath: string): Promise<string> {
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
+
+function parseDateFromFilename(filename: string): string {
+  const stem = basename(filename, '.pdf');
+  // Handles "2026-05-17_kindle_journal" and "2024-04-21T22:19:36-05:00"
+  const match = stem.match(/^(\d{4}-\d{2}-\d{2}(T[\d:+\-Z]+)?)/);
+  if (match) {
+    const d = new Date(match[1]);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  // Fallback: time of processing
+  return new Date().toISOString();
+}
 
 function buildTitle(filename: string): string {
   // "2026-05-17_kindle_journal.pdf" → "E-Ink: 2026-05-17 kindle journal"
