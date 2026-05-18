@@ -132,6 +132,15 @@ export const config = {
   apnsBundleId: process.env.APNS_BUNDLE_ID || 'com.selene.mobile',
   apnsProduction: process.env.APNS_PRODUCTION === 'true',
 
+  // E-ink notebook ingestion
+  einkWatchDir:
+    process.env.EINK_WATCH_DIR ||
+    join(homedir(), 'Library/Mobile Documents/com~apple~CloudDocs/Documents/iCloud Kindle Notebooks'),
+  einkArchiveDir: process.env.EINK_ARCHIVE_DIR || join(homedir(), 'selene-data/eink/archive'),
+  einkTempDir: process.env.EINK_TEMP_DIR || join(homedir(), 'selene-data/eink/pages'),
+  einkManifestPath: process.env.EINK_MANIFEST_PATH || join(homedir(), 'selene-data/eink/.processed.json'),
+  einkVisionModel: process.env.EINK_VISION_MODEL || 'minicpm-v:latest',
+
   // Voice Memos transcription
   voiceMemosRecordingsDir:
     process.env.VOICE_MEMOS_RECORDINGS_DIR ||

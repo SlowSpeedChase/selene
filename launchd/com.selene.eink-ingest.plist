@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.selene.eink-ingest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/chaseeasterling/selene/scripts/selene-eink-ingest</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/chaseeasterling/selene</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>SELENE_ENV</key>
+        <string>production</string>
+        <key>SELENE_DB_PATH</key>
+        <string>/Users/chaseeasterling/selene-data/selene.db</string>
+    </dict>
+
+    <key>WatchPaths</key>
+    <array>
+        <string>/Users/chaseeasterling/Library/Mobile Documents/com~apple~CloudDocs/Documents/iCloud Kindle Notebooks</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/chaseeasterling/selene/logs/eink-ingest.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/chaseeasterling/selene/logs/eink-ingest.error.log</string>
+</dict>
+</plist>

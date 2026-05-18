@@ -42,6 +42,7 @@ AGENTS=(
     "com.selene.daily-summary"
     "com.selene.send-digest"
     "com.selene.voice-ingest"
+    "com.selene.eink-ingest"
 )
 
 echo "Step 1: Unloading existing agents..."

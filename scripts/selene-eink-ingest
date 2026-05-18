@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /Users/chaseeasterling/selene
+exec /opt/homebrew/bin/npx ts-node src/workflows/eink-ingest.ts "$@"

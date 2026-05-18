@@ -89,12 +89,13 @@ iCloud Folder (PDFs)
 
 ### Model
 
-**Starting recommendation: `granite3.2-vision:2b`**
+**Recommended: `minicpm-v:latest`** *(updated after viability testing 2026-05-18)*
 
-- Purpose-built for document understanding
-- Small (2B params) — fast inference, low memory alongside existing mistral:7b
-- Runs well on Apple Silicon
-- Swappable via config — can upgrade to `llama3.2-vision:11b` or others without code changes
+- Viability test compared `granite3.2-vision:2b` vs `minicpm-v:latest` on 3 real notebooks
+- `minicpm-v` produced coherent, structured output (~16s/page); `granite3.2-vision:2b` confabulated
+- `olmocr2:7b-q8` crashed with a GGML assertion error on current Ollama version
+- Swappable via config — can upgrade without code changes
+- Note: neither model honors `[?]` instructions — Drafts review is the actual quality gate
 
 ### OCR Prompt (per page)
 
@@ -154,13 +155,13 @@ For `capture_type: 'eink'`:
 einkWatchDir: '~/path/to/icloud/scribe/folder',
 einkArchiveDir: '~/selene-data/eink/archive',
 einkTempDir: '~/selene-data/eink/pages',
-einkVisionModel: 'granite3.2-vision:2b',
+einkVisionModel: 'minicpm-v:latest',
 ```
 
 ### Dependencies
 
 - `pdftoppm` (from poppler) — PDF to PNG conversion. Install: `brew install poppler`
-- Ollama with a vision model: `ollama pull granite3.2-vision:2b`
+- Ollama with a vision model: `ollama pull minicpm-v`
 
 ---
 
