@@ -35,3 +35,6 @@ export {
 export { ContextBuilder, type NoteContext, type ThreadContext, type FidelityTier } from './context-builder';
 export { EXTRACT_PROMPT, ESSENCE_PROMPT, buildEssencePrompt, MOC_PROMPT, CATEGORIES } from './prompts';
 export type { Category } from './prompts';
+export * from './anonymize';
+export * from './agent-db';
+export * from './things';
