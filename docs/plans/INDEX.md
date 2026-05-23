@@ -48,6 +48,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-23 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | agents, orchestration, things, personal-assistant | Scoped agent layer on top of Selene foundation. Ollama-local, human-in-the-loop, web dashboard + multi-channel reports. First agent: Things Task Metadata Enricher. |
 | 2026-02-15 | 2026-02-15-thinking-partner-upgrade-design.md | selenechat, cloud-ai | Partially superseded by intelligence-upgrade (Phase 1). Phase 2 (cloud + file workspace) deferred. |
 | 2026-02-13 | 2026-02-13-kitchenos-selene-integration-design.md | integrations, meal-planning | KitchenOS recipe indexing + conversational meal planning in SeleneChat |
 | 2026-02-13 | 2026-02-13-voice-conversation-design.md | selenechat | Voice Phase 2: TTS responses, voice-in = voice-out conversation mode |
