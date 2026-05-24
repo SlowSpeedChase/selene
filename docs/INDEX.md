@@ -23,6 +23,7 @@ This directory contains reference documentation. Most content here is historical
 
 ## Quick Links
 
+- **How to use Selene daily:** `USER-EXPERIENCE.md`
 - **Design docs:** `plans/INDEX.md`
 - **Architecture:** `architecture/overview.md`
 - **Things integration:** `architecture/things-integration.md`

@@ -1,6 +1,6 @@
 # Design Documents Index
 
-**Last Updated:** 2026-03-01
+**Last Updated:** 2026-05-24
 
 Design docs are the planning unit for Selene development. Each doc captures an idea, architecture, and implementation plan.
 
@@ -31,14 +31,8 @@ Ideas captured but not yet ready for implementation.
 |------|----------|-------|-------|
 | 2026-04-12 | [2026-04-12-model-audit-design.md](2026-04-12-model-audit-design.md) | llm, benchmarking, ollama | Per-stage model audit (curiosity-driven). Approach B locked; paused mid-design on fixture strategy. |
 | 2026-04-12 | [2026-04-12-pkm-browse-layer-design.md](2026-04-12-pkm-browse-layer-design.md) | pkm, browse, ipad | LAN web dashboard (`/pkm/*`) + review state + slim exporter upgrade. 4 tracks, ~1 week. Needs category backfill first. |
-| 2026-02-13 | 2026-02-13-database-architecture-evaluation.md | architecture, infra | Vector/graph DB evaluation — keep LanceDB + SQLite, skip graph DB |
-| 2026-02-04 | 2026-02-04-conversation-memory-design.md | selenechat | Persistent conversation memory with mem0-inspired patterns |
-| 2026-01-26 | selenechat-contextual-evolution.md | selenechat | Project-scoped chats, connected info, lab notes - needs breakdown |
-| 2026-01-11 | selenechat-remote-access-design.md | selenechat | Superseded by 2026-02-13-selene-mobile-ios-design.md |
-| 2026-01-05 | weekly-review-react-flow-design.md | ux-core | "Present -> React -> File" paradigm |
-| 2026-01-05 | selenechat-interface-inspiration-design.md | selenechat | Design patterns research - reference doc |
-| 2026-01-05 | selenechat-redesign-design.md | selenechat | Forest Study design system |
-| 2026-01-01 | n8n-upgrade-design.md | infra | Superseded by TypeScript replacement |
+| 2026-03-21 | [2026-03-21-close-the-loop-design.md](2026-03-21-close-the-loop-design.md) | executive-function, things | Thread/task completion feedback ideas still valid; implementation references archived systems (threads, extract-tasks, BriefingViewModel). Needs redesign against agent-layer architecture. |
+| 2026-02-13 | 2026-02-13-database-architecture-evaluation.md | architecture, infra | Decision record: keep LanceDB + SQLite, skip graph DB. Resolved — kept for reference. |
 
 ---
 
@@ -48,27 +42,8 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-23 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | agents, orchestration, things, personal-assistant | Scoped agent layer on top of Selene foundation. Ollama-local, human-in-the-loop, web dashboard + multi-channel reports. First agent: Things Task Metadata Enricher. |
-| 2026-02-15 | 2026-02-15-thinking-partner-upgrade-design.md | selenechat, cloud-ai | Partially superseded by intelligence-upgrade (Phase 1). Phase 2 (cloud + file workspace) deferred. |
-| 2026-02-13 | 2026-02-13-kitchenos-selene-integration-design.md | integrations, meal-planning | KitchenOS recipe indexing + conversational meal planning in SeleneChat |
-| 2026-02-13 | 2026-02-13-voice-conversation-design.md | selenechat | Voice Phase 2: TTS responses, voice-in = voice-out conversation mode |
-| 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety |
-| 2026-03-21 | 2026-03-21-eink-notebook-ingestion-design.md | capture, ocr, eink | Local Ollama vision OCR for Kindle Scribe handwritten notebooks → Selene pipeline |
-| 2026-03-21 | 2026-03-21-close-the-loop-design.md | executive-function, threads, things | Unified task-thread feedback: thread_activity table, Things completion sync, momentum from real progress |
-
----
-
-## Deprioritized
-
-Designs that are ready but not currently a priority. These are bundled together for future implementation.
-
-| Date | Document | Topic | Notes |
-|------|----------|-------|-------|
-| 2026-01-26 | phase-7.3-cloud-ai-integration.md | cloud-ai | Privacy-preserving cloud AI with sanitization |
-| 2026-01-26 | phase-7.3-implementation-plan.md | cloud-ai | 21 tasks, implementation ready |
-| 2026-01-11 | things-checklist-integration-design.md | things | Checklist generation - benefits from Cloud AI |
-
-**Bundle rationale:** Things checklist generation uses LLM for task breakdown. Local Ollama produces adequate results, but Cloud AI would significantly improve quality. Implement together when Cloud AI is prioritized.
+| 2026-03-21 | [2026-03-21-eink-notebook-ingestion-design.md](2026-03-21-eink-notebook-ingestion-design.md) | capture, ocr, eink | Local Ollama vision OCR for Kindle Scribe notebooks → Drafts review → Selene. `minicpm-v` model tested and confirmed. Implement after agent-layer. |
+| 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety. Still fully valid. |
 
 ---
 
@@ -78,9 +53,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
-| 2026-03-21 | [2026-03-21-codebase-simplification-design.md](2026-03-21-codebase-simplification-design.md) | main | Strip to clean core — DONE, not yet moved to Done section |
-| 2026-03-21 | [2026-03-21-obsidian-librarian-design.md](2026-03-21-obsidian-librarian-design.md) | TBD | LLM-curated Obsidian library: clean notes, topic indexes, dashboard |
-| 2026-03-21 | [2026-03-21-obsidian-moc-design.md](2026-03-21-obsidian-moc-design.md) | TBD | Maps of Content: 8 fixed categories, sub-sections, code-generated dashboard |
+| 2026-05-23 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | agent-layer | Scoped agent layer. Plan: docs/plans/2026-05-24-agent-layer-plan.md |
 
 ---
 
@@ -88,6 +61,9 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-03-21 | 2026-03-21-codebase-simplification-design.md | 2026-03-21 | Strip to clean core — 20K→3.5K lines. SeleneChat, SeleneMobile, threads, 11 workflows archived. |
+| 2026-03-21 | 2026-03-21-obsidian-librarian-design.md | 2026-03-21 | LLM-curated notes + topic indexes implemented in export-obsidian.ts |
+| 2026-03-21 | 2026-03-21-obsidian-moc-design.md | 2026-03-21 | 8-category MOCs + code-generated Dashboard.md implemented in export-obsidian.ts |
 | 2026-03-21 | 2026-02-22-voice-memo-llm-title-design.md | 2026-03-21 | Already implemented in transcribe-voice-memos.ts, moved from Ready |
 | 2026-03-21 | 2026-02-19-calendar-context-linking-design.md | 2026-03-21 | Full chain: Swift CLI + ingestion + SeleneChat/Mobile UI + AI context, moved from Ready |
 | 2026-02-14 | 2026-02-13-selene-mobile-ios-design.md | 2026-02-14 | Full parity iOS app, Tailscale networking, push + live activities, moved from Ready |
@@ -131,10 +107,23 @@ Branch exists, actively being worked on.
 Superseded, abandoned, or very old designs. Kept for reference.
 
 <details>
-<summary>View Archived (40+)</summary>
+<summary>View Archived (50+)</summary>
 
 | Date | Document | Reason |
 |------|----------|--------|
+| 2026-02-15 | 2026-02-15-thinking-partner-upgrade-design.md | SeleneChat archived 2026-03-21. Core idea (proactive AI briefing) re-emerges in agent-layer. |
+| 2026-02-13 | 2026-02-13-kitchenos-selene-integration-design.md | SeleneChat archived 2026-03-21. Conversational meal planning was the shell. |
+| 2026-02-13 | 2026-02-13-voice-conversation-design.md | SeleneChat (Voice Phase 2 TTS) archived 2026-03-21. |
+| 2026-02-04 | 2026-02-04-conversation-memory-design.md | SeleneChat archived 2026-03-21. mem0-style memory extraction idea preserved in design doc. |
+| 2026-01-26 | selenechat-contextual-evolution.md | SeleneChat archived 2026-03-21. |
+| 2026-01-26 | phase-7.3-cloud-ai-integration.md | Assumed SeleneChat shell. Anonymization layer concept absorbed into agent-layer design. |
+| 2026-01-26 | phase-7.3-implementation-plan.md | Superseded — depends on archived SeleneChat architecture. |
+| 2026-01-11 | things-checklist-integration-design.md | Required SeleneChat + cloud AI. Things integration now handled by agent-layer. |
+| 2026-01-11 | selenechat-remote-access-design.md | Superseded by SeleneMobile (also archived). |
+| 2026-01-05 | weekly-review-react-flow-design.md | "Present → React → File" paradigm. Depended on archived thread + task systems. |
+| 2026-01-05 | selenechat-interface-inspiration-design.md | SeleneChat design reference. Design philosophy (Forest Study palette) could inspire web dashboard. |
+| 2026-01-05 | selenechat-redesign-design.md | SeleneChat Forest Study design system. App archived. |
+| 2026-01-01 | n8n-upgrade-design.md | Superseded by TypeScript replacement (2026-01-09). |
 | 2026-01-04 | user-story-system-design.md | Replaced by simplified two-layer system |
 | 2026-01-02 | plan-archive-agent-design.md | Deprioritized |
 | 2026-01-02 | selenechat-auto-builder-design.md | Deprioritized |
