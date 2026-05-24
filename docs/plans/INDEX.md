@@ -48,7 +48,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-23 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | agents, orchestration, things, personal-assistant | Scoped agent layer on top of Selene foundation. Ollama-local, human-in-the-loop, web dashboard + multi-channel reports. First agent: Things Task Metadata Enricher. |
 | 2026-02-15 | 2026-02-15-thinking-partner-upgrade-design.md | selenechat, cloud-ai | Partially superseded by intelligence-upgrade (Phase 1). Phase 2 (cloud + file workspace) deferred. |
 | 2026-02-13 | 2026-02-13-kitchenos-selene-integration-design.md | integrations, meal-planning | KitchenOS recipe indexing + conversational meal planning in SeleneChat |
 | 2026-02-13 | 2026-02-13-voice-conversation-design.md | selenechat | Voice Phase 2: TTS responses, voice-in = voice-out conversation mode |
@@ -78,6 +77,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
+| 2026-05-23 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | feature-agent-layer | Agent layer complete: 4 tables, Things enricher, executor, dashboard (4 views), Apple Notes + Obsidian delivery, launchd schedule. |
 | 2026-03-21 | [2026-03-21-codebase-simplification-design.md](2026-03-21-codebase-simplification-design.md) | main | Strip to clean core — DONE, not yet moved to Done section |
 | 2026-03-21 | [2026-03-21-obsidian-librarian-design.md](2026-03-21-obsidian-librarian-design.md) | TBD | LLM-curated Obsidian library: clean notes, topic indexes, dashboard |
 | 2026-03-21 | [2026-03-21-obsidian-moc-design.md](2026-03-21-obsidian-moc-design.md) | TBD | Maps of Content: 8 fixed categories, sub-sections, code-generated dashboard |
