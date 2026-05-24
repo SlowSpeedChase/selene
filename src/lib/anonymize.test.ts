@@ -50,6 +50,17 @@ async function runTests() {
     console.log('  ✓ Multiple instances get distinct tokens');
   }
 
+  // Test 7: anonymizeWithNER replaces structured PII at minimum (NER optional)
+  {
+    const { anonymizeWithNER } = await import('./anonymize');
+    const input = 'Email test@example.com or visit https://example.com';
+    const { text, tokenMap } = await anonymizeWithNER(input);
+    assert.ok(!text.includes('test@example.com'), 'NER pass: email should be replaced');
+    assert.ok(!text.includes('https://example.com'), 'NER pass: URL should be replaced');
+    assert.ok(Object.keys(tokenMap).length >= 2, 'Token map has entries');
+    console.log('  ✓ anonymizeWithNER replaces structured PII (NER layer is additive)');
+  }
+
   console.log('\nAll anonymize tests passed!');
 }
 
