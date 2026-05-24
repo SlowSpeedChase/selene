@@ -13,11 +13,14 @@
 ## Schema Reality Check (read before starting)
 
 ```sql
--- raw_notes: id is INTEGER (not TEXT/UUID), no test_run column
--- Filter production notes with: WHERE rn.is_archived = 0
+-- raw_notes: id is INTEGER (not TEXT/UUID)
+-- raw_notes: NO status column, NO test_run column — filter with is_archived = 0 ONLY
+-- raw_notes: title is nullable — default to '(untitled)' in code
 -- processed_notes: concepts is JSON array (text), summary is NULL for all notes
 -- connections table: currently empty — do NOT use for cluster discovery
 -- Obsidian layout: vault/Selene/Notes/, vault/Selene/Maps/, synthesis → vault/Selene/Synthesis/
+-- Wikilinks in synthesis body must use full path: [[Selene/Notes/YYYY-MM-DD-slug]] not [[YYYY-MM-DD-slug]]
+-- Vault path: use config.vaultPath directly (NOT process.env.OBSIDIAN_VAULT_PATH — that env var does not exist)
 ```
 
 Verify before each task:
@@ -254,6 +257,7 @@ export function upsertTopicCluster(cluster: TopicCluster): void {
       (@id, @name, @slug, @parentId, @synthesisText, @synthesisUpdatedAt, @splitThreshold, @createdAt)
     ON CONFLICT(id) DO UPDATE SET
       name                 = excluded.name,
+      slug                 = excluded.slug,
       synthesis_text       = excluded.synthesis_text,
       synthesis_updated_at = excluded.synthesis_updated_at
   `).run({
@@ -305,7 +309,36 @@ export function deleteTopicCluster(id: string): void {
 }
 ```
 
-**Step 2: Type-check**
+**Step 2: Add new tables to `scripts/create-dev-db.sh`**
+
+`runSynthesisMigrations()` handles runtime creation via `CREATE TABLE IF NOT EXISTS`, but `create-dev-db.sh` is the canonical schema document and must also include the new tables. Find the last `CREATE TABLE` block in the script and append after it:
+
+```bash
+sqlite3 "$DEV_DB" "
+CREATE TABLE IF NOT EXISTS topic_clusters (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  parent_id TEXT,
+  synthesis_text TEXT,
+  synthesis_updated_at TEXT,
+  split_threshold INTEGER NOT NULL DEFAULT 8,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (parent_id) REFERENCES topic_clusters(id)
+);
+
+CREATE TABLE IF NOT EXISTS topic_note_links (
+  topic_id TEXT NOT NULL,
+  raw_note_id INTEGER NOT NULL,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (topic_id, raw_note_id),
+  FOREIGN KEY (topic_id) REFERENCES topic_clusters(id),
+  FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id)
+);
+"
+```
+
+**Step 3: Type-check**
 
 ```bash
 npx tsc --noEmit
@@ -313,10 +346,10 @@ npx tsc --noEmit
 
 Expected: no errors.
 
-**Step 3: Commit**
+**Step 4: Commit**
 
 ```bash
-git add src/lib/synthesis-db.ts
+git add src/lib/synthesis-db.ts scripts/create-dev-db.sh
 git commit -m "feat: add synthesis DB helpers and migration"
 ```
 
@@ -408,7 +441,8 @@ export function discoverClusters(
 
 ```typescript
 import assert from 'assert';
-import { discoverClusters, NoteWithConcepts } from './cluster-topics';
+import { discoverClusters } from './cluster-topics';
+import type { NoteWithConcepts } from '../types/synthesis';
 
 async function runTests() {
   // Test 1: No clusters when all concepts appear in fewer notes than minFrequency
@@ -613,8 +647,9 @@ export async function generateSynthesis(
   clusterName: string,
   notes: NoteWithConcepts[]
 ): Promise<string> {
+  // Full Obsidian wikilink path — must include Selene/Notes/ prefix for links to resolve
   const notesList = notes
-    .map(n => `Title: ${n.title}\nFilename: ${noteFilename(n)}\nConcepts: ${n.concepts.slice(0, 5).join(', ')}`)
+    .map(n => `Title: ${n.title}\nFilename: Selene/Notes/${noteFilename(n)}\nConcepts: ${n.concepts.slice(0, 5).join(', ')}`)
     .join('\n\n');
 
   const prompt = SYNTHESIS_PROMPT
@@ -622,7 +657,8 @@ export async function generateSynthesis(
     .replace('{note_count}', String(notes.length))
     .replace('{notes_list}', notesList);
 
-  const text = await generate(prompt, { maxTokens: 600, temperature: 0.4 });
+  // Synthesis can be slow for large clusters — allow 5 minutes
+  const text = await generate(prompt, { maxTokens: 600, temperature: 0.4, timeoutMs: 300000 });
   log.debug({ clusterName, noteCount: notes.length }, 'Generated synthesis');
   return text.trim();
 }
@@ -697,12 +733,9 @@ function synthesisDir(vaultPath: string): string {
   return join(vaultPath, 'Selene', 'Synthesis');
 }
 
+// Flat naming: all synthesis notes live at vault/Selene/Synthesis/{slug}.md
+// Parent/child relationship is expressed via frontmatter and wikilinks, not file nesting
 function clusterFilePath(vaultPath: string, cluster: TopicCluster): string {
-  if (cluster.parentId) {
-    // Child cluster: vault/Selene/Synthesis/{parent-slug}/{slug}.md
-    // We'll need to pass parent slug; use a flat naming scheme instead: {parent-slug}--{slug}.md
-    return join(synthesisDir(vaultPath), `${cluster.slug}.md`);
-  }
   return join(synthesisDir(vaultPath), `${cluster.slug}.md`);
 }
 
@@ -858,7 +891,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const vaultPath = process.env.OBSIDIAN_VAULT_PATH ?? config.vaultPath;
+  const vaultPath = config.vaultPath;
 
   // 3. Load all notes with concepts
   const allNotes = getAllNotesWithConcepts();
@@ -894,8 +927,8 @@ async function main(): Promise<void> {
       .replace(/\s+/g, '-')
       .slice(0, 50);
 
-    // Check if cluster already exists by slug
-    let cluster = getAllTopicClusters().find(c => c.slug === slug);
+    // Check if cluster already exists by slug (use targeted query, not full table scan)
+    let cluster = getTopicClusterBySlug(slug);
 
     if (!cluster) {
       cluster = {
@@ -911,15 +944,17 @@ async function main(): Promise<void> {
       upsertTopicCluster(cluster);
     }
 
-    // Re-link notes (clear and re-add to handle removals)
-    clearClusterLinks(cluster.id);
-    linkNotesToCluster(cluster.id, noteIds);
-
-    // Check if synthesis needs regeneration
-    const latestLink = getLatestLinkDateForCluster(cluster.id);
+    // Check if synthesis needs regeneration BEFORE clearing links
+    // (after clear+re-add, latestLink would always equal now, making the comparison unreliable)
+    const latestLinkBefore = getLatestLinkDateForCluster(cluster.id);
     const needsRegen =
       !cluster.synthesisUpdatedAt ||
-      (latestLink && latestLink > cluster.synthesisUpdatedAt);
+      (latestLinkBefore && latestLinkBefore > cluster.synthesisUpdatedAt) ||
+      noteIds.length !== getNoteIdsForCluster(cluster.id).length;
+
+    // Re-link notes (clear and re-add to handle additions/removals)
+    clearClusterLinks(cluster.id);
+    linkNotesToCluster(cluster.id, noteIds);
 
     if (needsRegen) {
       log.info({ slug, noteCount: candidateNotes.length }, 'Generating synthesis');
@@ -941,6 +976,9 @@ async function main(): Promise<void> {
       if (splitResult.split) {
         log.info({ slug, children: splitResult.children.length }, 'Splitting cluster');
 
+        // Clear parent's own note links — notes now belong to children only
+        clearClusterLinks(cluster.id);
+
         for (const child of splitResult.children) {
           const childSlug = child.name
             .toLowerCase()
@@ -948,7 +986,7 @@ async function main(): Promise<void> {
             .replace(/\s+/g, '-')
             .slice(0, 50);
 
-          let childCluster = getAllTopicClusters().find(c => c.slug === childSlug);
+          let childCluster = getTopicClusterBySlug(childSlug);
           if (!childCluster) {
             childCluster = {
               id: randomUUID(),
