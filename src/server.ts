@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import { config, logger } from './lib';
 import { ingest } from './workflows/ingest';
 import { exportObsidian } from './workflows/export-obsidian';
+import { agentRoutes } from './routes/agents';
+import { dashboardRoutes } from './routes/dashboard';
 import type { IngestInput, WebhookResponse } from './types';
 
 const server = Fastify({
@@ -72,6 +74,13 @@ server.post<{ Body: { noteId?: number } }>('/webhook/api/export-obsidian', async
     return { success: false, exported_count: 0, errors: 1, message: error.message };
   }
 });
+
+// ---------------------------------------------------------------------------
+// Agent routes + dashboard
+// ---------------------------------------------------------------------------
+
+server.register(agentRoutes);
+server.register(dashboardRoutes);
 
 // ---------------------------------------------------------------------------
 // Start server

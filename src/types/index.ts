@@ -1,6 +1,9 @@
 // Re-export database types
 export { RawNote } from '../lib/db';
 
+// Agent layer types
+export * from './agents';
+
 // Ingest workflow types
 export interface IngestInput {
   title: string;

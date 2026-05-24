@@ -53,7 +53,6 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
-| 2026-05-23 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | agent-layer | Scoped agent layer. Plan: docs/plans/2026-05-24-agent-layer-plan.md |
 
 ---
 
@@ -61,6 +60,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-05-24 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | 2026-05-24 | Agent layer v1: 4 SQLite tables, BaseAgent + Things enricher, ActionExecutor, dashboard (4 views), Apple Notes + Obsidian delivery, launchd schedule at 9am/6pm |
 | 2026-03-21 | 2026-03-21-codebase-simplification-design.md | 2026-03-21 | Strip to clean core — 20K→3.5K lines. SeleneChat, SeleneMobile, threads, 11 workflows archived. |
 | 2026-03-21 | 2026-03-21-obsidian-librarian-design.md | 2026-03-21 | LLM-curated notes + topic indexes implemented in export-obsidian.ts |
 | 2026-03-21 | 2026-03-21-obsidian-moc-design.md | 2026-03-21 | 8-category MOCs + code-generated Dashboard.md implemented in export-obsidian.ts |
