@@ -29,21 +29,20 @@
 | TIER 2: PROCESS (Externalize Working Memory)                |
 | +-------------------------------------------------------+   |
 | | launchd Scheduled Jobs:                               |   |
-| |   - process-llm.ts      -> Concepts/Themes            |   |
-| |   - extract-tasks.ts    -> Task Classification        |   |
-| |   - compute-embeddings.ts -> Semantic Vectors         |   |
-| |   - compute-associations.ts -> Note Relationships     |   |
+| |   - process-llm.ts        -> Concepts/Themes          |   |
+| |   - distill-essences.ts   -> 1-2 sentence essences    |   |
 | +-------------------------------------------------------+   |
-| Design Goal: Automatic organization, visual patterns        |
+| Design Goal: Automatic organization, no manual effort       |
 +-------------------------------------------------------------+
 
 +-------------------------------------------------------------+
 | TIER 3: RETRIEVE (Make Information Visible)                 |
-| +----------------+   +------------------+                    |
-| | SeleneChat App |   | Obsidian Vault   |                   |
-| | (Swift/macOS)  |   | (daily-summary)  |                   |
-| +----------------+   +------------------+                    |
-| Design Goal: Query and explore without mental overhead      |
+| +------------------+   +---------------------------+         |
+| | Obsidian Vault   |   | Apple Notes Daily Digest  |        |
+| | (export-obsidian)|   | (send-digest @ 6am)       |        |
+| +------------------+   +---------------------------+         |
+| Design Goal: Push delivery — insights surface without       |
+| the user needing to remember to check anything              |
 +-------------------------------------------------------------+
 ```
 
@@ -114,9 +113,20 @@
 - **Fast enough:** 10-30 seconds per note acceptable
 
 **Trade-offs Accepted:**
-- Less accurate than GPT-4 (good enough for concept extraction)
-- Requires decent hardware (M1 Mac minimum)
+- Less capable than cloud models (GPT-4, Claude) for nuanced reasoning
+- Apple Silicon (M1+) required — unified memory architecture is why local inference is viable at all; discrete GPU memory bandwidth is ~30–50x slower than data center GPUs for LLM decode
 - Privacy and cost win for personal notes
+
+**What mistral:7b handles well (within Selene's current tasks):**
+- Short note concept extraction and theme detection
+- 1-2 sentence essence distillation
+- Daily summary aggregation
+- 128K context window — context exhaustion is not a concern
+
+**Where the ceiling is:**
+- Long-horizon pattern detection across months of notes (cross-note synthesis at scale)
+- Non-obvious conceptual connections requiring deep reasoning
+- These are out-of-scope for the current pipeline — push delivery of daily summaries is the design, not queryable intelligence
 
 ### launchd vs Cron vs Always-On Server
 
@@ -440,8 +450,10 @@ vault/Selene/Daily/YYYY-MM-DD-summary.md
 
 **launchd Intervals:**
 - Process LLM: Every 5 minutes (balance between responsiveness and resource usage)
-- Embeddings: Every 10 minutes (batch efficiency)
+- Distill Essences: Every 5 minutes (backfill, runs after process-llm)
+- Export Obsidian: Hourly
 - Daily summary: Once at midnight (natural boundary)
+- Send digest: Daily at 6am (Apple Notes delivery)
 
 ---
 
@@ -525,4 +537,4 @@ Before implementing any feature, ask:
 - **`@.claude/OPERATIONS.md`** - Daily commands and operations
 - **`@src/workflows/`** - TypeScript workflow implementations
 - **`@.claude/PROJECT-STATUS.md`** - Current state of development
-- **`@ROADMAP.md`** - Planned phases and features
+- **`@docs/plans/INDEX.md`** - Design documents and roadmap

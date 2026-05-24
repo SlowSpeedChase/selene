@@ -285,6 +285,18 @@ A successful digital system will:
 
 ---
 
+## Push vs Pull: The Critical Design Distinction
+
+Most AI knowledge management tools are **pull-based**: the user opens an app, asks a question, and gets an answer. The system only runs when the user remembers to run it.
+
+Selene is **push-based**: launchd runs the pipeline every 5 minutes regardless of whether the user remembers. The daily digest lands in Apple Notes at 6am. Insights surface automatically.
+
+**Why this matters for ADHD:** "Out of sight, out of mind" means a pull-based system will be forgotten and abandoned. A push-based system externalizes the memory of checking — the system does the checking for you.
+
+This is Selene's non-negotiable design constraint. Any new feature that requires the user to initiate it is a pull-based feature and works against the ADHD design goal.
+
+---
+
 ## System Philosophy Summary
 
 **The Goal**: Create a digital prosthetic executive function that does what the ADHD brain cannot do reliably on its own:
