@@ -44,7 +44,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
 | 2026-03-21 | [2026-03-21-eink-notebook-ingestion-design.md](2026-03-21-eink-notebook-ingestion-design.md) | capture, ocr, eink | Local Ollama vision OCR for Kindle Scribe notebooks → Drafts review → Selene. `minicpm-v` model tested and confirmed. Implement after agent-layer. |
-| 2026-02-22 | 2026-02-22-claude-code-automations-design.md | dev-experience, tooling | MCP servers, Claude Code hooks, and custom skills for dev velocity + safety. Still fully valid. |
 
 ---
 
@@ -62,6 +61,7 @@ Branch exists, actively being worked on.
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
 | 2026-05-24 | [2026-05-23-agent-layer-design.md](2026-05-23-agent-layer-design.md) | 2026-05-24 | Agent layer v1: 4 SQLite tables, BaseAgent + Things enricher, ActionExecutor, dashboard (4 views), Apple Notes + Obsidian delivery, launchd schedule at 9am/6pm |
+| 2026-02-22 | 2026-02-22-claude-code-automations-design.md | 2026-05-24 | context7 + sqlite-dev MCP servers, TypeScript type-check hook, .env block hook, run-workflow + launchd-check skills. All implemented, plus extras (playwright MCP, db-query, workflow-health). |
 | 2026-03-21 | 2026-03-21-codebase-simplification-design.md | 2026-03-21 | Strip to clean core — 20K→3.5K lines. SeleneChat, SeleneMobile, threads, 11 workflows archived. |
 | 2026-03-21 | 2026-03-21-obsidian-librarian-design.md | 2026-03-21 | LLM-curated notes + topic indexes implemented in export-obsidian.ts |
 | 2026-03-21 | 2026-03-21-obsidian-moc-design.md | 2026-03-21 | 8-category MOCs + code-generated Dashboard.md implemented in export-obsidian.ts |
