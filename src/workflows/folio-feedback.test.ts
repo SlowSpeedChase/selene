@@ -82,6 +82,16 @@ describe('buildFeedbackContent', () => {
     expect(result).toContain('concepts: []');
   });
 
+  it('escapes embedded quotes and backslashes in concept values', () => {
+    const result = buildFeedbackContent(
+      baseNote,
+      'src/server.ts',
+      ['say "hello"', 'back\\slash'],
+      null
+    );
+    expect(result).toContain('concepts: ["say \\"hello\\"", "back\\\\slash"]');
+  });
+
   it('includes the note body after the closing frontmatter delimiter', () => {
     const result = buildFeedbackContent(
       baseNote,

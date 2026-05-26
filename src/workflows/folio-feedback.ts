@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { isAbsolute, join, resolve } from 'path';
+import { join, resolve } from 'path';
 import { homedir } from 'os';
 import { createWorkflowLogger } from '../lib';
 
@@ -55,7 +55,7 @@ export function buildFeedbackContent(
     `source: kindle-scribe`,
     `doc: ${filePath}`,
     `date: ${note.created_at}`,
-    `concepts: [${concepts.map(c => `"${c}"`).join(', ')}]`,
+    `concepts: [${concepts.map(c => `"${c.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(', ')}]`,
   ];
   if (primaryTheme) lines.push(`primary_theme: ${primaryTheme}`);
   lines.push('---', '', note.content);
@@ -96,7 +96,9 @@ export function runFolioFeedback(dbPath?: string): void {
 
         // Validate projectDir to prevent path traversal
         const resolvedProjectDir = resolve(meta.projectDir);
-        if (!isAbsolute(resolvedProjectDir) || !resolvedProjectDir.startsWith(homedir())) {
+        const home = homedir();
+        const safePrefix = home.endsWith('/') ? home : home + '/';
+        if (!resolvedProjectDir.startsWith(safePrefix)) {
           console.warn(`[folio-feedback] Rejected unsafe projectDir: ${meta.projectDir}`);
           continue;
         }
