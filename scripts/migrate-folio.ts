@@ -10,11 +10,13 @@ const hasColumn = db
   .prepare("SELECT COUNT(*) as count FROM pragma_table_info('raw_notes') WHERE name = 'status_folio'")
   .get() as { count: number };
 
-if (hasColumn.count === 0) {
-  db.prepare("ALTER TABLE raw_notes ADD COLUMN status_folio TEXT DEFAULT NULL").run();
-  console.log('Migration complete: added status_folio column to raw_notes');
-} else {
-  console.log('Column status_folio already exists — skipping');
+try {
+  if (Number(hasColumn.count) === 0) {
+    db.prepare("ALTER TABLE raw_notes ADD COLUMN status_folio TEXT DEFAULT NULL").run();
+    console.log('Migration complete: added status_folio column to raw_notes');
+  } else {
+    console.log('Column status_folio already exists — skipping');
+  }
+} finally {
+  db.close();
 }
-
-db.close();
