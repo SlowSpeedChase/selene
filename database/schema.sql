@@ -17,7 +17,8 @@ CREATE TABLE raw_notes (
     exported_to_obsidian INTEGER DEFAULT 0,
     test_run TEXT DEFAULT NULL, -- marker for test notes
     status_apple TEXT DEFAULT 'pending_apple', -- pending_apple, processed_apple
-    processed_at_apple DATETIME
+    processed_at_apple DATETIME,
+    status_folio TEXT DEFAULT NULL -- 'written' once feedback file has been written to project
 );
 CREATE TABLE processed_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
