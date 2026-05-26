@@ -1,6 +1,6 @@
 # Folio Delivery (iPad)
 
-**What this does for you:** Read any Selene document on your iPad and mark it up with the Apple Pencil — one terminal command prints a QR code, you scan it, and the document opens in a clean reader on your iPad over your home WiFi.
+**What this does for you:** Read any Selene document on your iPad and mark it up with the Apple Pencil — scan one QR code from your Mac and it opens in a clean reader over your home WiFi.
 
 ## Using it
 
@@ -36,7 +36,7 @@ To open a document on the iPad:
 
 5. Back on the Mac, **press Ctrl+C** in the terminal to stop folio. (Leave it running as long as you want to keep reading.)
 
-**Where your annotations go:** when you tap "Send feedback" on the iPad, your typed text and pencil marks are saved as a Markdown file inside your folio project at `~/folio/<the document's folder>/feedback/`. The file is named with the date and time (for example `2026-05-25T14-30-00-note.md`) and records which document you marked up. iPad annotations are **saved to that feedback folder for you to review** — they are not automatically pushed back into the Selene database. Open the folio project's `feedback/` folder to see what you wrote.
+**Where your annotations go:** when you tap "Send feedback" on the iPad, your typed text and pencil marks are saved as a Markdown file in a `feedback/` folder next to the document you opened. The file is named with the date and time (for example `2026-05-25T14-30-00-note.md`) and records which document you marked up. iPad annotations are **saved to that feedback folder for you to review** — they are not automatically pushed back into the Selene database. Open the folio project's `feedback/` folder to see what you wrote.
 
 > **A note on Kindle:** delivering documents to a Kindle is a separate path (`scripts/send-report.ts` in the folio project) and is not covered here. This guide is the iPad flow only. Selene also ingests *handwritten Kindle Scribe notebooks* via a different pipeline — see **`docs/guides/features/capturing-notes.md`**.
 
