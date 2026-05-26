@@ -1,4 +1,4 @@
-# Morning Digest
+# Daily Digest
 
 **What this does for you:** Every morning at 6am, a short summary of your recent notes — themes and patterns Selene noticed — appears in an Apple Note so you can skim it without searching.
 

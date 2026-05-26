@@ -124,6 +124,8 @@ All Shortcut configuration — the Claude API key, your Mac's network address, a
   - `docs/plans/2026-03-18-physical-digital-bridge-design.md` (whiteboard / paper capture)
 - Connected guides:
   - `docs/guides/ios-shortcut-setup.md` (build the "Capture to Selene" Shortcut for whiteboard/paper photos)
+  - [Obsidian library](obsidian-library.md) (where your captured notes land, curated)
+  - [Daily digest](daily-digest.md) (the 6am summary of what you captured)
 
 ---
 *Last updated: 2026-05-25*

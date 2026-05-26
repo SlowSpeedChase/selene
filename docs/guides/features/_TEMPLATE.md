@@ -1,7 +1,6 @@
 # <Feature Name>
 
 **What this does for you:** <one plain-language sentence>
-**Last Updated:** YYYY-MM-DD
 
 ## Using it
 
@@ -25,3 +24,6 @@ Knobs you can turn: env vars, file paths, schedule. Each with the exact file/com
 
 - Design doc(s): `docs/plans/...`
 - Connected guides: `...`
+
+---
+*Last updated: YYYY-MM-DD*

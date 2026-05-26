@@ -105,7 +105,8 @@ The categories themselves are fixed in code (`CATEGORIES` in `src/lib/prompts.ts
   - `docs/plans/2026-03-21-obsidian-librarian-design.md` (the curated vault: notes, topic indexes, dashboard)
   - `docs/plans/2026-03-21-obsidian-moc-design.md` (the eight fixed categories, Maps of Content, and code-generated dashboard)
 - Connected guides:
-  - `docs/guides/features/capturing-notes.md` (how notes get into Selene in the first place)
+  - [Capturing notes](capturing-notes.md) (how notes get into Selene in the first place)
+  - [Daily digest](daily-digest.md) (the daily summary, which also lands in the vault)
 
 ---
 *Last updated: 2026-05-25*
