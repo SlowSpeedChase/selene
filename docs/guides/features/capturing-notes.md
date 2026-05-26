@@ -1,7 +1,6 @@
 # Capturing Notes
 
 **What this does for you:** Every note you jot, photograph, or handwrite makes its way into Selene automatically, so nothing you capture stays trapped in a separate app or on paper.
-**Last Updated:** 2026-05-25
 
 ## Using it
 
@@ -11,7 +10,7 @@ There are three ways a note gets into Selene. Pick whichever fits the moment —
 
 When you type a note and run your Selene action in the Drafts app, it sends the note straight to Selene. This is the everyday, zero-friction path: type, send, done. Nothing else for you to do — the note shows up in Selene and gets processed automatically.
 
-What you look at afterward: your Obsidian vault and the daily Apple Notes digest, where processed notes land.
+Processed notes show up in your Obsidian vault and the daily Apple Notes digest.
 
 ### 2. Whiteboard and paper photos (iOS Shortcut)
 
@@ -27,9 +26,7 @@ When you write in a Kindle Scribe notebook and it syncs to your iCloud folder as
 
 You don't trigger anything. Just check that your Scribe is exporting PDFs to the watched iCloud folder (see Configure & customize for the exact path).
 
-### What happens to every captured note
-
-No matter which path a note takes, Selene checks for duplicates before storing it. If the same note comes in twice, the second copy is skipped rather than stored again.
+No matter which path a note takes, Selene checks for duplicates before storing it.
 
 ## How it works
 
@@ -44,7 +41,7 @@ All three paths converge on the same ingestion logic.
 
 ### Path 1: Drafts app
 
-- **Endpoint:** `POST /webhook/api/drafts` on the Selene webhook server (`src/server.ts`), port **5678** in production.
+- **Endpoint:** `POST /webhook/api/drafts` on the Selene webhook server (`src/server.ts`), port **5678**.
 - The Drafts action sends `title` and `content` (both required). `capture_type` defaults to `'drafts'`.
 - **Server:** runs continuously via the launchd agent `com.selene.server` (`launchd/com.selene.server.plist`).
 
@@ -102,7 +99,7 @@ npx ts-node src/workflows/eink-ingest.ts --dry-run
 
 ### Drafts app
 
-`capture_type` defaults to `'drafts'`. Drafts-side action setup (building the action that POSTs to the webhook) is out of scope for this guide.
+`capture_type` defaults to `'drafts'`. The Drafts-side action (the one that POSTs to the webhook) is set up once when you install Selene — not something you change day-to-day. See `docs/guides/ios-shortcut-setup.md` for the capture-action setup.
 
 ### iOS Shortcut
 
@@ -112,7 +109,7 @@ All Shortcut configuration — the Claude API key, your Mac's network address, a
 
 | Symptom | Fix |
 |---------|-----|
-| Note sent twice but only one appears | Working as designed — duplicate detection is a SHA-256 hash of **title + content**. Change either the title or the content to capture a near-identical note. |
+| Note sent twice but only one appears | Working as designed — duplicate detection is a fingerprint of the **title + content**. Change either the title or the content to capture a near-identical note. |
 | Webhook note returns an error | Both `title` and `content` are required. A missing field returns `400`. Confirm the server is up: `curl http://localhost:5678/health` |
 | Webhook server not responding | Check health (`curl http://localhost:5678/health`); restart via launchd: `launchctl kickstart -k gui/$(id -u)/com.selene.server` |
 | New Kindle PDF isn't getting picked up | Confirm it landed in the watched folder (`EINK_WATCH_DIR`). Files modified in the last 10 seconds are skipped until sync settles — wait, then run by hand: `npx ts-node src/workflows/eink-ingest.ts --dry-run` |
@@ -127,3 +124,6 @@ All Shortcut configuration — the Claude API key, your Mac's network address, a
   - `docs/plans/2026-03-18-physical-digital-bridge-design.md` (whiteboard / paper capture)
 - Connected guides:
   - `docs/guides/ios-shortcut-setup.md` (build the "Capture to Selene" Shortcut for whiteboard/paper photos)
+
+---
+*Last updated: 2026-05-25*
