@@ -1,8 +1,6 @@
-# Using Selene — A Daily Guide
+# Selene User Guide
 
-**Last Updated:** 2026-05-24
-
-This is the practical guide. Not what the system does internally — what *you* do, and when.
+This is the practical guide and the hub for everything you do with Selene. Not what the system does internally — what *you* do, and when. Each feature also has its own focused guide (see **Feature Guides** below) covering how you use it, how it works, and how to fix it.
 
 ---
 
@@ -34,12 +32,24 @@ That's it. You capture, the system does the rest.
 
 ---
 
+## Feature Guides
+
+Each feature has its own guide — how you use it, how it works, and how to fix it when something breaks.
+
+- [Capturing notes](guides/features/capturing-notes.md) — every way a thought gets into Selene (Drafts, iOS shortcut, e-ink notebook).
+- [Obsidian library](guides/features/obsidian-library.md) — your curated, browsable vault: notes, Maps of Content, and the dashboard.
+- [Daily digest](guides/features/daily-digest.md) — the 6am "Selene Daily" note in Apple Notes.
+- [Folio delivery](guides/features/folio-delivery.md) — read and annotate Selene documents on your iPad.
+- [Agent enrichments](guides/features/agent-enrichments.md) — propose tags and context notes for your Things tasks, with your approval.
+
+---
+
 ## Daily Touchpoints
 
 ### Morning — Your Digest (6am, ~5 minutes)
 
 1. Open **Apple Notes** on your phone or Mac
-2. Find the pinned note **"Selene Daily Digest"**
+2. Find the pinned note **"Selene Daily"**
 3. Skim it — yesterday's captures, extracted themes, patterns
 
 That's your entire morning Selene interaction. You're looking for surprises: things you noticed that you'd already forgotten, recurring themes, ideas that connected across different captures.
