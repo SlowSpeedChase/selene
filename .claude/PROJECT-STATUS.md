@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
-**Last Updated:** 2026-03-21
-**Status:** Simplified Core | Living System Active
+**Last Updated:** 2026-05-25
+**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active
 
 ---
 
@@ -258,6 +258,14 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 
 ## Recent Achievements
 
+### 2026-05-25
+- **Folio iPad Delivery** (`~/folio/scripts/send-ipad.ts`) — QR code in terminal → iPad opens folio LAN reader → Apple Pencil annotation → feedback routes to Selene. Bugs fixed: port conflict detection, Tailscale vs LAN IP preference, Safari dark mode (`color-scheme: light`).
+  - Run: `cd ~/folio && FOLIO_PORT=3001 npx ts-node scripts/send-ipad.ts <file.md>` (port flag only needed when selene-docs is on 3000)
+- **Agent Layer E2E test** (`src/agents/e2e.test.ts`) — full job lifecycle smoke test. All 7 agent test suites passing.
+- **eink launchd bug fixed** — exit 126 from wrong npx path (`/opt/homebrew` → `/usr/local`). WatchPaths agent now triggers correctly.
+- **Finishing skill updated** — Step 5 added: marks design doc as Done in INDEX.md after merge/push.
+- **Folio Kindle delivery** (`~/folio/scripts/send-report.ts`) — generates PDF via Puppeteer, emails to Kindle via SMTP. Session reports deliverable to Kindle.
+
 ### 2026-03-21
 - **Codebase Simplification** - Reduced from ~20,000 to ~3,500 lines
   - Archived 11 workflows, SeleneChat/SeleneMobile apps, 7 API route modules, ~50 scripts
@@ -304,6 +312,6 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 
 ## Questions for Next Session
 
-1. What to build next on the simplified core?
+1. **Synthesis layer** — next roadmap item (Vision status, plan written at `docs/plans/2026-05-24-synthesis-layer-plan.md`). Auto-detect topic clusters → Ollama synthesis → Obsidian `/synthesis/` folder.
 2. Are the 6 active workflows running stably?
 3. Is the Obsidian export producing useful output?
