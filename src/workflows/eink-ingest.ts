@@ -49,6 +49,24 @@ export class EinkIngestError extends Error {
   }
 }
 
+// ── Folio metadata ─────────────────────────────────────────────────────────────
+
+export function parseFolioMetadata(
+  filename: string
+): { projectDir: string; filePath: string } | null {
+  if (!filename.startsWith('folio__')) return null;
+  const parts = filename.split('__');
+  if (parts.length < 4) return null;
+  try {
+    return {
+      projectDir: Buffer.from(parts[1], 'base64url').toString('utf-8'),
+      filePath: Buffer.from(parts[2], 'base64url').toString('utf-8'),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── OCR prompt ────────────────────────────────────────────────────────────────
 
 const OCR_PROMPT = `Transcribe all handwritten text from this image exactly as written.
@@ -149,7 +167,10 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
     }
 
     // 3. Combine pages
-    const noteTitle = buildTitle(filename);
+    const folioMeta = parseFolioMetadata(filename);
+    const noteTitle = folioMeta
+      ? `Folio: ${folioMeta.projectDir} :: ${folioMeta.filePath}`
+      : buildTitle(filename);
     const noteBody = combinePages(noteTitle, pageTexts);
 
     if (dryRun) {
@@ -165,7 +186,7 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
         title: noteTitle,
         content: noteBody,
         created_at: parseDateFromFilename(filename),
-        capture_type: 'eink',
+        capture_type: folioMeta ? 'folio' : 'eink',
       });
       noteId = ingestResult.id ?? ingestResult.existingId ?? 0;
       log.info({ filename, noteId, duplicate: ingestResult.duplicate }, 'Ingested into Selene');
