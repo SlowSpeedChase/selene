@@ -21,7 +21,7 @@ Everything Selene generates is under the **`Selene/`** folder inside the vault:
 `Selene/Dashboard.md` is a scannable navigation hub (no walls of text). It has three sections:
 
 - **Your Maps of Content** — a table of all eight categories with how many notes each holds and when each was last active. Click a category name to jump to its map.
-- **Recently Captured** — your 10 newest notes, each with a one-line essence so you can see at a glance what it was about.
+- **Recently Captured** — your 10 newest notes, each with a one-line essence (or its title if no essence exists yet) so you can see at a glance what it was about.
 - **Quiet Areas** — a gentle nudge listing categories that have had no new notes in the last 30 days, in case one is worth revisiting.
 
 ### The Maps (MOCs)
