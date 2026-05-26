@@ -44,6 +44,7 @@ Brief description of what this branch implements.
 - [ ] README updated (if interface changed)
 - [ ] Roadmap docs updated
 - [ ] Code comments where needed
+- [ ] User-facing change? If yes: feature guide created/updated in `docs/guides/features/` + hub link added
 
 ### Review
 - [ ] Requested review (superpowers:requesting-code-review)

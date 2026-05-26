@@ -21,6 +21,10 @@ Design docs are the planning unit for Selene development. Each doc captures an i
 - [ ] Scope check passed (< 1 week of focused work)
 - [ ] No blockers
 
+**Before moving a design to "Done":** Did this add or change something you interact with?
+- **Yes** → create or update the matching guide in `docs/guides/features/` and add/update its link in the hub (`docs/USER-EXPERIENCE.md`).
+- **No** (invisible refactor/infra) → note "no user-facing change" and move on.
+
 ---
 
 ## Vision (Needs Refinement)
