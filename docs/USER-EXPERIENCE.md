@@ -25,7 +25,7 @@ Every hour: Obsidian vault updated
         ↓
 Every morning 6am: Apple Notes digest delivered
         ↓
-(Soon) Agent proposes enrichments to your Things tasks
+On demand: agent proposes enrichments to your Things tasks (you approve)
 ```
 
 That's it. You capture, the system does the rest.
@@ -76,11 +76,10 @@ The only thing you need to do actively is **capture**. Everything else is automa
 
 These aren't required. They make concept extraction sharper and your Obsidian categories cleaner.
 
-**From paper (coming soon — e-ink pipeline):**
-- Your Kindle Scribe notebooks auto-export PDFs
-- Selene OCRs them via Ollama vision
-- Sends to Drafts for a quick review pass
-- You edit, then send to Selene normally
+**From paper (e-ink pipeline):**
+- Your Kindle Scribe notebooks auto-export PDFs to a watched folder
+- Selene OCRs them via Ollama vision (`qwen2.5vl`) and ingests them directly — no Drafts step
+- See [Capturing notes](guides/features/capturing-notes.md) for the full pipeline and how to redo a file
 
 ---
 
@@ -101,11 +100,15 @@ Personal Growth · Relationships & Social · Health & Body · Projects & Tech ·
 - Look for notes you've forgotten about — that's the point
 - Use Obsidian's search with a concept word you're thinking about
 
-> **Vault location:** `~/selene-data/vault/`
+> **Vault location:** `~/selene/vault/` (the `vault/` folder in the project root). See [Obsidian library](guides/features/obsidian-library.md) for the full layout.
 
 ---
 
-### Browsing — iPad Dashboard (coming soon — PKM browse layer)
+### Reading on iPad — Folio Delivery (available now)
+
+To read and annotate a Selene document on your iPad today, use folio delivery: run one command on your Mac, scan the QR code, and the document opens in a clean reader over your home WiFi. See [Folio delivery](guides/features/folio-delivery.md).
+
+### Browsing — iPad Dashboard (planned — PKM browse layer)
 
 When the PKM browse layer ships, you'll be able to open Safari on your iPad to:
 
@@ -124,21 +127,22 @@ This replaces needing Obsidian open for casual browsing.
 
 ---
 
-### Agent Reports — Things Task Enrichment (coming soon — agent layer)
+### Agent Reports — Things Task Enrichment (available now)
 
-When the agent layer ships:
+The agent layer enriches your Things tasks with context from your note archive:
 
-1. Each morning, an agent scans your configured Things project
+1. You run the enricher for a Things project (it doesn't run on its own yet)
 2. For each task missing notes or tags, it queries your Selene note archive
 3. It proposes: a one-sentence context note + up to 3 tags
-4. You get a report in **Apple Notes** ("Selene: things-enricher")
-5. You approve or reject proposals in a web dashboard at:
+4. You approve or reject each proposal in a web dashboard at:
 
 ```
 http://localhost:5678/dashboard
 ```
 
-**The contract:** the agent *proposes*, you *decide*. Nothing executes without your approval.
+5. Only approved proposals are written to Things
+
+**The contract:** the agent *proposes*, you *decide*. Nothing executes without your approval. See [Agent enrichments](guides/features/agent-enrichments.md) for how to run it and what's automated vs. manual today.
 
 ---
 
@@ -213,32 +217,27 @@ From late 2025 through early 2026, Selene grew to include:
 
 ---
 
+## Recently Shipped
+
+### Agent Layer (shipped)
+
+Enriches your Things tasks with context from your note archive. For a task like "Research standing desk options," the agent finds what you've written about ergonomics, health, or that topic, and proposes tags and a one-sentence "why this matters" note. You review and approve/reject in the web dashboard at `/dashboard`. This is the foundation for future agents (calendar preparation, email drafts, etc.). See [Agent enrichments](guides/features/agent-enrichments.md).
+
+### E-Ink Notebook Ingestion (shipped)
+
+Your Kindle Scribe handwritten notebooks auto-flow into Selene via Ollama vision OCR (`qwen2.5vl`) and ingest directly — no Drafts step. See [Capturing notes](guides/features/capturing-notes.md).
+
+### Folio Delivery (shipped)
+
+Read and annotate Selene documents on your iPad over your home WiFi. See [Folio delivery](guides/features/folio-delivery.md).
+
 ## What's Being Built Now
 
-### Agent Layer (In Progress)
-
-**Status:** Implementation plan written. Branch `agent-layer` active.
-
-The first version does one thing: enriches your Things tasks with context from your note archive. When you have a task like "Research standing desk options," the agent finds everything you've written about ergonomics, health, or that topic, and proposes tags and a one-sentence "why this matters" note.
-
-**New web dashboard at `/dashboard`:**
-- See all agent status
-- Review and approve/reject proposals
-- Read agent reports
-
-This is the foundation for future agents (calendar preparation, email drafts, etc.).
-
-### PKM Browse Layer (Planned)
+### PKM Browse Layer (planned)
 
 **Status:** Design complete, ready to implement.
 
 A read-only LAN web dashboard at `/pkm/*` served from the existing Fastify server. Replaces Obsidian as the primary iPad browse surface. No new processes, no app installs.
-
-### E-Ink Notebook Ingestion (Planned)
-
-**Status:** Design complete, model tested (`minicpm-v`). Ready to implement after agent layer.
-
-Your Kindle Scribe handwritten notebooks auto-flow into Selene via Ollama vision OCR → Drafts review → normal ingestion pipeline.
 
 ---
 
