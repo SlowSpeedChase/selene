@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
 **Last Updated:** 2026-05-25
-**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active
+**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active
 
 ---
 
@@ -101,6 +101,7 @@ Shelved to `archive/shelved-2026-03-21/`:
 | Apple Notes Digest | `src/workflows/send-digest.ts` | Active |
 | Launchd Agents | `launchd/*.plist` | Active (6) |
 | Install Script | `scripts/install-launchd.sh` | Active |
+| User Guides | `docs/guides/features/` + hub `docs/USER-EXPERIENCE.md` | Active (5 guides) |
 
 ### Why Replace n8n?
 
