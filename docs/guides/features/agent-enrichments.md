@@ -1,10 +1,10 @@
 # Agent Enrichments
 
-**What this does for you:** A background agent looks at your Things tasks that are missing tags or notes, cross-references your Selene note archive, and proposes tags and context notes for you to approve — so your tasks get organized without you having to think about it.
+**What this does for you:** A background agent looks at your Things tasks that are missing tags or notes, cross-references your Selene note archive, and proposes tags and context notes for you to approve — so organizing your tasks becomes a quick approve-or-reject instead of busywork.
 
 ## Using it
 
-The agent never changes your Things tasks on its own. It *proposes*, you *approve*, and only then does anything get written. There are two halves to your day-to-day flow.
+The agent never changes your Things tasks on its own. It *proposes*, you *approve*, and only then does anything get written. There are a few parts to your day-to-day flow.
 
 ### 1. Ask for suggestions
 
