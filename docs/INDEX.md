@@ -16,6 +16,7 @@ This directory contains reference documentation. Most content here is historical
 | `architecture/` | Technical reference: schema, integrations, metadata |
 | `roadmap/` | Phase planning documents (legacy) |
 | `guides/` | Setup and configuration guides |
+| `guides/features/` | Per-capability user guides (how to use each feature). Hub: `USER-EXPERIENCE.md` |
 | `agents/` | Agent definitions and documentation |
 | `backlog/` | User stories and backlog items |
 
@@ -24,6 +25,7 @@ This directory contains reference documentation. Most content here is historical
 ## Quick Links
 
 - **How to use Selene daily:** `USER-EXPERIENCE.md`
+- **Feature guides:** `guides/features/`
 - **Design docs:** `plans/INDEX.md`
 - **Architecture:** `architecture/overview.md`
 - **Things integration:** `architecture/things-integration.md`
