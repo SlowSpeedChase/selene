@@ -139,7 +139,7 @@ export const config = {
   einkArchiveDir: process.env.EINK_ARCHIVE_DIR || join(homedir(), 'selene-data/eink/archive'),
   einkTempDir: process.env.EINK_TEMP_DIR || join(homedir(), 'selene-data/eink/pages'),
   einkManifestPath: process.env.EINK_MANIFEST_PATH || join(homedir(), 'selene-data/eink/.processed.json'),
-  einkVisionModel: process.env.EINK_VISION_MODEL || 'minicpm-v:latest',
+  einkVisionModel: process.env.EINK_VISION_MODEL || 'qwen2.5vl:7b',
 
   // Voice Memos transcription
   voiceMemosRecordingsDir:

@@ -65,11 +65,21 @@ export function parseFolioMetadata(
 
 // ── OCR prompt ────────────────────────────────────────────────────────────────
 
-const OCR_PROMPT = `Transcribe all handwritten text from this image exactly as written.
-Preserve line breaks and structure (lists, headers, indentation).
-If a word is not clearly legible, write [?] — do NOT guess from context. Inserting a wrong word is worse than marking it unclear.
-If you see a hand-drawn diagram, flowchart, or visual structure (arrows, boxes, mind maps), write [DIAGRAM: brief description of what you see] on its own line instead of trying to transcribe it.
-Do not add commentary or interpretation — just the raw transcription.`;
+const OCR_PROMPT = `You are transcribing handwritten annotations from a Kindle Scribe PDF page. The image shows a document page that may have both printed text and handwritten marks added with a stylus.
+
+Your job: extract ONLY the handwritten annotations, not the printed document text.
+
+For each annotation:
+- Handwritten words or sentences: transcribe exactly as written, preserving line breaks.
+- Circled text (a circle drawn around printed words): write [CIRCLE: the words inside the circle]
+- Underlined text (a line drawn under printed words): write [UNDERLINE: the underlined words]
+- Arrow: write [ARROW: from X to Y] if the source and target are clear, otherwise [ARROW]
+- Hand-drawn diagram, box, or flowchart: write [DIAGRAM: brief description]
+- Illegible handwriting: write [?] — do NOT guess from context.
+
+If there are no handwritten annotations on this page, respond with exactly: [NO ANNOTATIONS]
+
+Output the transcription only. No preamble, no commentary, no explanation.`;
 
 // ── Main entry ────────────────────────────────────────────────────────────────
 
@@ -149,10 +159,12 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
     log.info({ filename, pages: imagePaths.length }, 'Converted PDF to images');
 
     // 2. OCR each page
+    const folioMeta = parseFolioMetadata(filename);
     const pageTexts: string[] = [];
     for (let i = 0; i < imagePaths.length; i++) {
       try {
-        const text = await recognizePage(imagePaths[i]);
+        const processedPath = preprocessImage(imagePaths[i]);
+        const text = await recognizePage(processedPath);
         pageTexts.push(text);
         log.info({ filename, page: i + 1, chars: text.length }, 'Page OCR complete');
       } catch (err) {
@@ -163,7 +175,6 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
     }
 
     // 3. Combine pages
-    const folioMeta = parseFolioMetadata(filename);
     const noteTitle = folioMeta
       ? `Folio: ${folioMeta.projectDir} :: ${folioMeta.filePath}`
       : buildTitle(filename);
@@ -227,8 +238,7 @@ async function processNotebook(pdfPath: string, dryRun: boolean): Promise<Notebo
 
 function convertPdfToImages(pdfPath: string, outDir: string): string[] {
   const prefix = join(outDir, 'page');
-  // -r 150: 150 DPI — good balance of OCR quality vs file size
-  execSync(`pdftoppm -r 150 -png "${pdfPath}" "${prefix}"`, { stdio: 'pipe' });
+  execSync(`pdftoppm -r 300 -png "${pdfPath}" "${prefix}"`, { stdio: 'pipe' });
 
   const images = readdirSync(outDir)
     .filter(f => f.startsWith('page') && f.endsWith('.png'))
@@ -239,6 +249,19 @@ function convertPdfToImages(pdfPath: string, outDir: string): string[] {
     throw new Error(`pdftoppm produced no PNG files for ${basename(pdfPath)}`);
   }
   return images;
+}
+
+// ── Image preprocessing ───────────────────────────────────────────────────────
+
+function preprocessImage(imagePath: string): string {
+  const outPath = imagePath.replace('.png', '-pp.png');
+  try {
+    execSync(`convert "${imagePath}" -deskew 40% -normalize "${outPath}"`, { stdio: 'pipe' });
+    return outPath;
+  } catch {
+    log.warn({ imagePath }, 'ImageMagick preprocessing failed — using original');
+    return imagePath;
+  }
 }
 
 // ── OCR ───────────────────────────────────────────────────────────────────────
