@@ -43,6 +43,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-25 | [2026-05-25-folio-ipad-delivery-design.md](2026-05-25-folio-ipad-delivery-design.md) | folio, ipad, qr-code | QR code in terminal → iPad opens folio reader → Apple Pencil annotation → feedback back to Selene. One script + qrcode-terminal dep. |
 
 ---
 
