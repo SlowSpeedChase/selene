@@ -79,7 +79,7 @@ OBSIDIAN_VAULT_PATH=/path/to/your/vault
 |---|---|
 | No "Selene Daily" note this morning | Regenerate and deliver it now: `npx ts-node src/workflows/send-digest.ts` |
 | Note exists but content looks empty or stale | The overnight summary may not have run. Regenerate it, then deliver: `npx ts-node src/workflows/daily-summary.ts` then `npx ts-node src/workflows/send-digest.ts` |
-| Want to confirm the 6am delivery actually ran | `launchctl list \| grep selene` — a `0` in the last-exit column for `com.selene.send-digest` means it ran cleanly |
+| Want to confirm the 6am delivery actually ran | `launchctl list \| grep selene` — find the `com.selene.send-digest` row; the second number is the exit status, where `0` means it ran cleanly and `-` means it hasn't run yet |
 | Summary says "Ollama was offline" or has no AI text | The local LLM wasn't running. Start it (`ollama serve`), then regenerate: `npx ts-node src/workflows/daily-summary.ts` |
 | "No notes this week" / digest skipped | Expected if nothing was captured in the past 7 days — capture some notes and it will populate next run |
 | Need to see what went wrong | `tail -f logs/selene.log \| npx pino-pretty` (or `logs/send-digest.error.log` / `logs/daily-summary.error.log`) |
