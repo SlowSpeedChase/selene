@@ -58,7 +58,7 @@ describe('buildFeedbackContent', () => {
     expect(result).toContain('source: kindle-scribe');
     expect(result).toContain('doc: src/server.ts');
     expect(result).toContain('date: 2026-05-25T14:32:00');
-    expect(result).toContain('concepts: [error handling, async patterns]');
+    expect(result).toContain('concepts: ["error handling", "async patterns"]');
     expect(result).toContain('primary_theme: error handling');
     expect(result).toContain(baseNote.content);
     // Frontmatter delimiters

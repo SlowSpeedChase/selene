@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { isAbsolute, join, resolve } from 'path';
 import { homedir } from 'os';
 import { createWorkflowLogger } from '../lib';
 
@@ -55,7 +55,7 @@ export function buildFeedbackContent(
     `source: kindle-scribe`,
     `doc: ${filePath}`,
     `date: ${note.created_at}`,
-    `concepts: [${concepts.join(', ')}]`,
+    `concepts: [${concepts.map(c => `"${c}"`).join(', ')}]`,
   ];
   if (primaryTheme) lines.push(`primary_theme: ${primaryTheme}`);
   lines.push('---', '', note.content);
@@ -77,7 +77,7 @@ export function runFolioFeedback(dbPath?: string): void {
              pn.concepts, pn.primary_theme
       FROM raw_notes rn
       LEFT JOIN processed_notes pn ON pn.raw_note_id = rn.id
-      WHERE rn.source_type = 'folio'
+      WHERE rn.capture_type = 'folio'
         AND rn.status_folio IS NULL
         AND rn.status IN ('processed', 'archived')
     `).all() as RawNoteRow[];
@@ -85,40 +85,51 @@ export function runFolioFeedback(dbPath?: string): void {
     log.info({ count: notes.length }, 'Found folio notes needing feedback');
 
     for (const note of notes) {
-      const meta = parseFolioTitle(note.title);
-      if (!meta) {
-        log.warn({ noteId: note.id, title: note.title }, 'Could not parse folio title — skipping');
-        continue;
-      }
-
-      const { projectDir, filePath } = meta;
-
-      // Parse concepts from JSON (stored as JSON string in processed_notes.concepts)
-      let concepts: string[] = [];
-      if (note.concepts) {
-        try {
-          const parsed = JSON.parse(note.concepts);
-          concepts = Array.isArray(parsed) ? parsed : [];
-        } catch {
-          log.warn({ noteId: note.id }, 'Could not parse concepts JSON — defaulting to []');
+      try {
+        const meta = parseFolioTitle(note.title);
+        if (!meta) {
+          log.warn({ noteId: note.id, title: note.title }, 'Could not parse folio title — skipping');
+          continue;
         }
+
+        const { filePath } = meta;
+
+        // Validate projectDir to prevent path traversal
+        const resolvedProjectDir = resolve(meta.projectDir);
+        if (!isAbsolute(resolvedProjectDir) || !resolvedProjectDir.startsWith(homedir())) {
+          console.warn(`[folio-feedback] Rejected unsafe projectDir: ${meta.projectDir}`);
+          continue;
+        }
+
+        // Parse concepts from JSON (stored as JSON string in processed_notes.concepts)
+        let concepts: string[] = [];
+        if (note.concepts) {
+          try {
+            const parsed = JSON.parse(note.concepts);
+            concepts = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            log.warn({ noteId: note.id }, 'Could not parse concepts JSON — defaulting to []');
+          }
+        }
+
+        const primaryTheme = note.primary_theme || null;
+
+        const feedbackDir = join(resolvedProjectDir, 'feedback');
+        if (!existsSync(feedbackDir)) {
+          mkdirSync(feedbackDir, { recursive: true });
+        }
+
+        const filename = buildFeedbackFilename(note.created_at, filePath);
+        const dest = join(feedbackDir, filename);
+        const content = buildFeedbackContent(note, filePath, concepts, primaryTheme);
+
+        writeFileSync(dest, content, 'utf-8');
+        log.info({ noteId: note.id, dest }, 'Wrote feedback file');
+
+        db.prepare("UPDATE raw_notes SET status_folio = 'written' WHERE id = ?").run(note.id);
+      } catch (err) {
+        console.error(`[folio-feedback] Failed to write feedback for note ${note.id}:`, err);
       }
-
-      const primaryTheme = note.primary_theme || null;
-
-      const feedbackDir = join(projectDir, 'feedback');
-      if (!existsSync(feedbackDir)) {
-        mkdirSync(feedbackDir, { recursive: true });
-      }
-
-      const filename = buildFeedbackFilename(note.created_at, filePath);
-      const dest = join(feedbackDir, filename);
-      const content = buildFeedbackContent(note, filePath, concepts, primaryTheme);
-
-      writeFileSync(dest, content, 'utf-8');
-      log.info({ noteId: note.id, dest }, 'Wrote feedback file');
-
-      db.prepare("UPDATE raw_notes SET status_folio = 'written' WHERE id = ?").run(note.id);
     }
 
     log.info({ processed: notes.length }, 'Folio feedback run complete');
