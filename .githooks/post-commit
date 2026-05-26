@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Regenerate the combined Selene user guide and re-send it to Kindle whenever a commit
+# touches the guide docs (docs/guides/features/** or docs/USER-EXPERIENCE.md).
+# Runs the send in the background so it never blocks or fails the commit.
+
+set -uo pipefail
+REPO="/Users/chaseeasterling/selene"
+LOG="$REPO/logs/selene-guide-kindle.log"
+mkdir -p "$REPO/logs"
+
+changed=$(git diff-tree --no-commit-id --name-only -r HEAD)
+if printf '%s\n' "$changed" | grep -qE '^docs/guides/features/|^docs/USER-EXPERIENCE\.md$'; then
+  echo "$(date '+%Y-%m-%d %H:%M:%S') post-commit: guide docs changed -> regenerating + sending to Kindle (background)" >> "$LOG"
+  nohup bash "$REPO/scripts/send-selene-guide-to-kindle.sh" >/dev/null 2>&1 &
+else
+  echo "$(date '+%Y-%m-%d %H:%M:%S') post-commit: no guide-doc changes, skipping" >> "$LOG"
+fi
+exit 0
