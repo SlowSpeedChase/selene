@@ -30,6 +30,7 @@ ADHD-focused knowledge management system using TypeScript workflows, SQLite, and
 | **Plan new work** | `@docs/plans/INDEX.md` | `@.claude/GITOPS.md` |
 | **Check roadmap** | `@docs/plans/INDEX.md` | — |
 | **Modify workflows** | `@src/workflows/` | `@.claude/OPERATIONS.md` |
+| **Write/update a user guide** | `@docs/guides/features/` | `@docs/USER-EXPERIENCE.md` |
 | **Understand architecture** | `@.claude/DEVELOPMENT.md` | `@docs/plans/INDEX.md` |
 | **Run tests** | `@.claude/OPERATIONS.md` | - |
 | **Design ADHD features** | `@.claude/ADHD_Principles.md` | `@.claude/DEVELOPMENT.md` |
@@ -53,6 +54,19 @@ ADHD-focused knowledge management system using TypeScript workflows, SQLite, and
 2. **GitOps Branches** - Implementation tracking
    - Stages: planning → dev → testing → docs → review → ready
    - Each branch has `BRANCH-STATUS.md` with stage checklists
+
+3. **User Guides** (`docs/guides/features/`) - How each feature is used
+   - Hub: `docs/USER-EXPERIENCE.md` ("Selene User Guide") links to every feature guide
+   - One guide per **user-facing capability** (what the user interacts with), written from `docs/guides/features/_TEMPLATE.md`
+
+### User Guides Are Part of Wrap-Up (MANDATORY)
+
+**Before marking a design doc "Done" (and in the GitOps `docs` stage), ask: did this add or change something the user interacts with?**
+
+- **Yes** → create or update the matching guide in `docs/guides/features/<capability>.md`, then add/update its link in the hub `docs/USER-EXPERIENCE.md`.
+- **No** (invisible refactor/infra) → note "no user-facing change" and move on.
+
+**When writing a guide, verify every claim against real source** (workflow files, launchd plists, `config.ts`) — design docs are often stale; trust the code. Guide structure (operator-facing first): Using it → How it works → Configure & customize → Troubleshooting → Related.
 
 ### Quick Commands
 ```bash
@@ -312,6 +326,8 @@ selene/
 |   +-- cleanup-tests.sh    # Remove test data
 +-- docs/                    # Reference documentation
 |   +-- INDEX.md            # Documentation navigation
+|   +-- USER-EXPERIENCE.md  # "Selene User Guide" - consolidated hub linking all feature guides
+|   +-- guides/features/    # Per-feature user guides (+ _TEMPLATE.md)
 |   +-- plans/              # Design documents (all preserved)
 +-- archive/                 # Shelved features
 |   +-- shelved-2026-03-21/ # Workflows, apps, scripts with README
@@ -328,7 +344,15 @@ selene/
 1. Edit the TypeScript file in `src/workflows/`
 2. Run manually to test: `npx ts-node src/workflows/<name>.ts`
 3. Check logs: `tail -f logs/selene.log | npx pino-pretty`
-4. Commit changes
+4. If user-facing behavior changed: update the matching guide in `docs/guides/features/`
+5. Commit changes
+
+### Wrapping Up a Feature
+
+1. Did this change something the user interacts with? If no → skip to step 4.
+2. Create/update `docs/guides/features/<capability>.md` (copy `_TEMPLATE.md`), verifying claims against the real code
+3. Add/update the guide's link in the hub `docs/USER-EXPERIENCE.md`
+4. Check the `docs`-stage box in `BRANCH-STATUS.md` and move the design doc toward "Done" in `docs/plans/INDEX.md`
 
 ### Testing Changes
 
@@ -354,6 +378,7 @@ selene/
 **Ending:**
 - Run tests
 - Update PROJECT-STATUS.md
+- Update/create the user guide if a user-facing feature changed (see Wrapping Up a Feature)
 - Cleanup test data
 - Commit all changes
 
@@ -372,6 +397,7 @@ selene/
 
 ## Version History
 
+- **2026-05-25**: Added per-feature user guides (`docs/guides/features/`) + consolidated hub (`docs/USER-EXPERIENCE.md`). User guides are now a mandatory part of feature wrap-up (Done criteria + GitOps `docs` stage).
 - **2026-03-21**: Codebase simplification - archived 11 workflows, SeleneChat/SeleneMobile, ~50 scripts. Core: 6 workflows, 6 launchd agents, 6 scripts.
 - **2026-03-01**: Renamed project from selene-n8n to selene (removed legacy n8n naming)
 - **2026-01-27**: Simplified to two-layer system (design docs + GitOps). Archived user stories.
@@ -403,6 +429,7 @@ selene/
    | Architecture/patterns | `.claude/DEVELOPMENT.md` |
    | Git/branch workflow | `.claude/GITOPS.md` |
    | Design planning | `docs/plans/YYYY-MM-DD-topic-design.md` |
+   | How to use a feature | `docs/guides/features/<capability>.md` (hub: `docs/USER-EXPERIENCE.md`) |
 
 3. **Update existing file, don't create new one.**
 
