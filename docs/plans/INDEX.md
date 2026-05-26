@@ -43,6 +43,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-25 | [2026-05-25-user-guides-design.md](2026-05-25-user-guides-design.md) | documentation, user-guides, process | Consolidated hub (USER-EXPERIENCE.md) + 5 per-capability feature guides in docs/guides/features/ from shared template. Wrap-up trigger via Done criteria + GitOps docs-stage checkbox. |
 
 ---
 
