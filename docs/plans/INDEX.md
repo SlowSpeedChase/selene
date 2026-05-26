@@ -48,6 +48,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-26 | [2026-05-26-phase1-worksheets-related-notes-design.md](2026-05-26-phase1-worksheets-related-notes-design.md) | ipad, worksheets, llm, related-notes | Structured multi-field worksheets (free_capture + note_review) + post-submit "Selene remembers" panel via nomic-embed-text/LanceDB search. Mac stays LLM hub. Builds on Phase 0 (shipped). |
 
 ---
 
