@@ -5,6 +5,8 @@ export { RawNote } from '../lib/db';
 export * from './agents';
 
 // Ingest workflow types
+// Cross-repo contract: also consumed by Folio's trySeleneWebhook.
+// KEEP IN SYNC with folio `src/feedback.ts` → SeleneDraftPayload (~/folio).
 export interface IngestInput {
   title: string;
   content: string;
