@@ -24,4 +24,9 @@ describe('parseFolioMetadata', () => {
     expect(parseFolioMetadata('folio__onlyone.pdf')).toBeNull();
     expect(parseFolioMetadata('folio__aaa__bbb.pdf')).toBeNull();
   });
+
+  it('returns null for filename with empty decoded segments', () => {
+    // folio______ has empty parts[1] and parts[2]
+    expect(parseFolioMetadata('folio______original.pdf')).toBeNull();
+  });
 });

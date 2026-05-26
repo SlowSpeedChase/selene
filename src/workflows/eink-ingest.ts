@@ -57,14 +57,10 @@ export function parseFolioMetadata(
   if (!filename.startsWith('folio__')) return null;
   const parts = filename.split('__');
   if (parts.length < 4) return null;
-  try {
-    return {
-      projectDir: Buffer.from(parts[1], 'base64url').toString('utf-8'),
-      filePath: Buffer.from(parts[2], 'base64url').toString('utf-8'),
-    };
-  } catch {
-    return null;
-  }
+  const projectDir = Buffer.from(parts[1], 'base64url').toString('utf-8');
+  const filePath = Buffer.from(parts[2], 'base64url').toString('utf-8');
+  if (!projectDir || !filePath) return null;
+  return { projectDir, filePath };
 }
 
 // ── OCR prompt ────────────────────────────────────────────────────────────────
