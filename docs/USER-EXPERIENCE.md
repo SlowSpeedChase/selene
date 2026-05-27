@@ -41,6 +41,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [Daily digest](guides/features/daily-digest.md) — the 6am "Selene Daily" note in Apple Notes.
 - [Folio delivery](guides/features/folio-delivery.md) — read and annotate Selene documents on your iPad.
 - [Agent enrichments](guides/features/agent-enrichments.md) — propose tags and context notes for your Things tasks, with your approval.
+- [Interactive worksheets](guides/features/interactive-worksheets.md) — daily review form on your iPad: write freehand, Selene OCRs and saves, then shows where you've mentioned the same things before.
 
 ---
 
@@ -230,6 +231,14 @@ Your Kindle Scribe handwritten notebooks auto-flow into Selene via Ollama vision
 ### Folio Delivery (shipped)
 
 Read and annotate Selene documents on your iPad over your home WiFi. See [Folio delivery](guides/features/folio-delivery.md).
+
+## Recently Shipped (continued)
+
+### Interactive Worksheets (shipped)
+
+A structured daily review on your iPad. Two handwriting fields where you write with Apple Pencil, plus a note-review section surfacing your backlog. On submit: Vision OCR converts ink to text, notes are saved, and Selene shows you past notes you've written on the same topics. See [Interactive worksheets](guides/features/interactive-worksheets.md).
+
+---
 
 ## What's Being Built Now
 
