@@ -49,7 +49,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-26 | [2026-05-26-phase1-worksheets-related-notes-design.md](2026-05-26-phase1-worksheets-related-notes-design.md) | ipad, worksheets, llm, related-notes | Structured multi-field worksheets (free_capture + note_review) + post-submit "Selene remembers" panel via nomic-embed-text/LanceDB search. Mac stays LLM hub. Builds on Phase 0 (shipped). |
 
 ---
 
@@ -66,6 +65,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-05-27 | [2026-05-26-phase1-worksheets-related-notes-design.md](2026-05-26-phase1-worksheets-related-notes-design.md) | 2026-05-27 | Multi-field worksheets (free_capture + note_review) + "Selene remembers" panel. OCR review-before-submit step added. Track A (TypeScript) + Track B (Swift/iPad). User guide at docs/guides/features/interactive-worksheets.md. |
 | 2026-05-25 | [2026-05-25-user-guides-design.md](2026-05-25-user-guides-design.md) | 2026-05-25 | Consolidated hub (USER-EXPERIENCE.md) + 5 per-capability feature guides in docs/guides/features/ from shared template. Wrap-up trigger via Done criteria + GitOps docs-stage checkbox. |
 | 2026-05-25 | [2026-05-25-folio-ipad-delivery-design.md](2026-05-25-folio-ipad-delivery-design.md) | 2026-05-25 | send-ipad.ts: qrcode-terminal QR code → iPad opens folio LAN reader → Apple Pencil annotation → feedback back to Selene. |
 | 2026-05-25 | [2026-03-21-eink-notebook-ingestion-design.md](2026-03-21-eink-notebook-ingestion-design.md) | 2026-05-25 | minicpm-v OCR, pdftoppm conversion, manifest tracking, WatchPaths launchd agent. Fixed npx path bug (exit 126). Direct ingest (no Drafts step). |
