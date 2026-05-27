@@ -2,12 +2,12 @@
   "mcpServers": {
     "folio": {
       "type": "stdio",
-      "command": "npx",
+      "command": "/Users/chaseeasterling/folio/node_modules/.bin/ts-node",
       "args": [
-        "ts-node",
+        "--transpile-only",
+        "--project", "/Users/chaseeasterling/folio/tsconfig.json",
         "/Users/chaseeasterling/folio/src/mcp.ts",
-        "--dir",
-        "/Users/chaseeasterling/selene"
+        "--dir", "/Users/chaseeasterling/selene"
       ],
       "env": {}
     },
