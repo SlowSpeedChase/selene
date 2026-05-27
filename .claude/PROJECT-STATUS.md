@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
-**Last Updated:** 2026-05-25
-**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active
+**Last Updated:** 2026-05-27
+**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active | Interactive Worksheets Shipped
 
 ---
 
@@ -258,6 +258,14 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 ---
 
 ## Recent Achievements
+
+### 2026-05-27
+
+- **Interactive Worksheets Phase 1 shipped** — Multi-field scrollable form with per-field PKCanvasView (finger scrolls, pencil draws), note-review cards surfacing backlog notes, Vision OCR on submit, "Selene remembers…" related-notes sheet via nomic-embed-text + LanceDB. OCR review-before-submit step added: recognized text shown in editable field before POST fires.
+  - Track A (TypeScript): `src/types/worksheets.ts`, `src/workflows/generate-worksheet.ts`, `src/routes/worksheets.ts` on `feature/interactive-worksheets` branch
+  - Track B (Swift/iPad): `~/SeleneMarkup` — `WorksheetView`, `CanvasView`, `RelatedNotesSheet`, `HandwritingService`
+  - User guide: `docs/guides/features/interactive-worksheets.md`
+  - Dev server runs on port 5679; deploy via `cd ~/SeleneMarkup && ./redeploy.sh`
 
 ### 2026-05-25
 - **Folio iPad Delivery** (`~/folio/scripts/send-ipad.ts`) — QR code in terminal → iPad opens folio LAN reader → Apple Pencil annotation → feedback routes to Selene. Bugs fixed: port conflict detection, Tailscale vs LAN IP preference, Safari dark mode (`color-scheme: light`).
