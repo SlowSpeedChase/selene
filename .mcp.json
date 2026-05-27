@@ -1,5 +1,16 @@
 {
   "mcpServers": {
+    "folio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "ts-node",
+        "/Users/chaseeasterling/folio/src/mcp.ts",
+        "--dir",
+        "/Users/chaseeasterling/selene"
+      ],
+      "env": {}
+    },
     "context7": {
       "type": "stdio",
       "command": "npx",
