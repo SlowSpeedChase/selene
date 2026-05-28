@@ -39,6 +39,17 @@
         "@playwright/mcp@latest"
       ],
       "env": {}
+    },
+    "sqlite-prod": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/mcp-sqlite",
+        "--db-path",
+        "/Users/chaseeasterling/selene-data/selene.db"
+      ],
+      "env": {}
     }
   }
 }

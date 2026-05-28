@@ -1,5 +1,19 @@
 # Thread Reconsolidation
 
+> **ARCHIVED — 2026-03-21**
+> The workflows this document describes (`reconsolidate-threads.ts`, `detect-threads.ts`,
+> `compute-embeddings.ts`, `compute-relationships.ts`) were removed during the
+> codebase simplification. The thread system lives in `archive/shelved-2026-03-21/`.
+>
+> **Still relevant:** The design patterns here — delta-only updates, momentum scoring,
+> and LLM-regenerated summaries per cluster — are closely related to the synthesis
+> layer being built in `docs/plans/2026-05-24-synthesis-layer-design.md`. The synthesis
+> layer uses concept-frequency clustering instead of embedding similarity, but the
+> reconsolidation loop (detect change → fetch notes → LLM → update → export) is
+> the same shape.
+
+---
+
 **Purpose:** Keep semantic threads alive and accurate as new notes flow into the system.
 
 ---
@@ -110,16 +124,12 @@ Each file includes:
 
 ## Schedule
 
-Reconsolidation runs **hourly** via launchd.
+Reconsolidation ran **hourly** via launchd.
 
 **Why hourly?**
 - Frequent enough to keep threads current
 - Not so frequent it burns LLM tokens
 - Aligns with natural work rhythms (check threads at top of hour)
-
-**Trigger:** `launchctl kickstart gui/$(id -u)/com.selene.reconsolidate-threads`
-
-**Logs:** `logs/reconsolidate-threads.log`
 
 ---
 
@@ -168,53 +178,7 @@ Reconsolidation embodies key ADHD principles:
 
 ---
 
-## Configuration
-
-**Environment variables:**
-- `SELENE_DB_PATH` - Database location
-- `OBSIDIAN_VAULT_PATH` - Obsidian vault for exports
-
-**Tuning:**
-- `MAX_NOTES_PER_SYNTHESIS = 15` - More notes = richer context, slower/costlier
-- `StartInterval = 3600` - Hourly runs (in launchd plist)
-
----
-
-## Monitoring
-
-**Check if running:**
-```bash
-launchctl list | grep reconsolidate
-```
-
-**View recent logs:**
-```bash
-tail -50 logs/reconsolidate-threads.log | npx pino-pretty
-```
-
-**Expected output:**
-```
-INFO: Starting thread reconsolidation
-INFO: Threads needing resynthesis { count: 1 }
-INFO: Momentum scores calculated { threadsUpdated: 4 }
-INFO: Thread export to Obsidian complete { exported: 4 }
-INFO: Thread reconsolidation complete { threadsResynthesized: 1, momentumUpdated: 4, threadsExported: 4, errors: 0 }
-```
-
----
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `src/workflows/reconsolidate-threads.ts` | Main workflow script |
-| `launchd/com.selene.reconsolidate-threads.plist` | Hourly schedule |
-| `logs/reconsolidate-threads.log` | Execution logs |
-| `vault/Selene/Threads/*.md` | Exported thread files |
-
----
-
-## Related Workflows
+## Related Workflows (all archived)
 
 | Workflow | Frequency | Relationship |
 |----------|-----------|--------------|

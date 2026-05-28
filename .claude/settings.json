@@ -21,6 +21,16 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-end-reminders.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -37,6 +47,24 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/test-run-warn.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/auto-test-workflow.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -qE '(src/workflows/[^/]+\\.ts$|launchd/.*\\.plist$|scripts/install-launchd\\.sh)'; then echo '{\"systemMessage\": \"LAUNCHD-SYNC: Workflow or plist file changed — invoke the launchd-auditor subagent to verify sync between src/workflows/, launchd/, and scripts/install-launchd.sh.\"}'; fi"
           }
         ]
       }
