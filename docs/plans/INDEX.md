@@ -47,6 +47,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-28 | [2026-05-28-prod-dev-split-design.md](2026-05-28-prod-dev-split-design.md) | Production/Development split | Release boundary: `~/selene` becomes dev sandbox (dev DB + scratch vault, ts-node); `~/selene-prod` becomes prod (compiled `dist/`, real DB + iCloud vault). Auto-deploy on merge to main via gated launchd deploy-watcher. Two coexisting iPad apps (Selene / Selene Dev). Design approved; next step writing-plans. |
 ---
 
 ## In Progress
