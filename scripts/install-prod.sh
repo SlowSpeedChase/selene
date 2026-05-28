@@ -81,9 +81,31 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p "$OUT_DIR"
 fi
 
-shopt -s nullglob
-generated_count=0
+# The dest filename prefix is fixed (com.selene.prod.) and is the basis for
+# both generation and the orphan-reconcile scan, so the two cannot drift.
+DEST_PREFIX="com.selene.prod."
 
+# Labels that must NEVER be pruned by reconcile. The deploy-watcher prod plist
+# is infra installed separately (it has no workflow source under launchd/), so
+# it must not be booted out or removed here.
+RECONCILE_SKIP=("${LABEL_PREFIX}deploy-watcher")
+
+shopt -s nullglob
+
+# Track generated <name>s and their dest paths/labels across the two passes.
+generated_names=()
+generated_dests=()
+generated_labels=()
+
+# Clean up any leftover temp file on hard failure.
+TMP_PLIST=""
+cleanup_tmp() { [[ -n "$TMP_PLIST" && -f "$TMP_PLIST" ]] && rm -f "$TMP_PLIST"; return 0; }
+trap cleanup_tmp EXIT
+
+# === Pass 1: generate ALL plists ============================================
+# Each plist is built into a temp file and only mv'd into place after a
+# successful plutil -lint. If ANY generation fails, the script exits non-zero
+# BEFORE Pass 2, so launchd is never touched with an incomplete prod set.
 for src in "${LAUNCHD_DIR}"/com.selene.*.plist; do
     base="$(basename "$src")"          # com.selene.<name>.plist
 
@@ -96,7 +118,7 @@ for src in "${LAUNCHD_DIR}"/com.selene.*.plist; do
     name="${name%.plist}"              # <name>
 
     new_label="${LABEL_PREFIX}${name}"
-    dest="${OUT_DIR}/com.selene.prod.${name}.plist"
+    dest="${OUT_DIR}/${DEST_PREFIX}${name}.plist"
 
     # Determine the compiled entrypoint. server is special (not under workflows/).
     if [[ "$name" == "server" ]]; then
@@ -114,6 +136,12 @@ for src in "${LAUNCHD_DIR}"/com.selene.*.plist; do
     new_out="$(remap_path "$src_out")"
     new_err="$(remap_path "$src_err")"
 
+    # Record the generated set in ALL modes (needed for the would-prune print
+    # under --dry-run / --no-load as well as the real load/reconcile paths).
+    generated_names+=("$name")
+    generated_dests+=("$dest")
+    generated_labels+=("$new_label")
+
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo "[dry-run] would write ${dest}"
         echo "          Label             = ${new_label}"
@@ -125,39 +153,113 @@ for src in "${LAUNCHD_DIR}"/com.selene.*.plist; do
         continue
     fi
 
-    # Copy the canonical plist, then edit per-key. Per-key edits preserve
-    # KeepAlive / RunAtLoad / StartInterval / other env vars (e.g.
-    # SELENE_DB_PATH) untouched, and avoid any substring corruption.
-    cp "$src" "$dest"
+    # Build into a temp file, then atomically mv into place. Per-key edits
+    # preserve KeepAlive / RunAtLoad / StartInterval / other env vars (e.g.
+    # SELENE_DB_PATH) untouched, and avoid any substring corruption. Building
+    # in a temp file means a failed plutil never leaves a half-edited dest.
+    TMP_PLIST="$(mktemp)"
+    cp "$src" "$TMP_PLIST"
 
-    plutil -replace Label -string "$new_label" "$dest"
+    plutil -replace Label -string "$new_label" "$TMP_PLIST"
 
     # Rebuild ProgramArguments entirely: invoke node with the compiled target.
     # This intentionally drops the dev wrapper-script indirection (ts-node).
-    plutil -replace ProgramArguments -json "[\"${NODE_BIN}\", \"${prog_target}\"]" "$dest"
+    plutil -replace ProgramArguments -json "[\"${NODE_BIN}\", \"${prog_target}\"]" "$TMP_PLIST"
 
-    [[ -n "$src_wd" ]]  && plutil -replace WorkingDirectory  -string "$new_wd"  "$dest"
-    [[ -n "$src_out" ]] && plutil -replace StandardOutPath   -string "$new_out" "$dest"
-    [[ -n "$src_err" ]] && plutil -replace StandardErrorPath -string "$new_err" "$dest"
+    [[ -n "$src_wd" ]]  && plutil -replace WorkingDirectory  -string "$new_wd"  "$TMP_PLIST"
+    [[ -n "$src_out" ]] && plutil -replace StandardOutPath   -string "$new_out" "$TMP_PLIST"
+    [[ -n "$src_err" ]] && plutil -replace StandardErrorPath -string "$new_err" "$TMP_PLIST"
 
     # Inject SELENE_ENV=production. Create the env dict only if it is absent
     # (in the canonical plists it already exists, so this is normally a no-op).
-    if ! plutil -extract EnvironmentVariables xml1 -o /dev/null "$dest" 2>/dev/null; then
-        plutil -insert EnvironmentVariables -xml '<dict/>' "$dest" 2>/dev/null || true
+    if ! plutil -extract EnvironmentVariables xml1 -o /dev/null "$TMP_PLIST" 2>/dev/null; then
+        plutil -insert EnvironmentVariables -xml '<dict/>' "$TMP_PLIST" 2>/dev/null || true
     fi
-    plutil -replace EnvironmentVariables.SELENE_ENV -string production "$dest"
+    plutil -replace EnvironmentVariables.SELENE_ENV -string production "$TMP_PLIST"
 
+    # Validate before committing. A lint failure aborts the whole run (set -e
+    # plus explicit exit) so Pass 2 never runs with an incomplete prod set.
+    if ! plutil -lint "$TMP_PLIST" >/dev/null; then
+        echo "ERROR: generated plist failed lint for ${new_label}; aborting before any launchctl." >&2
+        rm -f "$TMP_PLIST"; TMP_PLIST=""
+        exit 1
+    fi
+
+    mv "$TMP_PLIST" "$dest"
+    TMP_PLIST=""
     echo "wrote ${dest}"
-    generated_count=$((generated_count + 1))
-
-    # Load into the live launchd domain only when explicitly requested.
-    if [[ "$NO_LOAD" -eq 0 ]]; then
-        uid="$(id -u)"
-        launchctl bootout "gui/${uid}/${new_label}" 2>/dev/null || true
-        launchctl bootstrap "gui/${uid}" "$dest"
-    fi
 done
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    echo "Generated ${generated_count} plist(s) into ${OUT_DIR}"
+    echo "Generated ${#generated_names[@]} plist(s) into ${OUT_DIR}"
 fi
+
+# === Reconcile: prune orphaned prod plists ==================================
+# A <name> present in OUT_DIR but no longer produced by launchd/ should stop
+# running in prod. On the real load path we bootout + rm orphans; under
+# --dry-run / --no-load we only PRINT what would be pruned (OUT_DIR may be an
+# arbitrary temp dir, so deleting there would be wrong).
+in_array() {
+    local needle="$1"; shift
+    local item
+    for item in "$@"; do [[ "$item" == "$needle" ]] && return 0; done
+    return 1
+}
+
+uid="$(id -u)"
+for existing in "${OUT_DIR}/${DEST_PREFIX}"*.plist; do
+    ex_base="$(basename "$existing")"           # com.selene.prod.<name>.plist
+    ex_name="${ex_base#"${DEST_PREFIX}"}"        # <name>.plist
+    ex_name="${ex_name%.plist}"                  # <name>
+    ex_label="${LABEL_PREFIX}${ex_name}"
+
+    # Still generated this run? Not an orphan.
+    if in_array "$ex_name" "${generated_names[@]}"; then
+        continue
+    fi
+    # Protected infra label (e.g. deploy-watcher)? Never touch.
+    if in_array "$ex_label" "${RECONCILE_SKIP[@]}"; then
+        continue
+    fi
+
+    if [[ "$DRY_RUN" -eq 1 || "$NO_LOAD" -eq 1 ]]; then
+        echo "[would-prune] orphaned prod plist ${existing} (label ${ex_label})"
+        continue
+    fi
+
+    echo "pruning orphaned prod plist ${existing} (label ${ex_label})"
+    launchctl bootout "gui/${uid}/${ex_label}" 2>/dev/null || true
+    rm -f "$existing"
+done
+
+# === Pass 2: load ALL generated plists ======================================
+# Only on the real load path (not --dry-run, not --no-load). A bootstrap
+# failure is reported per-label and does NOT abort the loop (so the user gets a
+# full summary); the script exits non-zero at the end if any failed.
+if [[ "$DRY_RUN" -eq 0 && "$NO_LOAD" -eq 0 ]]; then
+    # C1: launchd does not create the StandardOut/ErrorPath parent dir, so jobs
+    # would fail to spawn. Create it before loading.
+    mkdir -p "${PROD_DIR}/logs"
+
+    load_failed=()
+    for i in "${!generated_labels[@]}"; do
+        label="${generated_labels[$i]}"
+        dest="${generated_dests[$i]}"
+        launchctl bootout "gui/${uid}/${label}" 2>/dev/null || true
+        if ! launchctl bootstrap "gui/${uid}" "$dest"; then
+            echo "ERROR: launchctl bootstrap failed for ${label} (${dest})" >&2
+            load_failed+=("$label")
+        fi
+    done
+
+    if [[ "${#load_failed[@]}" -gt 0 ]]; then
+        echo "Load summary: ${#load_failed[@]} of ${#generated_labels[@]} failed to bootstrap:" >&2
+        for label in "${load_failed[@]}"; do echo "  - ${label}" >&2; done
+        exit 1
+    fi
+    echo "Loaded ${#generated_labels[@]} plist(s) into gui/${uid}"
+fi
+
+# End on a deterministic success status: the script's prior command may be a
+# skipped (false) guard whose exit status would otherwise leak out.
+exit 0
