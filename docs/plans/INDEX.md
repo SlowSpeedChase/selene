@@ -51,6 +51,8 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-28 | [2026-05-28-agentic-digest-lead-design.md](2026-05-28-agentic-digest-lead-design.md) | digest, daily-summary, ollama, adhd | Lesson #1 from competitive scan. One "Worth your attention" lead line atop the 6am digest — turns a report into an attention-director. One Ollama call in daily-summary.ts, no new files/tables/surfaces. ~0.5 day. |
+| 2026-05-28 | [2026-05-28-note-task-proposer-design.md](2026-05-28-note-task-proposer-design.md) | agent-layer, things-integration, executive-function, adhd | Lesson #6 from competitive scan. New agent scans recent notes → proposes Things tasks (you approve/reject in existing dashboard). Closes the "thought→task" arm of close-the-loop against the current agent layer. Adds the missing `createTask` helper + `things.create_task` action + dedupe marker. ~2–3 days. |
 
 ---
 
