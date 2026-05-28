@@ -47,8 +47,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | ipad, pencilkit, ocr, annotation, selenemarkup | iPad annotation layer in SeleneMarkup: browse notes by topic cluster, open raw capture, draw with Apple Pencil on infinite canvas below note, Vision OCR → new linked note. 4 server endpoints + source_note_id column. |
-
 ---
 
 ## In Progress
@@ -64,6 +62,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | 2026-05-28 | iPad note annotation shipped: Notes tab in SeleneMarkup (cluster browse → note → PencilKit canvas → Vision OCR → new linked note). selene: `source_note_id` column + `src/routes/notes.ts` (4 endpoints, 4 jest tests). SeleneMarkup: NoteModels, AnnotationService (5 tests), 4 views, tab wiring, AppConfig.mainBaseURL. User guide at docs/guides/features/note-annotation.md. |
 | 2026-05-26 | [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) | 2026-05-28 | Layered synthesis shipped: synthesize-topics.ts (nightly clustering + evolution detection), connection detection in process-llm.ts, 4 new digest sections, launchd agent at 2am. 17 tests. User guide at docs/guides/features/synthesis-layer.md. |
 | 2026-05-26 | [2026-05-26-folio-kindle-agent-design.md](2026-05-26-folio-kindle-agent-design.md) | 2026-05-27 | Folio MCP server (4 tools): list_changed_documents, read_document, get_delivery_history, send_kindle_digest. Delta PDF delivery to Kindle. Registered in selene/.mcp.json. |
 | 2026-05-27 | [2026-05-26-phase1-worksheets-related-notes-design.md](2026-05-26-phase1-worksheets-related-notes-design.md) | 2026-05-27 | Multi-field worksheets (free_capture + note_review) + "Selene remembers" panel. OCR review-before-submit step added. Track A (TypeScript) + Track B (Swift/iPad). User guide at docs/guides/features/interactive-worksheets.md. |

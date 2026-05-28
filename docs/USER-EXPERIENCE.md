@@ -42,6 +42,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [Folio delivery](guides/features/folio-delivery.md) — read and annotate Selene documents on your iPad.
 - [Agent enrichments](guides/features/agent-enrichments.md) — propose tags and context notes for your Things tasks, with your approval.
 - [Interactive worksheets](guides/features/interactive-worksheets.md) — daily review form on your iPad: write freehand, Selene OCRs and saves, then shows where you've mentioned the same things before.
+- [Note annotation](guides/features/note-annotation.md) — browse your notes by topic on the iPad, then hand-write a follow-up below one with the Apple Pencil; Selene OCRs it and files it as a new linked note.
 - [Synthesis layer](guides/features/synthesis-layer.md) — topics you keep circling, when your understanding shifts, and unexpected connections between old and new notes — delivered in the morning digest automatically.
 
 ---
@@ -238,6 +239,10 @@ Read and annotate Selene documents on your iPad over your home WiFi. See [Folio 
 ### Interactive Worksheets (shipped)
 
 A structured daily review on your iPad. Two handwriting fields where you write with Apple Pencil, plus a note-review section surfacing your backlog. On submit: Vision OCR converts ink to text, notes are saved, and Selene shows you past notes you've written on the same topics. See [Interactive worksheets](guides/features/interactive-worksheets.md).
+
+### Note Annotation (shipped)
+
+On the iPad, browse your notes by topic cluster, open one, and hand-write a follow-up thought below it with the Apple Pencil. Vision OCR converts your ink and files it as a new note linked back to the original (`source_note_id`), so it flows through the normal pipeline automatically. See [Note annotation](guides/features/note-annotation.md).
 
 ---
 
