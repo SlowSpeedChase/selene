@@ -1,7 +1,8 @@
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { createWorkflowLogger, config } from '../lib';
+import { createWorkflowLogger, config, db } from '../lib';
+import { buildSynthesisSections } from '../lib/synthesis-digest';
 
 const log = createWorkflowLogger('send-digest');
 
@@ -116,6 +117,9 @@ export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: str
     return { sent: false };
   }
 
+  const synthesisSections = buildSynthesisSections(db);
+  const fullMessage = message + synthesisSections;
+
   let anySent = false;
 
   // Push to Apple Notes if enabled
@@ -127,7 +131,7 @@ export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: str
         month: 'long',
         day: 'numeric',
       });
-      const html = digestToHtml(message, dateStr);
+      const html = digestToHtml(fullMessage, dateStr);
       updateAppleNote(html);
       log.info('Digest posted to Apple Notes');
       anySent = true;
@@ -139,7 +143,7 @@ export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: str
   }
 
   // Push to TRMNL if enabled (independent of Apple Notes)
-  await pushToTrmnl(message);
+  await pushToTrmnl(fullMessage);
   if (config.trmnlDigestEnabled) {
     anySent = true;
   }
@@ -173,12 +177,14 @@ async function sendDigestToFile(): Promise<{ sent: boolean; writtenToFile?: stri
     return { sent: false };
   }
 
+  const synthesisSections = buildSynthesisSections(db);
+
   // Write to sent-digests subdirectory
   const sentDir = join(config.digestsPath, 'sent');
   mkdirSync(sentDir, { recursive: true });
 
   const sentPath = join(sentDir, `${today}-sent.txt`);
-  const fullMessage = `🌅 Selene Daily Digest\n\n${message}`;
+  const fullMessage = `🌅 Selene Daily Digest\n\n${message}${synthesisSections}`;
   writeFileSync(sentPath, fullMessage);
 
   log.info({ path: sentPath }, 'Digest written to file (test mode)');
