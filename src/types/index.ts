@@ -13,6 +13,7 @@ export interface IngestInput {
   created_at?: string;
   test_run?: string;
   capture_type?: string;
+  source_uuid?: string;
 }
 
 export interface IngestResult {

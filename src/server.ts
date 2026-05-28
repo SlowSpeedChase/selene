@@ -29,7 +29,7 @@ server.get('/health', async () => {
 
 // POST /webhook/api/drafts - Note ingestion (called by Drafts app)
 server.post<{ Body: IngestInput }>('/webhook/api/drafts', async (request, reply) => {
-  const { title, content, created_at, test_run, capture_type } = request.body;
+  const { title, content, created_at, test_run, capture_type, source_uuid } = request.body;
 
   logger.info({ title, test_run, capture_type }, 'Webhook received');
 
@@ -41,7 +41,7 @@ server.post<{ Body: IngestInput }>('/webhook/api/drafts', async (request, reply)
   }
 
   try {
-    const result = await ingest({ title, content, created_at, test_run, capture_type });
+    const result = await ingest({ title, content, created_at, test_run, capture_type, source_uuid });
 
     if (result.duplicate) {
       logger.info({ title, existingId: result.existingId }, 'Duplicate skipped');

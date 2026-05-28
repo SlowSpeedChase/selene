@@ -78,7 +78,7 @@ function sanitizeContent(content: string): string {
 // --- Phase 1: Export Notes ---
 
 function exportNotes(vaultPath: string): { exported: number; errors: number } {
-  const notesDir = join(vaultPath, 'Selene', 'Notes');
+  const notesDir = join(vaultPath, 'Notes');
   ensureDir(notesDir);
 
   const notes = db
@@ -253,7 +253,7 @@ async function generateMocs(vaultPath: string, hasNewNotes: boolean): Promise<{ 
   }
 
   // Generate MOC pages (only when new notes were exported and Ollama is up)
-  const mapsDir = join(vaultPath, 'Selene', 'Maps');
+  const mapsDir = join(vaultPath, 'Maps');
   ensureDir(mapsDir);
 
   let mocCount = 0;
@@ -380,9 +380,8 @@ async function generateMocs(vaultPath: string, hasNewNotes: boolean): Promise<{ 
       quietSection,
     ].join('\n');
 
-    const seleneDir = join(vaultPath, 'Selene');
-    ensureDir(seleneDir);
-    writeFileSync(join(seleneDir, 'Dashboard.md'), dashboardMarkdown, 'utf-8');
+    ensureDir(vaultPath);
+    writeFileSync(join(vaultPath, 'Dashboard.md'), dashboardMarkdown, 'utf-8');
     log.info('Generated dashboard');
     dashboardGenerated = true;
   } catch (err) {
@@ -403,7 +402,7 @@ export async function exportObsidian(noteId?: number): Promise<{
 }> {
   log.info({ noteId }, 'Starting Obsidian export');
 
-  const vaultPath = process.env.OBSIDIAN_VAULT_PATH || config.vaultPath;
+  const vaultPath = config.vaultPath;
   log.info({ vaultPath }, 'Using vault path');
 
   // Phase 1: Export notes (always runs)

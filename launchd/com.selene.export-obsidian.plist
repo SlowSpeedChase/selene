@@ -21,6 +21,8 @@
         <string>production</string>
         <key>SELENE_DB_PATH</key>
         <string>/Users/chaseeasterling/selene-data/selene.db</string>
+        <key>SELENE_VAULT_PATH</key>
+        <string>/Users/chaseeasterling/Library/Mobile Documents/iCloud~md~obsidian/Documents/Selene</string>
     </dict>
 
     <key>StartCalendarInterval</key>

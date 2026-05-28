@@ -100,6 +100,7 @@ export function insertNote(note: {
   createdAt: string;
   testRun?: string;
   captureType?: string;
+  sourceUuid?: string;
 }): number {
   const wordCount = note.content.split(/\s+/).filter(Boolean).length;
   const characterCount = note.content.length;
@@ -107,8 +108,8 @@ export function insertNote(note: {
   const result = db
     .prepare(
       `INSERT INTO raw_notes
-       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type, source_uuid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`
     )
     .run(
       note.title,
@@ -119,7 +120,8 @@ export function insertNote(note: {
       characterCount,
       note.createdAt,
       note.testRun || null,
-      note.captureType || 'drafts'
+      note.captureType || 'drafts',
+      note.sourceUuid || null
     );
 
   return result.lastInsertRowid as number;

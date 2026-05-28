@@ -17,7 +17,7 @@ const payload = {
     content: draft.content,
     created_at: new Date().toISOString(),
     capture_type: "drafts",
-    uuid: draft.uuid,
+    source_uuid: draft.uuid,
 };
 
 try {
