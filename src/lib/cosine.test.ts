@@ -27,4 +27,8 @@ describe('cosineSimilarity', () => {
     expect(result).toBeGreaterThanOrEqual(-1);
     expect(result).toBeLessThanOrEqual(1);
   });
+
+  it('throws when vectors have different lengths', () => {
+    expect(() => cosineSimilarity([1, 0], [1, 0, 0])).toThrow('vector length mismatch');
+  });
 });

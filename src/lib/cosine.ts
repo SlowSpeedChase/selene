@@ -3,6 +3,9 @@
  * Returns a value in [-1, 1]. Returns 0 if either vector has zero magnitude.
  */
 export function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) {
+    throw new Error(`cosineSimilarity: vector length mismatch (${a.length} vs ${b.length})`);
+  }
   let dot = 0;
   let magA = 0;
   let magB = 0;
