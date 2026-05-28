@@ -42,6 +42,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [Folio delivery](guides/features/folio-delivery.md) — read and annotate Selene documents on your iPad.
 - [Agent enrichments](guides/features/agent-enrichments.md) — propose tags and context notes for your Things tasks, with your approval.
 - [Interactive worksheets](guides/features/interactive-worksheets.md) — daily review form on your iPad: write freehand, Selene OCRs and saves, then shows where you've mentioned the same things before.
+- [Synthesis layer](guides/features/synthesis-layer.md) — topics you keep circling, when your understanding shifts, and unexpected connections between old and new notes — delivered in the morning digest automatically.
 
 ---
 
