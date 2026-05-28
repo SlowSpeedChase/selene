@@ -21,10 +21,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # --- Defaults / CLI flags ----------------------------------------------------
 TARGET="${HOME}/selene-prod"
 SHA=""
+SKIP_AGENTS=0
+SKIP_HEALTH=0
 
 usage() {
     cat <<'EOF'
-Usage: rollback-prod.sh [sha] [--target DIR]
+Usage: rollback-prod.sh [sha] [--target DIR] [--skip-agents] [--skip-health]
 
 Restore a production deploy's dist/ from a previously archived release.
 
@@ -35,6 +37,8 @@ Arguments:
 
 Options:
   --target DIR      Production deploy dir (default: $HOME/selene-prod)
+  --skip-agents     Do not (re)load prod launchd agents (testing)
+  --skip-health     Do not probe http://localhost:5678/health (testing)
   -h, --help        Show this help
 EOF
 }
@@ -45,9 +49,11 @@ EOF
 # catch, an unknown flag like --bogus would be silently treated as a sha.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --target)  TARGET="$2"; shift 2 ;;
-        -h|--help) usage; exit 0 ;;
-        -*)        echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
+        --target)       TARGET="$2"; shift 2 ;;
+        --skip-agents)  SKIP_AGENTS=1; shift ;;
+        --skip-health)  SKIP_HEALTH=1; shift ;;
+        -h|--help)      usage; exit 0 ;;
+        -*)             echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
         *)
             if [[ -n "$SHA" ]]; then
                 echo "Unexpected extra argument: $1 (sha already set to '$SHA')" >&2
@@ -102,19 +108,27 @@ rsync -a --delete "${RELEASE_PATH}/" "${TARGET}/dist/"
 printf '%s' "$SHA" > "${TARGET}/.deployed-sha"
 
 # --- 6. (Re)load prod launchd agents so they point at the restored dist. -----
-if ! "$HERE/install-prod.sh" --prod-dir "$TARGET"; then
-    selene_notify "Selene rollback WARN" "restored dist to $SHA but loading prod agents failed — check launchctl"
-    echo "ERROR: install-prod.sh failed after restoring $SHA" >&2
-    exit 1
+if [[ "$SKIP_AGENTS" -eq 0 ]]; then
+    if ! "$HERE/install-prod.sh" --prod-dir "$TARGET"; then
+        selene_notify "Selene rollback WARN" "restored dist to $SHA but loading prod agents failed — check launchctl"
+        echo "ERROR: install-prod.sh failed after restoring $SHA" >&2
+        exit 1
+    fi
+else
+    echo "--skip-agents: leaving launchd agents untouched"
 fi
 
 # --- 7. Health probe (warn-only; no hard failure) ---------------------------
-sleep 3
-if ! curl -fsS http://localhost:5678/health >/dev/null; then
-    selene_notify "Selene rollback WARN" "rolled back to $SHA but /health failed — check the prod server"
-    echo "WARNING: /health did not respond OK after rollback (now on $SHA)" >&2
+if [[ "$SKIP_HEALTH" -eq 0 ]]; then
+    sleep 3
+    if ! curl -fsS http://localhost:5678/health >/dev/null; then
+        selene_notify "Selene rollback WARN" "rolled back to $SHA but /health failed — check the prod server"
+        echo "WARNING: /health did not respond OK after rollback (now on $SHA)" >&2
+    else
+        echo "Health OK"
+    fi
 else
-    echo "Health OK"
+    echo "--skip-health: skipping /health probe"
 fi
 
 # --- 8. Record + announce ----------------------------------------------------
