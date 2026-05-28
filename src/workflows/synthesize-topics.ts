@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 import { db, embed, generate, isAvailable, createWorkflowLogger } from '../lib';
 import { initSynthesisSchema } from '../lib/synthesis-db';
 import { cosineSimilarity } from '../lib/cosine';
@@ -85,6 +85,7 @@ function clusterNotes(notes: NoteEmbedding[]): Map<string, number[]> {
 
   for (let i = 0; i < notes.length; i++) {
     if (assigned.has(notes[i].noteId)) continue;
+    assigned.add(notes[i].noteId);  // mark pivot immediately
 
     const members: number[] = [notes[i].noteId];
 
@@ -97,7 +98,6 @@ function clusterNotes(notes: NoteEmbedding[]): Map<string, number[]> {
       }
     }
 
-    assigned.add(notes[i].noteId);
     clusters.set(randomUUID(), members);
   }
 
@@ -186,7 +186,9 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
 
   for (const [, noteIds] of rawClusters) {
     const isProto = noteIds.length < MIN_CLUSTER_SIZE;
-    const members = noteIds.map(id => noteById.get(id)!).filter(Boolean);
+    const members = noteIds
+      .map(id => noteById.get(id))
+      .filter((n): n is NoteEmbedding => n !== undefined);
 
     // Extract top concept strings for cluster naming
     const conceptFreq = new Map<string, number>();
@@ -197,21 +199,29 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
         for (const c of parsed) {
           conceptFreq.set(c, (conceptFreq.get(c) ?? 0) + 1);
         }
-      } catch { /* ignore malformed JSON */ }
+      } catch (err) {
+        log.debug({ noteId: m.noteId, err }, 'Skipping malformed concepts JSON');
+      }
     }
     const sortedConcepts = [...conceptFreq.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([c]) => c);
 
-    const slug = sortedConcepts[0]
+    const slugBase = sortedConcepts[0]
       ? sortedConcepts[0].toLowerCase().replace(/[^a-z0-9]+/g, '-')
-      : `cluster-${randomUUID().substring(0, 8)}`;
+      : 'cluster';
+    const disambig = createHash('sha256')
+      .update(sortedConcepts.slice(0, 3).sort().join('|'))
+      .digest('base64url')
+      .substring(0, 8);
+    const slug = `${slugBase}-${disambig}`;
 
     const existing = db.prepare(
       'SELECT id, synthesis_text, synthesis_updated_at FROM topic_clusters WHERE slug = ?'
     ).get(slug) as { id: string; synthesis_text: string | null; synthesis_updated_at: string | null } | undefined;
 
     // Delta guard: skip if cluster exists and no new notes since last synthesis
+    // Proto-clusters skip the delta guard — no synthesis is generated so re-upserting is cheap.
     if (existing && !isProto) {
       const hasNewNotes = db.prepare(`
         SELECT 1 FROM topic_note_links
@@ -254,20 +264,30 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
     // Evolution detection: compare prev vs new synthesis
     if (!isProto && prevSynthesis && newSynthesis && prevSynthesis !== newSynthesis) {
       try {
-        const evolutionPrompt = `Old synthesis: "${prevSynthesis.substring(0, 300)}"
+        const safe = (s: string) => s.substring(0, 300).replace(/"/g, "'");
+        const evolutionPrompt = `Old synthesis: "${safe(prevSynthesis)}"
 
-New synthesis: "${newSynthesis.substring(0, 300)}"
+New synthesis: "${safe(newSynthesis)}"
 
 Did the understanding meaningfully change (not just grow)? JSON only: { "changed": boolean, "summary": string }`;
 
         const response = await generate(evolutionPrompt, { temperature: 0, timeoutMs: 30000 });
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const result = JSON.parse(jsonMatch[0]) as { changed: boolean; summary: string };
-          if (result.changed) {
+          const parsed = JSON.parse(jsonMatch[0]) as unknown;
+          if (
+            parsed !== null &&
+            typeof parsed === 'object' &&
+            'changed' in parsed &&
+            typeof (parsed as { changed: unknown }).changed === 'boolean' &&
+            (parsed as { changed: boolean }).changed
+          ) {
+            const summary = 'summary' in parsed
+              ? String((parsed as { summary: unknown }).summary)
+              : '';
             db.prepare(
               `UPDATE topic_clusters SET evolution_detected_at = ?, evolution_summary = ? WHERE id = ?`
-            ).run(now, result.summary, id);
+            ).run(now, summary, id);
             evolved++;
           }
         }
