@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { initSynthesisSchema, writeConnection } from './synthesis-db';
+import { initSynthesisSchema, writeConnection, NoteConnection } from './synthesis-db';
 
 describe('initSynthesisSchema', () => {
   let db: InstanceType<typeof Database>;
@@ -66,9 +66,7 @@ describe('writeConnection', () => {
 
   it('inserts a connection row with correct fields', () => {
     writeConnection(db, 1, 2, 0.85);
-    const row = db
-      .prepare('SELECT source_note_id, target_note_id, similarity_score FROM note_connections')
-      .get() as { source_note_id: number; target_note_id: number; similarity_score: number } | undefined;
+    const row = db.prepare('SELECT * FROM note_connections WHERE source_note_id = 1').get() as NoteConnection;
     expect(row).toBeDefined();
     expect(row!.source_note_id).toBe(1);
     expect(row!.target_note_id).toBe(2);

@@ -1,6 +1,14 @@
 import { randomUUID } from 'crypto';
 import type { Database } from 'better-sqlite3';
 
+export interface NoteConnection {
+  id: string;
+  source_note_id: number;
+  target_note_id: number;
+  similarity_score: number;
+  found_at: string;
+}
+
 /**
  * Creates the 4 synthesis schema tables (idempotent — safe to call on every startup).
  *
