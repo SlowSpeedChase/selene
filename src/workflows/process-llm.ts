@@ -116,7 +116,6 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         log.warn({ noteId: note.id, err: essenceErr as Error }, 'Essence computation failed, will retry later');
       }
 
-      // Generate and store embedding
       try {
         const vector = await embed(note.content);
 
@@ -134,7 +133,7 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
           actionability: null,
           time_horizon: null,
           context: null,
-          created_at: note.created_at ?? new Date().toISOString(),
+          created_at: note.created_at,
           indexed_at: new Date().toISOString(),
         });
 
