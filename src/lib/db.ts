@@ -66,6 +66,7 @@ export interface RawNote {
   test_run: string | null;
   calendar_event: string | null;
   capture_type: string;
+  source_note_id: number | null;
 }
 
 // Helper: Get pending notes for processing
@@ -101,6 +102,7 @@ export function insertNote(note: {
   testRun?: string;
   captureType?: string;
   sourceUuid?: string;
+  sourceNoteId?: number;
 }): number {
   const wordCount = note.content.split(/\s+/).filter(Boolean).length;
   const characterCount = note.content.length;
@@ -108,8 +110,8 @@ export function insertNote(note: {
   const result = db
     .prepare(
       `INSERT INTO raw_notes
-       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type, source_uuid)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`
+       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type, source_uuid, source_note_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`
     )
     .run(
       note.title,
@@ -121,7 +123,8 @@ export function insertNote(note: {
       note.createdAt,
       note.testRun || null,
       note.captureType || 'drafts',
-      note.sourceUuid || null
+      note.sourceUuid || null,
+      note.sourceNoteId || null
     );
 
   return result.lastInsertRowid as number;
