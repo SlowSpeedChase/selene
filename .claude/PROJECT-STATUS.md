@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
-**Last Updated:** 2026-05-27
-**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active | Interactive Worksheets Shipped
+**Last Updated:** 2026-05-28
+**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active | Interactive Worksheets Shipped | Synthesis Layer Shipped
 
 ---
 
@@ -258,6 +258,16 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 ---
 
 ## Recent Achievements
+
+### 2026-05-28
+
+- **Synthesis Layer shipped** — Three signals added to the 6am digest: topic clustering with Ollama synthesis narratives (nightly, `synthesize-topics.ts`), evolution detection when understanding shifts, and connection detection at process time (`process-llm.ts`). Four new digest sections: Topics circling, Understanding shifted, Unexpected connections, Pattern forming. Sunday weekly rollup.
+  - New workflow: `src/workflows/synthesize-topics.ts` — 2am nightly via `com.selene.synthesize-topics` launchd agent
+  - New libs: `src/lib/synthesis-db.ts`, `src/lib/cosine.ts`, `src/lib/synthesis-digest.ts`
+  - Extended: `src/workflows/process-llm.ts` (embedding + connection detection), `src/workflows/send-digest.ts` (4 new sections)
+  - New tables: `topic_clusters`, `topic_note_links`, `note_connections`, `synthesis_meta`
+  - 17 tests passing. User guide: `docs/guides/features/synthesis-layer.md`
+  - First production run: 14 clusters, 68 proto-clusters from 285 notes
 
 ### 2026-05-27
 
