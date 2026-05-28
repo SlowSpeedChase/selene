@@ -71,3 +71,14 @@ Return a markdown report with three sections:
 - **Do NOT run `launchctl load/unload/start/stop`** under any circumstances.
 - Be literal about names. `process-llm` and `processllm` are different; don't normalize.
 - If you detect zero drift, say so explicitly — a clean audit is a useful signal too.
+
+## Prod/dev split (since 2026-05-28)
+
+The repo's `launchd/com.selene.*.plist` are the **canonical source/dev form** (WorkingDirectory `~/selene`, `ts-node`/wrapper invoking `src/...`, prod DB path). Your existing checks (#4 WorkingDirectory/paths, #5 CLI entrypoint) apply to THESE canonical files.
+
+Production runs `com.selene.prod.*` agents that are **generated at deploy time** by `scripts/install-prod.sh` from the canonical plists (transformed to WorkingDirectory `~/selene-prod`, `node ~/selene-prod/dist/...`, `SELENE_ENV=production`). These prod plists are **NOT committed**. Do NOT flag "missing prod plist" as drift; there should be no committed `com.selene.prod.*.plist` EXCEPT the one infra plist below.
+
+**Exceptions to the 1-plist-per-workflow rule:**
+- `launchd/com.selene.prod.deploy-watcher.plist` is INFRA: it has NO matching `src/workflows/*.ts` and runs `scripts/deploy-watch.sh` from `~/selene` (not `~/selene-prod`). EXCLUDE it from the workflow↔plist cross-check. `install-prod.sh` already skips it as a source.
+
+**Additional sync targets:** `scripts/install-prod.sh` transforms every canonical `launchd/com.selene.*.plist` by wildcard glob, so it stays in sync automatically when a workflow is added/removed — just confirm any new plist matches `com.selene.*.plist` and the `<name>` derivation. `scripts/deploy-prod.sh` and `scripts/rollback-prod.sh` invoke `install-prod.sh`; they don't enumerate workflows themselves.
