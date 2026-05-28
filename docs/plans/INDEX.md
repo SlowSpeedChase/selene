@@ -1,6 +1,6 @@
 # Design Documents Index
 
-**Last Updated:** 2026-05-26
+**Last Updated:** 2026-05-28
 
 Design docs are the planning unit for Selene development. Each doc captures an idea, architecture, and implementation plan.
 
@@ -33,6 +33,7 @@ Ideas captured but not yet ready for implementation.
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-28 | [2026-05-28-pencil-annotation-design.md](2026-05-28-pencil-annotation-design.md) | annotation, pencilkit, ocr, synthesis, versioning, pipeline | Server-side synthesis loop for Pencil margin annotations: anchored ink+OCR (`note_annotations`, ink canonical), non-destructive synthesis as reviewable `note_versions` proposals, edit-vs-react resolved at review time. Re-enters `process-llm`/`export-obsidian` via existing status flags. **Supersedes the companion design's `note_annotations` table + destructive feedback path.** 3 open decisions before Ready. |
 | 2026-05-26 | [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) | pkm, synthesis, retrieval-agent, ollama, lancedb | Embedding-based topic clustering + local retrieval agent that routes questions to the right strategy (synthesis, RAG, recency, cross-topic). Web browse + chat UI on iPad (/pkm/synthesis), "Topics circling" section in daily digest. Supersedes 2026-05-24 synthesis-layer design. |
 | 2026-05-26 | [2026-05-26-folio-kindle-agent-design.md](2026-05-26-folio-kindle-agent-design.md) | folio, kindle, mcp, agent, digest | Folio MCP server (4 tools) + scheduled Claude agent. Delta delivery: executive summary + ToC + changed docs → Kindle. Delivery log in folio/logs/kindle-deliveries.json. Track A: folio/src/mcp.ts. Track B: MCP registration + cron agent. |
 | 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | ios, ipad, swiftui, pencilkit, widgetkit, annotation | iPhone/iPad companion app: Explore Obsidian vault notes + annotate with Apple Pencil (PencilKit) + on-device Vision OCR feeds annotations back to the librarian. Plus home screen widget (WidgetKit) showing today's summary. 3 phases. Server needs 4 new endpoints + note_annotations table. |

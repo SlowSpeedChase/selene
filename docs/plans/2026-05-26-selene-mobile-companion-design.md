@@ -95,6 +95,13 @@ All 4 follow the existing Bearer token auth pattern.
 
 ### New SQLite Table
 
+> **Superseded:** the table below and the destructive "Librarian Integration"
+> path are replaced by the non-destructive synthesis loop in
+> [2026-05-28-pencil-annotation-design.md](2026-05-28-pencil-annotation-design.md)
+> (`note_annotations` keyed on `raw_note_id` + `note_versions` review/accept).
+> Build the app surface from this doc; build annotation storage + feedback from
+> the newer one.
+
 ```sql
 CREATE TABLE note_annotations (
   id INTEGER PRIMARY KEY,
