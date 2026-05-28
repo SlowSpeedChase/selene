@@ -25,10 +25,11 @@ export function buildSynthesisSections(db: Database): string {
 
   if (topClusters.length > 0) {
     const lines = topClusters.map(c => {
-      const preview = c.synthesis_text
-        ? c.synthesis_text.split('.')[0] + '.'
-        : '';
-      return `${c.name} (${c.note_count} notes) — ${preview}`;
+      const first = c.synthesis_text?.split('.')[0]?.trim() ?? '';
+      const preview = first ? first + '.' : '';
+      return preview
+        ? `${c.name} (${c.note_count} notes) — ${preview}`
+        : `${c.name} (${c.note_count} notes)`;
     });
     sections.push(`Topics circling\n\n${lines.join('\n\n')}`);
   }
