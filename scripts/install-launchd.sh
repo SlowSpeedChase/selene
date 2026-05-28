@@ -41,6 +41,7 @@ AGENTS=(
     "com.selene.export-obsidian"
     "com.selene.daily-summary"
     "com.selene.send-digest"
+    "com.selene.synthesize-topics"
     "com.selene.voice-ingest"
     "com.selene.eink-ingest"
     "com.selene.agent-manager"
