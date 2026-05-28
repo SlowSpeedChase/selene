@@ -9,7 +9,8 @@
 #   5. (re)loading prod launchd agents, and
 #   6. probing /health.
 #
-# A failed build leaves the live target completely untouched.
+# A failed build leaves the live deployment payload (.env, dist/, package.json,
+# .deployed-sha) untouched — only deploy.log is written (the FAILED notice).
 
 set -euo pipefail
 
@@ -95,8 +96,9 @@ if [[ -d "$TARGET/dist" && "$OLD_SHA" != "none" ]]; then
     rm -rf "$TARGET/releases/$OLD_SHA"
     cp -R "$TARGET/dist" "$TARGET/releases/$OLD_SHA"
     echo "Archived current dist -> releases/$OLD_SHA"
-    # Keep only the 5 newest archived releases; prune the rest. Guarded so an
-    # empty/small glob can't abort under set -e.
+    # Keep only the 5 newest archived releases; prune the rest. Safe here because
+    # the cp above guarantees releases/ holds >=1 dir, so the glob is non-empty
+    # (an empty glob would make ls exit 1 and pipefail abort the script).
     ls -1dt "$TARGET/releases/"*/ 2>/dev/null | tail -n +6 | while IFS= read -r old; do
         rm -rf "$old"
     done
@@ -113,11 +115,22 @@ if [[ -f "$BUILD_DIR/package-lock.json" ]]; then
     cp "$BUILD_DIR/package-lock.json" "$TARGET/package-lock.json"
 fi
 
-( cd "$TARGET" && npm install --omit=dev --no-audit --no-fund --silent )
+# Ship-phase failures happen AFTER dist/ is already updated, so prod can be left
+# incoherent. .deployed-sha is written last (step 9), so on failure here it stays
+# on OLD_SHA and the watcher will retry — but we must NOT fail silently. Notify.
+if ! ( cd "$TARGET" && npm install --omit=dev --no-audit --no-fund --silent ); then
+    selene_notify "Selene deploy WARN" "shipped $NEW_SHA dist but prod npm install failed — prod may be incoherent (still recorded on $OLD_SHA); consider rollback-prod.sh"
+    echo "ERROR: prod npm install failed after shipping dist for $NEW_SHA" >&2
+    exit 1
+fi
 
 # --- 7. (Re)load prod launchd agents ----------------------------------------
 if [[ "$SKIP_AGENTS" -eq 0 ]]; then
-    "$HERE/install-prod.sh" --prod-dir "$TARGET" --label-prefix "$LABEL_PFX"
+    if ! "$HERE/install-prod.sh" --prod-dir "$TARGET" --label-prefix "$LABEL_PFX"; then
+        selene_notify "Selene deploy WARN" "shipped $NEW_SHA but loading prod agents failed — check launchctl; prod still recorded on $OLD_SHA"
+        echo "ERROR: install-prod.sh failed after shipping $NEW_SHA" >&2
+        exit 1
+    fi
 else
     echo "--skip-agents: leaving launchd agents untouched"
 fi
