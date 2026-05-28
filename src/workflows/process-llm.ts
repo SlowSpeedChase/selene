@@ -3,8 +3,10 @@ import {
   getPendingNotes,
   markProcessed,
   generate,
+  embed,
   isAvailable,
   db,
+  indexNote,
 } from '../lib';
 import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
 import type { WorkflowResult } from '../types';
@@ -112,6 +114,33 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
       } catch (essenceErr) {
         // Non-fatal — distill-essences workflow will retry
         log.warn({ noteId: note.id, err: essenceErr as Error }, 'Essence computation failed, will retry later');
+      }
+
+      // Generate and store embedding
+      try {
+        const vector = await embed(note.content);
+
+        db.prepare(
+          `INSERT OR REPLACE INTO note_embeddings (raw_note_id, embedding, model_version, created_at)
+           VALUES (?, ?, 'nomic-embed-text', ?)`
+        ).run(note.id, JSON.stringify(vector), new Date().toISOString());
+
+        await indexNote({
+          id: note.id,
+          vector,
+          title: note.title,
+          primary_theme: extracted.primary_theme || null,
+          note_type: null,
+          actionability: null,
+          time_horizon: null,
+          context: null,
+          created_at: note.created_at ?? new Date().toISOString(),
+          indexed_at: new Date().toISOString(),
+        });
+
+        log.info({ noteId: note.id }, 'Embedding generated and indexed');
+      } catch (embedErr) {
+        log.warn({ noteId: note.id, err: embedErr as Error }, 'Embedding failed, will backfill later');
       }
 
       log.info({ noteId: note.id, concepts: extracted.concepts, theme: extracted.primary_theme }, 'Note processed successfully');
