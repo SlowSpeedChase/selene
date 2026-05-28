@@ -51,7 +51,8 @@ export function initSynthesisSchema(db: Database): void {
       source_note_id   INTEGER NOT NULL,
       target_note_id   INTEGER NOT NULL,
       similarity_score REAL    NOT NULL,
-      found_at         TEXT    NOT NULL
+      found_at         TEXT    NOT NULL,
+      UNIQUE(source_note_id, target_note_id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_nc_source ON note_connections(source_note_id);
@@ -67,11 +68,9 @@ export function initSynthesisSchema(db: Database): void {
 
 /**
  * Inserts a similarity connection between two notes.
- * Uses INSERT OR IGNORE so that a UUID collision (astronomically rare) is silently skipped.
- *
- * Note: there is no UNIQUE constraint on (source_note_id, target_note_id), so calling this
- * multiple times with the same pair produces multiple rows with different IDs — this is
- * intentional per the spec. "Idempotent" here means the call never throws.
+ * Uses INSERT OR IGNORE so that duplicate (source_note_id, target_note_id) pairs are
+ * silently skipped — the UNIQUE constraint on those columns prevents double-counting
+ * the same connection across multiple process-llm runs.
  */
 export function writeConnection(
   db: Database,
