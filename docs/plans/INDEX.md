@@ -48,7 +48,6 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-26 | [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) | pkm, synthesis, digest, ollama, lancedb | Layered synthesis: C (connections) at process time, A (evolution) + B (proto-clusters) nightly. 4 digest sections: Topics circling, Understanding shifted, Unexpected connections, Pattern forming. Sunday weekly rollup. Phase 2: conversational app + task loop. |
 
 ---
 
@@ -65,6 +64,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-05-26 | [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) | 2026-05-28 | Layered synthesis shipped: synthesize-topics.ts (nightly clustering + evolution detection), connection detection in process-llm.ts, 4 new digest sections, launchd agent at 2am. 17 tests. User guide at docs/guides/features/synthesis-layer.md. |
 | 2026-05-26 | [2026-05-26-folio-kindle-agent-design.md](2026-05-26-folio-kindle-agent-design.md) | 2026-05-27 | Folio MCP server (4 tools): list_changed_documents, read_document, get_delivery_history, send_kindle_digest. Delta PDF delivery to Kindle. Registered in selene/.mcp.json. |
 | 2026-05-27 | [2026-05-26-phase1-worksheets-related-notes-design.md](2026-05-26-phase1-worksheets-related-notes-design.md) | 2026-05-27 | Multi-field worksheets (free_capture + note_review) + "Selene remembers" panel. OCR review-before-submit step added. Track A (TypeScript) + Track B (Swift/iPad). User guide at docs/guides/features/interactive-worksheets.md. |
 | 2026-05-25 | [2026-05-25-user-guides-design.md](2026-05-25-user-guides-design.md) | 2026-05-25 | Consolidated hub (USER-EXPERIENCE.md) + 5 per-capability feature guides in docs/guides/features/ from shared template. Wrap-up trigger via Done criteria + GitOps docs-stage checkbox. |
