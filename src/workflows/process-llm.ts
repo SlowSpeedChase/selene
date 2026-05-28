@@ -10,6 +10,7 @@ import {
   searchSimilarNotes,
 } from '../lib';
 import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
+import { initSynthesisSchema, writeConnection } from '../lib/synthesis-db';
 import type { WorkflowResult } from '../types';
 
 // --- Migration (harmless no-op if columns exist) ---
@@ -19,6 +20,8 @@ try {
 try {
   db.exec('ALTER TABLE processed_notes ADD COLUMN cross_ref_categories TEXT');
 } catch { /* column already exists */ }
+
+initSynthesisSchema(db);
 
 const log = createWorkflowLogger('process-llm');
 
@@ -39,6 +42,9 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
     errors: 0,
     details: [],
   };
+
+  const CONNECTION_THRESHOLD = 0.75;
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   for (const note of notes) {
     try {
@@ -140,18 +146,13 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
 
         log.info({ noteId: note.id }, 'Embedding generated and indexed');
 
-        const CONNECTION_THRESHOLD = 0.75;
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-        const { initSynthesisSchema, writeConnection } = await import('../lib/synthesis-db');
-        initSynthesisSchema(db);
-
         const similar = await searchSimilarNotes(vector, {
           limit: 5,
           excludeIds: [note.id],
         });
 
         for (const candidate of similar) {
+          // L2-to-cosine approximation for unit vectors; accurate for d < ~0.8
           const approxSimilarity = 1 - (candidate.distance * candidate.distance) / 2;
           if (approxSimilarity < CONNECTION_THRESHOLD) continue;
 
