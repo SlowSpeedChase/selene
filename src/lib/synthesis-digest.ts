@@ -25,7 +25,8 @@ export function buildSynthesisSections(db: Database): string {
 
   if (topClusters.length > 0) {
     const lines = topClusters.map(c => {
-      const first = c.synthesis_text?.split('.')[0]?.trim() ?? '';
+      const clean = c.synthesis_text?.replace(/^\s*\d+\.\s*/, '') ?? '';
+      const first = clean.split('.')[0]?.trim() ?? '';
       const preview = first ? first + '.' : '';
       return preview
         ? `${c.name} (${c.note_count} notes) — ${preview}`
