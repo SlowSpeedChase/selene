@@ -33,7 +33,6 @@ Ideas captured but not yet ready for implementation.
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | ios, ipad, swiftui, pencilkit, widgetkit, annotation | iPhone/iPad companion app: Explore Obsidian vault notes + annotate with Apple Pencil (PencilKit) + on-device Vision OCR feeds annotations back to the librarian. Plus home screen widget (WidgetKit) showing today's summary. 3 phases. Server needs 4 new endpoints + note_annotations table. |
 | 2026-05-26 | [2026-05-26-interactive-worksheets-design.md](2026-05-26-interactive-worksheets-design.md) | ipad, pencilkit, ocr, review-ritual | Handwritten iPad worksheets Selene generates from your notes; each answer routes back as an action (archive / follow-up / new note). v1 = daily review ritual. On-device OCR, M-series iPadOS 17+ (1st-gen Pro out). Builds on folio's unbuilt markup app; app talks directly to Selene. Phased: Ph0 freeform warm-up → Ph1 structured review → Ph2+ generators. |
 | 2026-04-12 | [2026-04-12-model-audit-design.md](2026-04-12-model-audit-design.md) | llm, benchmarking, ollama | Per-stage model audit (curiosity-driven). Approach B locked; paused mid-design on fixture strategy. |
 | 2026-04-12 | [2026-04-12-pkm-browse-layer-design.md](2026-04-12-pkm-browse-layer-design.md) | pkm, browse, ipad | LAN web dashboard (`/pkm/*`) + review state + slim exporter upgrade. 4 tracks, ~1 week. Needs category backfill first. |
@@ -48,7 +47,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-
+| 2026-05-28 | [2026-05-28-prod-dev-split-design.md](2026-05-28-prod-dev-split-design.md) | Production/Development split | Release boundary: `~/selene` becomes dev sandbox (dev DB + scratch vault, ts-node); `~/selene-prod` becomes prod (compiled `dist/`, real DB + iCloud vault). Auto-deploy on merge to main via gated launchd deploy-watcher. Two coexisting iPad apps (Selene / Selene Dev). Design approved; next step writing-plans. |
 ---
 
 ## In Progress
@@ -64,6 +63,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | 2026-05-28 | iPad note annotation shipped: Notes tab in SeleneMarkup (cluster browse → note → PencilKit canvas → Vision OCR → new linked note). selene: `source_note_id` column + `src/routes/notes.ts` (4 endpoints, 4 jest tests). SeleneMarkup: NoteModels, AnnotationService (5 tests), 4 views, tab wiring, AppConfig.mainBaseURL. User guide at docs/guides/features/note-annotation.md. |
 | 2026-05-26 | [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) | 2026-05-28 | Layered synthesis shipped: synthesize-topics.ts (nightly clustering + evolution detection), connection detection in process-llm.ts, 4 new digest sections, launchd agent at 2am. 17 tests. User guide at docs/guides/features/synthesis-layer.md. |
 | 2026-05-26 | [2026-05-26-folio-kindle-agent-design.md](2026-05-26-folio-kindle-agent-design.md) | 2026-05-27 | Folio MCP server (4 tools): list_changed_documents, read_document, get_delivery_history, send_kindle_digest. Delta PDF delivery to Kindle. Registered in selene/.mcp.json. |
 | 2026-05-27 | [2026-05-26-phase1-worksheets-related-notes-design.md](2026-05-26-phase1-worksheets-related-notes-design.md) | 2026-05-27 | Multi-field worksheets (free_capture + note_review) + "Selene remembers" panel. OCR review-before-submit step added. Track A (TypeScript) + Track B (Swift/iPad). User guide at docs/guides/features/interactive-worksheets.md. |

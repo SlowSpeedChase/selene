@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
 **Last Updated:** 2026-05-28
-**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active | Interactive Worksheets Shipped | Synthesis Layer Shipped
+**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active | Interactive Worksheets Shipped | Synthesis Layer Shipped | Note Annotation (iPad) Shipped
 
 ---
 
@@ -59,6 +59,8 @@ Fastify webhook server on port 5678 with 3 routes:
 - `GET /health` - Health check
 - `POST /webhook/api/drafts` - Note ingestion
 - `POST /trigger/export-obsidian` - Trigger Obsidian export
+
+Plus registered route plugins: `agentRoutes`, `dashboardRoutes`, and `notesRoutes` (note annotation — `GET /api/clusters`, `GET /api/clusters/:id/notes`, `GET /api/notes/:id`, `POST /api/notes/:id/annotations`, in `src/routes/notes.ts`).
 
 ### Libraries (src/lib/)
 
