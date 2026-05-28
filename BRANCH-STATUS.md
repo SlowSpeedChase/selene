@@ -70,3 +70,7 @@ Running notes, decisions, questions, etc.
 Move any blocked checklist items here with reason:
 
 - [ ] BLOCKED: [Item] - [Reason]
+
+## Findings during execution
+
+- **Task 1 finding (pre-existing, not introduced here):** `SELENE_ENV=test` is unreachable from the CLI. `src/lib/config.ts:10-11` loads `.env.development` with `override:true` whenever `SELENE_ENV !== 'production'`, and `.env.development` sets `SELENE_ENV=development` — clobbering a CLI `SELENE_ENV=test`. Impact: the `test` tier is dead; `development` and `production` work. Our prod/dev split is unaffected (prod uses `production` which skips the override; dev uses `development`). Do NOT build verification that relies on `SELENE_ENV=test` selecting `data-test/`. Fix is out of scope for this branch.
