@@ -81,3 +81,4 @@ SeleneChat/SeleneMobile/*.xcodeproj
 # Xcode build artifacts
 SeleneChat/SeleneMobile/build/
 SeleneChat/build/
+dist/
