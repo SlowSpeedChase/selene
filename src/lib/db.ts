@@ -604,6 +604,16 @@ db.exec(`
   );
 `);
 
+// Ensure raw_notes.source_note_id exists (annotation linking — added 2026-05-28).
+// Idempotent column-add so a fresh clone / rebuilt DB gets it without a manual ALTER.
+const rawNotesColumns = db
+  .prepare(`PRAGMA table_info(raw_notes)`)
+  .all() as Array<{ name: string }>;
+if (!rawNotesColumns.some((c) => c.name === 'source_note_id')) {
+  db.exec(`ALTER TABLE raw_notes ADD COLUMN source_note_id INTEGER REFERENCES raw_notes(id)`);
+  logger.info('Migrated raw_notes: added source_note_id column');
+}
+
 // Helper: Register a device token (upsert)
 export function registerDevice(token: string, platform = 'ios'): void {
   const stmt = db.prepare(`
