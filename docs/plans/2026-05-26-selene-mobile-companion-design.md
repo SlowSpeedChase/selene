@@ -1,169 +1,159 @@
-# Selene Mobile Companion App
+# Selene Note Annotation (iPad)
 
-**Date:** 2026-05-26
-**Status:** Vision
-**Topics:** ios, ipad, swiftui, pencilkit, widgetkit, annotation, obsidian
+**Date:** 2026-05-26  
+**Revised:** 2026-05-28  
+**Status:** Ready  
+**Topics:** ios, ipad, swiftui, pencilkit, ocr, annotation, selenemarkup
 
 ---
 
 ## Problem
 
-Selene processes and organizes your notes on the Mac, but the only way to interact with the results is through Apple Notes digests, the Obsidian vault on the Mac, or the web dashboard. There is no mobile-native interface for:
-
-- Capturing quick notes from your iPhone or iPad when away from the Mac
-- Reading and acting on Selene's curated summaries on a mobile device
-- Annotating Selene's processed notes with Apple Pencil and feeding those annotations back into the knowledge base
-
-The archived SeleneMobile app (2026-02-14) had full feature parity with the Mac app but depended on the archived SeleneChat/thread architecture. It needs a clean rebuild against the current Selene core.
+Selene processes and organizes your notes on the Mac, but there is no way to think *on top of* what Selene has organized. Reading a processed note and wanting to react to it — to question it, extend it, connect it to something — has no surface. The only output path is Apple Notes digests and the Obsidian vault on the Mac.
 
 ---
 
 ## Goal
 
-A lean iPhone/iPad companion app that lets you:
+An iPad annotation layer inside the existing SeleneMarkup app. You browse notes by topic cluster, open a raw note, and write with Apple Pencil below it on an infinite canvas. Your annotation is sent back to Selene as a new first-class note, linked to the note you were annotating.
 
-1. **Capture** — quick note input (text + voice) posting to the existing Selene webhook
-2. **Explore** — browse Selene's Obsidian vault notes on your iPhone or iPad
-3. **Annotate** — draw Apple Pencil annotations on top of rendered notes (iPad); on-device Vision OCR converts ink to text and sends it back to the Selene librarian
-4. **Glance** — home screen WidgetKit widget showing today's summary headline
-
-The "annotate and feed back" loop is the core new capability: your Pencil becomes a way to refine, question, and build on top of what Selene has already organized.
+The LLM is a **navigator** (clusters, essences, concepts help you find notes) but never alters what you actually read — raw captures are ground truth.
 
 ---
 
 ## ADHD Design Check
 
-- **Externalize working memory** ✓ — Widget shows what Selene knows today without opening the app
-- **Reduce friction** ✓ — Capture tab opens directly to keyboard/voice; one tap from home screen
-- **Visual over mental** ✓ — Rendered notes with PencilKit overlay; ink = thinking made visible
-- **Make thinking tangible** ✓ — Drawing on top of a note is lower friction than typing a reaction
+- **Externalize working memory** ✓ — Topic clusters surface what Selene knows about your thinking; you don't have to remember what's in there
+- **Reduce friction** ✓ — Draw to think; no keyboard, no mode switch, always annotatable
+- **Visual over mental** ✓ — Your ink on the canvas is thinking made visible and persistent
+- **Make thinking tangible** ✓ — Drawing below a note is lower friction than typing a reaction
 
 ---
 
 ## Scope Check
 
-This is a multi-phase build. Each phase ships independently:
+~1 week. Three new views + four server endpoints + one schema column. Builds on existing `PKCanvasView` + `VNRecognizeTextRequest` infrastructure in SeleneMarkup.
 
-- **Phase 0** (~3 days): Server endpoints + note list/reader (text-only) + widget
-- **Phase 1** (~3 days): PencilKit annotation layer + Vision OCR + annotation feedback loop
-- **Phase 2** (~2 days): Quick capture tab + voice dictation, polish
+---
 
-Total: ~2 weeks across phases. Phases are independently shippable.
+## Future Vision (Out of Scope Here)
+
+A spatial knowledge graph: notes as draggable cards on an infinite canvas, connections as visible lines driven by Selene's `note_connections` data, Excalibrain-inspired "back of card" metadata. This is the longer-term direction; the annotation layer ships first.
 
 ---
 
 ## Architecture
 
-### App Structure
+### App
 
-**Platform:** iOS/iPadOS 17+, Swift + SwiftUI  
-**Project:** `SeleneMobile/` directory at repo root, XcodeGen `project.yml`  
-**No dependency on archived SeleneChat code** — clean rebuild  
-**Icon:** Copied from `archive/shelved-2026-03-21/SeleneChat/SeleneChat.icon/`
+New tab in the existing **SeleneMarkup** app (`~/SeleneMarkup`). Three new views:
 
-**Tabs:**
+| View | Purpose |
+|------|---------|
+| `ClusterListView` | List of topic clusters from synthesis layer |
+| `NoteListView` | Raw notes within a selected cluster |
+| `NoteCanvasView` | Scrolling raw note + PencilKit canvas beneath |
 
-| Tab | Content | Phase |
-|-----|---------|-------|
-| Explore | List → detail view of Obsidian vault notes, grouped by topic | 0 |
-| Capture | Text field + voice input → POST /webhook/api/drafts | 2 |
-| Settings | Tailscale URL + auth token + connection test | 0 |
+Plus `NoteMetaSheet` — a peek/swipe panel showing the back-of-card: essence, extracted concepts, topic cluster, note connections. Read-only.
 
-**WidgetKit Extension (bundled in same project):**
-- Small: today's summary headline (1 sentence)
-- Medium: summary snippet + date
+### Note Surface
 
-**PencilKit Annotation Layer (iPad only, Phase 1):**
-- Transparent `PKCanvasView` overlaid on the note detail scroll view
-- Toggle between "Read" mode and "Annotate" mode
-- "Send to Selene" button → `VNRecognizeTextRequest` → POSTs extracted text as annotation
+- Raw capture text rendered at the top (non-editable `Text` or `AttributedString` view)
+- Below it: `PKCanvasView` that grows as the user writes downward
+- The whole document scrolls together — no mode toggle, always drawable
+- `NoteMetaSheet` revealed via a peek button or swipe-up gesture
 
-### Networking
+### Annotation Feedback
 
-Connects to Selene server over Tailscale (same model as archived SeleneMobile). Bearer token auth — same `Authorization: Bearer <token>` header the existing server already validates via `src/lib/auth.ts`.
+1. User draws on canvas
+2. Taps "Send to Selene"
+3. `VNRecognizeTextRequest` runs on the `PKDrawing` — on-device OCR
+4. Recognized text is POSTed to `POST /api/notes/:id/annotations`
+5. Server creates a new row in `raw_notes` with `source_note_id` = the parent note's ID
+6. Selene's normal pipeline picks it up: concept extraction, essence distillation, synthesis
+
+Annotations are first-class notes. They are not footnotes, not modifications of the original.
 
 ### New Server Endpoints (4 additions to `src/server.ts`)
 
 ```
-GET  /api/vault/notes              List all notes from the Obsidian vault (title, category, path)
-GET  /api/vault/notes/:path        Serve note markdown content
-POST /api/vault/notes/:path/annotations  Receive annotation text; store in note_annotations table
-GET  /api/summary/latest           Latest daily_summary row (text + created_at)
+GET  /api/clusters                   List topic clusters (id, label, note_count)
+GET  /api/clusters/:id/notes         Raw notes in a cluster (id, title, created_at, word_count)
+GET  /api/notes/:id                  Single raw note (title, content, created_at, tags)
+POST /api/notes/:id/annotations      Receive OCR text → store as new raw note with source_note_id
 ```
 
-All 4 follow the existing Bearer token auth pattern.
+All four use the existing `Authorization: Bearer <token>` auth pattern from `src/lib/auth.ts`.
 
-### New SQLite Table
+### Schema Change
+
+One new nullable column on `raw_notes`:
 
 ```sql
-CREATE TABLE note_annotations (
-  id INTEGER PRIMARY KEY,
-  note_path TEXT NOT NULL,
-  annotation_text TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  processed INTEGER NOT NULL DEFAULT 0
-);
+ALTER TABLE raw_notes ADD COLUMN source_note_id INTEGER REFERENCES raw_notes(id);
 ```
 
-### Librarian Integration
-
-`export-obsidian.ts` queries unprocessed `note_annotations` rows when regenerating a note. Annotation text is appended to the LLM prompt: *"The user has annotated this note with: [text]. Incorporate these insights when refining the note."* Rows are marked `processed = 1` after the export run.
+No new table. Annotations are notes.
 
 ---
 
 ## Data Flow
 
 ```
-[iPad] User draws on note
-    → PKCanvasView captures PKDrawing
+[iPad] User draws on canvas below a note
+    → "Send to Selene" tapped
     → VNRecognizeTextRequest (on-device OCR) → text string
-    → POST /api/vault/notes/:path/annotations (Bearer token, Tailscale)
-    → SQLite note_annotations table (processed = 0)
-    → next export-obsidian.ts run reads unprocessed annotations
-    → LLM incorporates them into updated vault note
-    → Obsidian vault updated
-```
-
-```
-[iPhone/iPad] Widget
-    → WidgetKit timeline entry refreshes every 30 min
-    → GET /api/summary/latest
-    → Shows today's summary headline on home screen
+    → POST /api/notes/:id/annotations (Bearer token, Tailscale)
+    → Server inserts new row in raw_notes (source_note_id = parent)
+    → process-llm.ts picks it up (every 5 min)
+    → distill-essences.ts distills it
+    → synthesize-topics.ts may cluster it with related notes
 ```
 
 ---
 
 ## Acceptance Criteria
 
-**Phase 0:**
-- [ ] Note list renders all Obsidian vault notes grouped by category
-- [ ] Tapping a note renders its markdown content correctly
-- [ ] Widget shows today's summary headline on the home screen
-- [ ] Settings screen saves Tailscale URL + token; connection test passes
+**Navigation:**
+- [ ] Cluster list renders all topic clusters with note counts
+- [ ] Tapping a cluster shows the raw notes in that cluster
+- [ ] Tapping a note opens `NoteCanvasView` with raw capture text at the top
 
-**Phase 1:**
-- [ ] On iPad, "Annotate" toggle shows PencilKit canvas over the note
-- [ ] Drawing with Apple Pencil and tapping "Send to Selene" produces readable OCR text
-- [ ] Annotation appears in `note_annotations` table on the server
-- [ ] After the next export-obsidian run, the note in the Obsidian vault includes the annotation content
+**Canvas:**
+- [ ] Raw note text is rendered read-only at the top of the scroll view
+- [ ] PencilKit canvas appears below the note text and grows as the user draws downward
+- [ ] Note text and canvas scroll together as one document
+- [ ] Apple Pencil draws on the canvas without interfering with note text
 
-**Phase 2:**
-- [ ] Capture tab accepts text input + submits to webhook
-- [ ] Voice dictation button captures speech and populates the text field
+**Back of card:**
+- [ ] Peek button / swipe gesture opens `NoteMetaSheet`
+- [ ] Sheet shows: essence, extracted concepts, topic cluster, connected note titles
+- [ ] Sheet is read-only
+
+**Annotation feedback:**
+- [ ] Tapping "Send to Selene" runs Vision OCR on the canvas drawing
+- [ ] Recognized text appears as a new row in `raw_notes` with `source_note_id` set
+- [ ] The new note surfaces in Selene's pipeline (processed by process-llm.ts)
+
+**Auth / networking:**
+- [ ] All requests use Tailscale URL + Bearer token from SeleneMarkup Settings
+- [ ] Connection test in Settings passes against the new endpoints
 
 ---
 
 ## Related Designs
 
-- [2026-05-26-interactive-worksheets-design.md](2026-05-26-interactive-worksheets-design.md) — PencilKit worksheets on iPad; shares the on-device OCR approach
-- [2026-05-25-folio-ipad-delivery-design.md](2026-05-25-folio-ipad-delivery-design.md) — Folio LAN reader with Apple Pencil annotation; related annotation-feedback concept
-- [2026-02-13-selene-mobile-ios-design.md](2026-02-13-selene-mobile-ios-design.md) — Archived original SeleneMobile; preserved for reference
+- [2026-05-26-interactive-worksheets-design.md](2026-05-26-interactive-worksheets-design.md) — shares PKCanvasView + VNRecognizeTextRequest infrastructure
+- [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) — topic clusters that power the entry navigation
+- [2026-02-13-selene-mobile-ios-design.md](2026-02-13-selene-mobile-ios-design.md) — archived original SeleneMobile; preserved for reference
 
 ---
 
 ## Out of Scope
 
-- Chat with Ollama (archived SeleneChat feature; not part of current Selene core)
-- Push notifications / Live Activities (can be added in a future phase)
-- Agent actions tab (can be added as a future tab once Phase 0 is stable)
-- Syncing back to the Mac Obsidian app directly (server-mediated only)
+- Spatial graph / Excalibrain-style canvas with connection lines (future vision)
+- WidgetKit home screen widget (can be added later)
+- Quick capture tab (can be added later)
+- Chat with Ollama
+- Push notifications / Live Activities
+- Modifying the original raw note (annotations are always new notes)

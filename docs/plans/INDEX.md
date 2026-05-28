@@ -33,7 +33,6 @@ Ideas captured but not yet ready for implementation.
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
-| 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | ios, ipad, swiftui, pencilkit, widgetkit, annotation | iPhone/iPad companion app: Explore Obsidian vault notes + annotate with Apple Pencil (PencilKit) + on-device Vision OCR feeds annotations back to the librarian. Plus home screen widget (WidgetKit) showing today's summary. 3 phases. Server needs 4 new endpoints + note_annotations table. |
 | 2026-05-26 | [2026-05-26-interactive-worksheets-design.md](2026-05-26-interactive-worksheets-design.md) | ipad, pencilkit, ocr, review-ritual | Handwritten iPad worksheets Selene generates from your notes; each answer routes back as an action (archive / follow-up / new note). v1 = daily review ritual. On-device OCR, M-series iPadOS 17+ (1st-gen Pro out). Builds on folio's unbuilt markup app; app talks directly to Selene. Phased: Ph0 freeform warm-up → Ph1 structured review → Ph2+ generators. |
 | 2026-04-12 | [2026-04-12-model-audit-design.md](2026-04-12-model-audit-design.md) | llm, benchmarking, ollama | Per-stage model audit (curiosity-driven). Approach B locked; paused mid-design on fixture strategy. |
 | 2026-04-12 | [2026-04-12-pkm-browse-layer-design.md](2026-04-12-pkm-browse-layer-design.md) | pkm, browse, ipad | LAN web dashboard (`/pkm/*`) + review state + slim exporter upgrade. 4 tracks, ~1 week. Needs category backfill first. |
@@ -48,6 +47,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | ipad, pencilkit, ocr, annotation, selenemarkup | iPad annotation layer in SeleneMarkup: browse notes by topic cluster, open raw capture, draw with Apple Pencil on infinite canvas below note, Vision OCR → new linked note. 4 server endpoints + source_note_id column. |
 
 ---
 
