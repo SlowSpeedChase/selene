@@ -18,7 +18,8 @@
 - **Parameterized SQL only.** Never string-interpolate values.
 - **`test_run` filter is environment-aware.** Use `testRunFilter('rn')` from `src/lib/test-run.ts` in every `raw_notes` query — it returns `''` in dev (the dev DB is all `dev-seed` fixtures) and `AND rn.test_run IS NULL` in prod. Do **not** hardcode the guard.
 - **Jest uses an explicit `testMatch` allowlist** (`jest.config.js`). A new `*.test.ts` file will **not run** unless you add its path to that array.
-- **Never write to the live prod DB during testing.** Validation (Task 4) runs on a `cp` of prod in `/tmp`.
+- **Never write to the live prod DB during testing.** Validation (Task 4) runs on a `cp` of prod in `/tmp`. **Danger:** `data/selene.db` is a **symlink to `~/selene-data/selene.db` (prod)**. The safe way to point any run at a copy is the `SELENE_DB_PATH` env var, which "always wins" in `config.ts`. **Always** combine it with `SELENE_ENV=production` (which skips the `.env.development` override that could otherwise clobber `SELENE_DB_PATH`) **and** with the real prod-style `testRunFilter`. Canonical safe run:
+  `SELENE_ENV=production SELENE_DB_PATH=/tmp/selene-rebuild-test.db npx ts-node <script>`. Before any such run, echo `node -e "console.log(require('./dist/lib/config').config.dbPath)"` (or a ts-node equivalent) and confirm it prints the `/tmp` path, never `~/selene-data/...`.
 - **`CATEGORIES`** (the canonical 8) is exported from `src/lib/prompts.ts`. `cross_ref_categories` is stored as a JSON-stringified `string[]`; `category` is a single TEXT value.
 - **Do NOT touch `process-llm.ts`.** Its `embed()` call also feeds LanceDB (`indexNote`) and connection detection (`note_connections`); only the clustering *reader* of `note_embeddings` is going away.
 - Run tests with `npx jest <path>`; run a workflow with `npx ts-node src/workflows/<name>.ts`.
@@ -232,6 +233,7 @@ Classifies the ~148 notes that have `processed_notes.category IS NULL` (mostly o
 import { db, generate, isAvailable, createWorkflowLogger } from '../src/lib';
 import { EXTRACT_PROMPT } from '../src/lib/prompts';
 import { extractCategoryFields } from '../src/lib/category-clusters';
+import { testRunFilter } from '../src/lib/test-run';
 
 const log = createWorkflowLogger('backfill-categories');
 
@@ -245,7 +247,7 @@ async function backfillCategories(): Promise<{ updated: number; failed: number }
     SELECT rn.id AS id, rn.title AS title, rn.content AS content
     FROM raw_notes rn
     JOIN processed_notes pn ON pn.raw_note_id = rn.id
-    WHERE pn.category IS NULL
+    WHERE pn.category IS NULL ${testRunFilter('rn')}
   `).all() as Array<{ id: number; title: string; content: string }>;
 
   log.info({ count: rows.length }, 'Notes to classify');
@@ -345,23 +347,67 @@ function loadClassifiedNotes(): CategoryMember[] {
 }
 ```
 
-**Step 3: Widen `generateSynthesis`.** Change its `members` parameter type from `NoteEmbedding[]` to a structural type it actually uses, e.g. `Array<{ title: string; essence: string | null }>`, so `CategoryMember[]` is accepted. Cap members passed to the prompt (e.g. first 40) to bound prompt size; `log.info` when capped (no silent truncation).
+**Step 3: Widen `generateSynthesis` + make it concept-aware.** The user explicitly cares about "the concepts I spoke about," so surface them. Change its `members` parameter type from `NoteEmbedding[]` to a structural type it actually uses (`Array<{ title: string; essence: string | null }>`) so `CategoryMember[]` is accepted, and add a `topConcepts: string[]` parameter. Cap members passed to the prompt (e.g. first 40) to bound prompt size; `log.info` when capped (no silent truncation). Inject the concepts into the existing prompt, e.g. after the notes list:
+
+```ts
+async function generateSynthesis(
+  clusterName: string,
+  members: Array<{ title: string; essence: string | null }>,
+  topConcepts: string[],
+): Promise<string> {
+  const capped = members.slice(0, 40);
+  if (capped.length < members.length) {
+    log.info({ clusterName, shown: capped.length, total: members.length }, 'Capped synthesis members');
+  }
+  const noteLines = capped.map((n) => `Title: ${n.title}\nEssence: ${n.essence ?? n.title}`).join('\n\n');
+  const conceptLine = topConcepts.length
+    ? `\nRecurring concepts across these notes: ${topConcepts.slice(0, 15).join(', ')}\n`
+    : '';
+  const prompt = `You are synthesizing a personal knowledge base.
+Topic: "${clusterName}"
+${conceptLine}Notes (${members.length} total):
+
+${noteLines}
+
+Write in second person ("You've been exploring..."):
+1. 3-5 sentences capturing the recurring questions, tensions, and through-line.
+2. The open question that keeps resurfacing (one sentence, start with "The open question:").
+3. Keep it under 200 words total.
+
+Do not invent information not present in the notes.`;
+  return generate(prompt, { timeoutMs: 60000 });
+}
+```
 
 **Step 4: Replace the build loop.** Rewrite `synthesizeTopics()` so it:
-1. (One-shot guard — see Step 5) optionally wipes the tables.
+1. (One-shot guard + orphan cleanup — see Step 5) wipes/​reconciles non-category clusters.
 2. Loads classified notes; logs `uncategorizedNoteIds(...)` length (no silent drops).
-3. Computes `const groups = groupNotesByCategory(notes)` and a `Map` from noteId → member for synthesis.
-4. For each `cat` in `CATEGORIES` with `groups.get(cat)!.length >= 1`:
-   - `slug = slugForCategory(cat)`, `name = cat`.
-   - Look up existing row by slug (reuse existing pattern) → stable `id` or `randomUUID()`.
-   - **Delta-guard:** only regenerate `synthesis_text` when the member set changed since last run (reuse the existing `synthesis_updated_at` vs link `added_at` comparison, adapted: compare current member set to existing links).
-   - Upsert `topic_clusters` (`is_proto = 0`, `note_count = members.length`) via the existing `INSERT … ON CONFLICT(slug) DO UPDATE`.
-   - **Reconcile** `topic_note_links` (insert missing, delete stale), then set `note_count`:
+3. Computes `const groups = groupNotesByCategory(notes)` and a `Map<number, CategoryMember>` from noteId → member.
+4. For each `cat` in `CATEGORIES` where `groups.get(cat)!.length >= 1`:
+   - `const noteIds = groups.get(cat)!`, `slug = slugForCategory(cat)`, `name = cat`.
+   - `members = noteIds.map(id => byId.get(id)!)`.
+   - **Aggregate top concepts** for this category (retain the deleted `conceptFreq` logic, now per-category): parse each member's `concepts` JSON, count frequencies, sort desc → `topConcepts: string[]`. Wrap the `JSON.parse` in try/catch (`log.debug` on malformed) exactly as the old code did.
+   - Look up the existing row by slug (reuse the existing `SELECT id, synthesis_text … WHERE slug = ?` pattern) → `existing`. `const id = existing?.id ?? randomUUID()`.
+   - **Delta-guard (pure set comparison, BEFORE reconcile).** Compare the desired member set to the links currently stored. This must happen before we touch `topic_note_links`, or the new members wouldn't be visible yet:
      ```ts
      const desired = new Set(noteIds);
-     const existingLinks = db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
-       .all(id) as Array<{ note_id: number }>;
-     for (const { note_id } of existingLinks) {
+     const currentLinks = existing
+       ? new Set((db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
+           .all(existing.id) as Array<{ note_id: number }>).map((r) => r.note_id))
+       : new Set<number>();
+     const unchanged =
+       existing != null &&
+       existing.synthesis_text != null &&
+       desired.size === currentLinks.size &&
+       [...desired].every((n) => currentLinks.has(n));
+     if (unchanged) { clustersProcessed++; continue; }  // same members ⇒ same count ⇒ nothing to write
+     ```
+     (`continue` is safe: an unchanged set implies an unchanged `note_count`, and we never reach the upsert, so `synthesis_text` is never overwritten with null.)
+   - **Regenerate + upsert.** `const prevSynthesis = existing?.synthesis_text ?? null;` `const newSynthesis = await generateSynthesis(name, members, topConcepts);` then upsert `topic_clusters` (`is_proto = 0`, `note_count = noteIds.length`) via the existing `INSERT … ON CONFLICT(slug) DO UPDATE` (name = cat, not an LLM-generated name).
+   - **Reconcile** `topic_note_links` (insert missing, delete stale):
+     ```ts
+     for (const { note_id } of (db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
+         .all(id) as Array<{ note_id: number }>)) {
        if (!desired.has(note_id)) {
          db.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(id, note_id);
        }
@@ -370,21 +416,43 @@ function loadClassifiedNotes(): CategoryMember[] {
        db.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)')
          .run(id, noteId, now);
      }
-     db.prepare('UPDATE topic_clusters SET note_count = ? WHERE id = ?').run(noteIds.length, id);
      ```
-   - Keep the existing evolution-detection block (prev vs new synthesis).
-5. Keep the weekly-rollup call. Return `{ clusters, evolved, proto }` with `proto = 0` (keep the key for callers).
+     (`note_count` is already set by the upsert; no separate UPDATE needed.)
+   - Keep the existing evolution-detection block (prev vs new synthesis), `clustersProcessed++`.
+5. Keep the weekly-rollup call. Return `{ clusters: clustersProcessed, evolved, proto: 0 }` (keep the `proto` key for callers).
 
-**Step 5: One-shot full-rebuild guard.** At the very start of `synthesizeTopics()` (after the `isAvailable` check), support the clean transition from old embedding clusters:
+**Step 5: One-shot rebuild guard + always-on orphan cleanup.** Two mechanisms remove the old embedding clusters so the iPad never shows stale `${concept}-${hash}` buckets.
+
+At the **start** of `synthesizeTopics()` (after the `isAvailable` check), the explicit one-shot wipe:
 ```ts
 if (process.env.SELENE_REBUILD_CLUSTERS === '1') {
   db.exec('DELETE FROM topic_note_links; DELETE FROM topic_clusters;');
   log.info('Full cluster rebuild: wiped topic_clusters + topic_note_links');
 }
 ```
-Normal scheduled runs (flag unset) upsert + reconcile in place.
 
-**Step 6: Type-check + run.** `npx tsc --noEmit` → clean. Then on a dev/copy DB: `SELENE_ENV=development SELENE_REBUILD_CLUSTERS=1 npx ts-node src/workflows/synthesize-topics.ts`. Expect a log line per non-empty category and a sane cluster count.
+At the **end** of the build (after the category loop), self-heal so the workflow does NOT depend on anyone remembering the flag — if the scheduled prod agent fires before the one-shot, it would otherwise leave the old embedding clusters as `is_proto=0` orphans in the browse view:
+```ts
+const keepSlugs = CATEGORIES.map(slugForCategory);
+const placeholders = keepSlugs.map(() => '?').join(',');
+const orphanIds = (db.prepare(
+  `SELECT id FROM topic_clusters WHERE slug NOT IN (${placeholders})`
+).all(...keepSlugs) as Array<{ id: string }>).map((r) => r.id);
+for (const oid of orphanIds) {
+  db.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(oid);
+  db.prepare('DELETE FROM topic_clusters WHERE id = ?').run(oid);
+}
+if (orphanIds.length) log.info({ removed: orphanIds.length }, 'Removed non-category (orphan) clusters');
+```
+(The `placeholders` list is built from a fixed-length constant array, so the SQL is still effectively parameterized — no user input is interpolated. Category slugs like `personal-growth` cannot collide with the old `${concept}-${hash}` slugs, so this only ever deletes legacy clusters.)
+
+**Step 6: Type-check + smoke run on a prod COPY (never live).** `npx tsc --noEmit` → clean. Then run on a throwaway copy using the safe mechanism from Conventions (a `SELENE_ENV=development` run would instead hit the `dev-seed` fixtures, whose `category` population is unverified — so use a prod copy):
+```bash
+cp ~/selene-data/selene.db /tmp/selene-smoke.db
+SELENE_ENV=production SELENE_DB_PATH=/tmp/selene-smoke.db SELENE_REBUILD_CLUSTERS=1 \
+  npx ts-node src/workflows/synthesize-topics.ts
+```
+Expect a log line per non-empty category and a sane cluster count. (Full validation is Task 4.)
 
 **Step 7: `synthesis-reviewer` subagent review.** Dispatch the `synthesis-reviewer` agent on the `synthesize-topics.ts` diff (workflow + DB contract + Ollama prompt). Address findings.
 
@@ -403,10 +471,16 @@ git commit -m "feat(clustering): derive topic_clusters from categories, drop emb
 cp ~/selene-data/selene.db /tmp/selene-rebuild-test.db
 ```
 
-**Step 2: Point the DB env at the copy.** Confirm the exact override in `src/lib/config.ts` (the spike used a `SPIKE_DB`-style env var; replicate that mechanism, add a temporary one to `config.ts` if none exists, or symlink). Use a **prod-like** `SELENE_ENV` so `testRunFilter` applies the real guard. Then run, in order:
+**Step 2: Point the DB env at the copy — safely.** No config change is needed: `config.ts` already honors `SELENE_DB_PATH` (it "always wins"), and `SELENE_ENV=production` both applies the real `testRunFilter` guard and skips the `.env.development` override. **First confirm the path resolves to `/tmp`, not prod**, then run in order:
 ```bash
-npx ts-node scripts/backfill-categories.ts
-SELENE_REBUILD_CLUSTERS=1 npx ts-node src/workflows/synthesize-topics.ts
+SELENE_ENV=production SELENE_DB_PATH=/tmp/selene-rebuild-test.db \
+  npx ts-node -e "import('./src/lib/config').then(m => console.log('DB =>', m.config.dbPath))"
+# must print: DB => /tmp/selene-rebuild-test.db   (NEVER ~/selene-data/selene.db)
+
+SELENE_ENV=production SELENE_DB_PATH=/tmp/selene-rebuild-test.db \
+  npx ts-node scripts/backfill-categories.ts
+SELENE_ENV=production SELENE_DB_PATH=/tmp/selene-rebuild-test.db SELENE_REBUILD_CLUSTERS=1 \
+  npx ts-node src/workflows/synthesize-topics.ts
 ```
 
 **Step 3: Eyeball the result exactly as the app sees it.**
