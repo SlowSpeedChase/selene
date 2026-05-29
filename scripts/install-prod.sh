@@ -22,6 +22,7 @@ OUT_DIR="${HOME}/Library/LaunchAgents"
 LABEL_PREFIX="com.selene.prod."
 DRY_RUN=0
 NO_LOAD=0
+DB_PATH_OVERRIDE=""
 
 # The canonical plists hardcode the main checkout path. This is the literal
 # string we substitute FROM — NOT this script's location (it runs from a
@@ -37,7 +38,11 @@ Generates com.selene.prod.* plists from launchd/com.selene.*.plist.
 Options:
   --prod-dir DIR        Production deploy dir (default: $HOME/selene-prod)
   --out DIR             Output dir for plists (default: $HOME/Library/LaunchAgents)
-  --label-prefix PFX    Label prefix (default: com.selene.prod.)
+  --label-prefix PFX    Label prefix (default: com.selene.prod.). Also used as
+                        the output plist FILENAME prefix.
+  --db-path PATH        Override SELENE_DB_PATH in every generated plist (for
+                        staging/test loads against an isolated DB). When omitted,
+                        the canonical (real prod) SELENE_DB_PATH is preserved.
   --dry-run             Print what would be written; write nothing
   --no-load             Generate files but do NOT run launchctl bootout/bootstrap
   -h, --help            Show this help
@@ -49,6 +54,7 @@ while [[ $# -gt 0 ]]; do
         --prod-dir)      PROD_DIR="$2"; shift 2 ;;
         --out)           OUT_DIR="$2"; shift 2 ;;
         --label-prefix)  LABEL_PREFIX="$2"; shift 2 ;;
+        --db-path)       DB_PATH_OVERRIDE="$2"; shift 2 ;;
         --dry-run)       DRY_RUN=1; shift ;;
         --no-load)       NO_LOAD=1; shift ;;
         -h|--help)       usage; exit 0 ;;
@@ -81,9 +87,10 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     mkdir -p "$OUT_DIR"
 fi
 
-# The dest filename prefix is fixed (com.selene.prod.) and is the basis for
-# both generation and the orphan-reconcile scan, so the two cannot drift.
-DEST_PREFIX="com.selene.prod."
+# The dest filename prefix is the SAME label prefix used for each plist's Label,
+# and is the basis for both generation and the orphan-reconcile scan, so the
+# filename, Label, reconcile glob, and skip-guard cannot drift from one another.
+DEST_PREFIX="$LABEL_PREFIX"
 
 # Labels that must NEVER be pruned by reconcile. The deploy-watcher prod plist
 # is infra installed separately (it has no workflow source under launchd/), so
@@ -176,6 +183,12 @@ for src in "${LAUNCHD_DIR}"/com.selene.*.plist; do
         plutil -insert EnvironmentVariables -xml '<dict/>' "$TMP_PLIST" 2>/dev/null || true
     fi
     plutil -replace EnvironmentVariables.SELENE_ENV -string production "$TMP_PLIST"
+
+    # Optional --db-path override: point the generated plist at an isolated DB
+    # (staging/test). When the flag is absent this is skipped, so the canonical
+    # (real prod) SELENE_DB_PATH is inherited unchanged.
+    [[ -n "$DB_PATH_OVERRIDE" ]] && \
+        plutil -replace EnvironmentVariables.SELENE_DB_PATH -string "$DB_PATH_OVERRIDE" "$TMP_PLIST"
 
     # Validate before committing. A lint failure aborts the whole run (set -e
     # plus explicit exit) so Pass 2 never runs with an incomplete prod set.
