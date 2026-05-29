@@ -1,8 +1,8 @@
 # Production / Development Split — Design
 
 **Date:** 2026-05-28
-**Status:** Ready (design approved; next step: implementation plan)
-**Branch:** feat/note-annotation (design committed here; implementation on its own branch)
+**Status:** Done — shipped & cut over to production 2026-05-29 (PR #45)
+**Branch:** feat/prod-dev-split (merged to main)
 
 ---
 
@@ -21,7 +21,7 @@ Establish a **release boundary**:
 - Code reaches prod via **auto-deploy on merge to `main`**, gated on a successful build.
 - Two coexisting iPad apps: **Selene** (prod, :5678) and **Selene Dev** (dev, :5679).
 
-This is the standard professional pattern (local dev → CI/CD → prod, with environment isolation), right-sized for a single person on a single Mac. We deliberately **skip a separate staging environment** (YAGNI for a solo system); the dev sandbox, loaded with anonymized real data, serves as the rehearsal environment.
+This is the standard professional pattern (local dev → CI/CD → prod, with environment isolation), right-sized for a single person on a single Mac. We deliberately **skip a separate staging environment** (YAGNI for a solo system); the dev sandbox (fictional fixtures — see "Dev sandbox data" below) serves as the rehearsal environment.
 
 ---
 

@@ -55,7 +55,6 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
-| 2026-05-28 | [2026-05-28-prod-dev-split-design.md](2026-05-28-prod-dev-split-design.md) | `feat/prod-dev-split` | Release boundary: `~/selene` = dev sandbox (dev DB + scratch vault, ts-node); `~/selene-prod` = prod (compiled `dist/`, real DB + iCloud vault). Auto-deploy on merge to main via gated launchd deploy-watcher. Two coexisting iPad apps (Selene / Selene Dev). **Tooling built & integration-tested; one-time cutover pending** (prod still on old `com.selene.*` agents until then). Releases guide: `docs/guides/features/releases.md`. |
 
 ---
 
@@ -63,6 +62,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Completed | Notes |
 |------|----------|-----------|-------|
+| 2026-05-28 | [2026-05-28-prod-dev-split-design.md](2026-05-28-prod-dev-split-design.md) | 2026-05-29 | Release boundary SHIPPED & cut over to production (PR #45). `~/selene` = dev sandbox (dev DB, ts-node, :5679, NO scheduled agents); `~/selene-build` = scratch build clone; `~/selene-prod` = prod (compiled `dist/`, real DB, iCloud vault, :5678, 11 `com.selene.prod.*` agents + deploy-watcher). Merge to main auto-deploys via a gated launchd watcher (build-gate, `.env` preserved, rollback archive, notifications). Two iPad targets built in `~/SeleneMarkup` (`feat/dev-prod-apps`). Dev data = fictional fixtures. Guide: `docs/guides/features/releases.md`. |
 | 2026-05-26 | [2026-05-26-selene-mobile-companion-design.md](2026-05-26-selene-mobile-companion-design.md) | 2026-05-28 | iPad note annotation shipped: Notes tab in SeleneMarkup (cluster browse → note → PencilKit canvas → Vision OCR → new linked note). selene: `source_note_id` column + `src/routes/notes.ts` (4 endpoints, 4 jest tests). SeleneMarkup: NoteModels, AnnotationService (5 tests), 4 views, tab wiring, AppConfig.mainBaseURL. User guide at docs/guides/features/note-annotation.md. |
 | 2026-05-26 | [2026-05-26-synthesis-retrieval-agent-design.md](2026-05-26-synthesis-retrieval-agent-design.md) | 2026-05-28 | Layered synthesis shipped: synthesize-topics.ts (nightly clustering + evolution detection), connection detection in process-llm.ts, 4 new digest sections, launchd agent at 2am. 17 tests. User guide at docs/guides/features/synthesis-layer.md. |
 | 2026-05-26 | [2026-05-26-folio-kindle-agent-design.md](2026-05-26-folio-kindle-agent-design.md) | 2026-05-27 | Folio MCP server (4 tools): list_changed_documents, read_document, get_delivery_history, send_kindle_digest. Delta PDF delivery to Kindle. Registered in selene/.mcp.json. |

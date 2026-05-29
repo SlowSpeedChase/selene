@@ -259,16 +259,14 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 
 ---
 
-## In Progress
+## Recently Shipped — Prod/Dev Split (LIVE 2026-05-29)
 
-### Prod/Dev Split — tooling complete & integration-tested; one-time cutover pending
+**Branch:** `feat/prod-dev-split` (merged to main, PR #45)
 
-**Branch:** `feat/prod-dev-split`
+Establishes a release boundary so dev work never touches what's running. **LIVE as of 2026-05-29:** production runs from the compiled artifact in `~/selene-prod/dist` (11 `com.selene.prod.*` agents + deploy-watcher, serving `:5678` against the real DB). `~/selene` is now a free dev sandbox on `main` with NO scheduled agents. The old `com.selene.*` agents were retired in the one-time cutover.
 
-Establishes a release boundary so dev work never touches what's running. **The tooling is built and integration-tested, but it is NOT yet live** — it activates at a one-time cutover that has not run. Until then, production still runs the old `com.selene.*` agents from `~/selene` via ts-node, unchanged.
-
-Three-directory model (post-cutover):
-- `~/selene` — dev sandbox (dev DB `~/selene-data-dev`, ts-node, port 5679, manual workflows)
+Three-directory model:
+- `~/selene` — dev sandbox (dev DB `~/selene-data-dev`, ts-node, port 5679, manual workflows, no scheduled agents)
 - `~/selene-build` — scratch build clone (build site only; never edited by hand)
 - `~/selene-prod` — production (compiled `dist/`, real DB `~/selene-data/selene.db`, iCloud vault, port 5678, `com.selene.prod.*` agents)
 
@@ -276,10 +274,9 @@ Release flow: merge to `main` → a launchd deploy-watcher (`com.selene.prod.dep
 
 - Scripts: `scripts/deploy-watch.sh`, `scripts/deploy-prod.sh`, `scripts/install-prod.sh`, `scripts/rollback-prod.sh`, `scripts/lib/notify.sh`
 - Agent: `launchd/com.selene.prod.deploy-watcher.plist`
-- Two coexisting iPad app targets (Selene / Selene Dev) built in `~/SeleneMarkup` on branch `feat/dev-prod-apps`
-- User guide: `docs/guides/features/releases.md` (marked "activates after cutover")
-- Design doc: `docs/plans/2026-05-28-prod-dev-split-design.md` (In Progress — not Done; cutover pending)
-- Deferred to cutover: `docs/backend-block-diagrams.md` (live launchd layout hasn't changed yet)
+- Two coexisting iPad app targets (Selene `:5678` / Selene Dev `:5679`) built in `~/SeleneMarkup` on branch `feat/dev-prod-apps` (not yet merged/device-installed)
+- User guide: `docs/guides/features/releases.md`
+- Follow-ups: reconstruct dev fixture generators; merge worksheet routes onto the prod server (so the prod iPad app's worksheets work)
 
 ---
 
