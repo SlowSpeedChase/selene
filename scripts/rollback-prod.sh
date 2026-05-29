@@ -107,12 +107,20 @@ rsync -a --delete "${RELEASE_PATH}/" "${TARGET}/dist/"
 #        failure still leaves .deployed-sha matching what is in dist/). -------
 printf '%s' "$SHA" > "${TARGET}/.deployed-sha"
 
-# --- 6. (Re)load prod launchd agents so they point at the restored dist. -----
+# --- 6. Restart prod agents in place to pick up the restored dist. -----------
+# Use `launchctl kickstart -k`, NOT install-prod.sh's bootout+bootstrap:
+# re-bootstrapping the running KeepAlive server races its teardown
+# ("Bootstrap failed: 5: Input/output error") and can take prod DOWN mid-rollback.
+# kickstart never unloads, so a failure leaves the old process serving.
 if [[ "$SKIP_AGENTS" -eq 0 ]]; then
-    if ! "$HERE/install-prod.sh" --prod-dir "$TARGET"; then
-        selene_notify "Selene rollback WARN" "restored dist to $SHA but loading prod agents failed — check launchctl"
-        echo "ERROR: install-prod.sh failed after restoring $SHA" >&2
-        exit 1
+    restart_failed=()
+    PROD_AGENTS="$(launchctl list | awk '{print $3}' | grep '^com\.selene\.prod\.' | grep -v 'com.selene.prod.deploy-watcher' || true)"
+    for label in $PROD_AGENTS; do
+        launchctl kickstart -k "gui/$(id -u)/$label" 2>/dev/null || restart_failed+=("$label")
+    done
+    if [[ ${#restart_failed[@]} -gt 0 ]]; then
+        selene_notify "Selene rollback WARN" "restored dist to $SHA but restart failed for: ${restart_failed[*]} — check launchctl"
+        echo "WARNING: kickstart failed for: ${restart_failed[*]} after restoring $SHA" >&2
     fi
 else
     echo "--skip-agents: leaving launchd agents untouched"
