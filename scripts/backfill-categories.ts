@@ -50,6 +50,16 @@ async function backfillCategories(): Promise<{ updated: number; failed: number }
     }
   }
 
+  // Preserve the behavior of the prior backfill script (main@10b4d20): force the
+  // Obsidian MOCs to rebuild with the new categories on the next export run. The
+  // design unifies both the iPad and Obsidian surfaces on categories.
+  if (updated > 0) {
+    const reset = db.prepare(
+      `UPDATE raw_notes SET exported_to_obsidian = 0 WHERE status = 'processed' ${testRunFilter()}`
+    ).run();
+    log.info({ resetCount: reset.changes }, 'Reset export flags for MOC rebuild');
+  }
+
   log.info({ updated, failed }, 'Backfill complete');
   return { updated, failed };
 }
