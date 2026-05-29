@@ -25,7 +25,7 @@ There's nothing to run by hand. Merge, wait a few minutes, watch for the notific
 ./scripts/rollback-prod.sh <sha>
 ```
 
-This restores the previous `dist/`, reloads the prod agents, health-checks, and notifies (**"Selene ROLLED BACK"**). Rollback is always manual — a bad release never auto-reverts on its own.
+This restores the previous `dist/`, restarts the prod agents in place (`launchctl kickstart -k`), health-checks, and notifies (**"Selene ROLLED BACK"**). Rollback is always manual — a bad release never auto-reverts on its own.
 
 ## How it works
 
@@ -44,7 +44,7 @@ This restores the previous `dist/`, reloads the prod agents, health-checks, and 
 3. **Build-gate.** If the build or check fails, the script notifies **"Selene deploy FAILED"** and exits — `~/selene-prod` (its `.env`, `dist/`, `package.json`, `.deployed-sha`) is left **completely untouched on the last-good release**.
 4. **Archive for rollback.** On a passing build, the current live `dist/` is copied to `~/selene-prod/releases/<old-sha>/` before anything is overwritten. Only the 5 newest archived releases are kept.
 5. **Ship only `dist/`.** The compiled output is rsync'd into `~/selene-prod/dist/`. **The target's `.env` is a sibling of `dist/` and is never touched** — production secrets and config survive every deploy. `package.json`/`package-lock.json` are copied and `npm install --omit=dev` runs in prod.
-6. **Reload prod agents.** `install-prod.sh` regenerates the `com.selene.prod.*` plists (compiled `node dist/...` entrypoints, `SELENE_ENV=production`) and reloads them via launchctl.
+6. **Restart prod agents.** `deploy-prod.sh` restarts the already-loaded `com.selene.prod.*` agents in place via `launchctl kickstart -k`, so they re-exec the new `dist/`. It does **not** bootout+bootstrap — re-bootstrapping the running KeepAlive server races its own teardown (`Bootstrap failed: 5: Input/output error`) and can take prod down; `kickstart` never unloads, so a restart failure leaves the old process serving (prod stays up, with a WARN). `install-prod.sh`'s generate-and-bootstrap is used only for the initial cutover and when the agent set or plist content changes (run interactively, not from the launchd watcher).
 7. **Health probe.** It waits briefly and probes `http://localhost:5678/health`. **This is warn-only:** a failed health check sends a WARN notification but does **not** auto-roll-back. Use `rollback-prod.sh` if needed.
 8. **Record + announce.** The new sha is written to `~/selene-prod/.deployed-sha` and a **"Selene deployed"** notification fires.
 

@@ -1,6 +1,6 @@
 # Backend Block Diagrams
 
-**Last Updated:** 2026-05-24
+**Last Updated:** 2026-05-29
 **Purpose:** Visual representations of Selene's backend architecture and data flows
 
 ---
@@ -375,6 +375,55 @@ AGENT LAYER TABLES
 
 ---
 
-*These diagrams reflect the system as of 2026-05-24. For historical architecture
+## 5. Deployment / Release Topology (prod/dev split — live 2026-05-29)
+
+Code is edited in a dev sandbox and runs in production as a compiled, frozen
+artifact. A launchd watcher auto-deploys on merge to `main`, build-gated.
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│  DEV   ~/selene  (branch: main)                                              │
+│    edit source · ts-node · port 5679 (manual) · dev DB ~/selene-data-dev     │
+│    scratch vault · NO scheduled launchd agents                               │
+└────────────────────────────────────────────────────────────────────────────┘
+            │  merge PR / push  →  origin/main moves
+            ↓
+┌────────────────────────────────────────────────────────────────────────────┐
+│  com.selene.prod.deploy-watcher   (launchd · StartInterval 300s = every 5m)  │
+│    git fetch; origin/main sha == ~/selene-prod/.deployed-sha ?               │
+│       same  → "up to date" (no-op)                                           │
+│       moved → run deploy-prod.sh ↓                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+            ↓
+┌────────────────────────────────────────────────────────────────────────────┐
+│  BUILD  ~/selene-build  (scratch clone — never hand-edited)                  │
+│    reset --hard origin/main → npm install → npm run build (tsc)              │
+│    ─── build FAILS → notify "deploy FAILED"; prod left untouched (THE GATE)  │
+└────────────────────────────────────────────────────────────────────────────┘
+            │  build OK
+            ↓
+┌────────────────────────────────────────────────────────────────────────────┐
+│  PROD  ~/selene-prod  (compiled dist/ · real DB · iCloud vault · port 5678)  │
+│    archive old dist → releases/<old-sha>/                                    │
+│    rsync dist/  (EXCLUDES .env)  ·  npm install --omit=dev                    │
+│    restart in place: launchctl kickstart -k com.selene.prod.*  (NOT bootout) │
+│    health-check :5678 → write .deployed-sha → notify "deployed <sha>"        │
+│    11 scheduled agents: com.selene.prod.{server, process-llm, …}             │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Rollback:   ./scripts/rollback-prod.sh [sha]  → swap dist/ to releases/<sha>/,
+            kickstart agents in place, health-check, notify.
+Cutover / agent-set changes:  ./scripts/install-prod.sh  (interactive ONLY —
+            generates + bootstraps prod plists from canonical launchd/*.plist;
+            never run from the launchd watcher).
+```
+
+The capture → process → deliver flows in sections 1–3 are **identical** in dev
+and prod — only the runtime (ts-node vs compiled `dist/`), DB, vault, port, and
+launchd label prefix (`com.selene.*` → `com.selene.prod.*`) differ.
+
+---
+
+*These diagrams reflect the system as of 2026-05-29. For historical architecture
 (embedding pipeline, thread detection, LanceDB), see the archived design docs in
 `docs/plans/_archived/` and `archive/shelved-2026-03-21/`.*
