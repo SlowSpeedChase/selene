@@ -1,4 +1,5 @@
 import type { Database } from 'better-sqlite3';
+import { testRunFilter } from './test-run';
 
 export function buildSynthesisSections(db: Database): string {
   const sections: string[] = [];
@@ -62,7 +63,7 @@ export function buildSynthesisSections(db: Database): string {
     JOIN raw_notes src ON nc.source_note_id = src.id
     JOIN raw_notes tgt ON nc.target_note_id = tgt.id
     WHERE nc.found_at > datetime('now', '-1 day')
-      AND src.test_run IS NULL
+      ${testRunFilter('src')}
     ORDER BY nc.similarity_score DESC
     LIMIT 3
   `).all() as Array<{

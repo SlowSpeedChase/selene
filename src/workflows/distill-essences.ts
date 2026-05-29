@@ -1,4 +1,5 @@
 import { createWorkflowLogger, db, generate, isAvailable } from '../lib';
+import { testRunFilter } from '../lib/test-run';
 import { buildEssencePrompt } from '../lib/prompts';
 import type { WorkflowResult } from '../types';
 
@@ -22,7 +23,7 @@ export function getNotesNeedingEssence(limit = 10): NoteForEssence[] {
        FROM processed_notes pn
        JOIN raw_notes rn ON pn.raw_note_id = rn.id
        WHERE pn.essence IS NULL
-         AND rn.test_run IS NULL
+         ${testRunFilter('rn')}
        ORDER BY rn.created_at DESC
        LIMIT ?`
     )

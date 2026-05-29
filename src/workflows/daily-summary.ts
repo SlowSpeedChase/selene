@@ -1,6 +1,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { createWorkflowLogger, db, generate, isAvailable, config } from '../lib';
+import { testRunFilter } from '../lib/test-run';
 import { notifyBriefingReady } from '../lib/apns';
 
 const log = createWorkflowLogger('daily-summary');
@@ -45,7 +46,7 @@ export async function dailySummary(): Promise<{ success: boolean; path?: string;
        FROM raw_notes rn
        LEFT JOIN processed_notes pn ON rn.id = pn.raw_note_id
        WHERE rn.created_at BETWEEN ? AND ?
-         AND rn.test_run IS NULL
+         ${testRunFilter('rn')}
        ORDER BY rn.created_at`
     )
     .all(startOfWeek.toISOString(), endOfDay.toISOString()) as Array<{

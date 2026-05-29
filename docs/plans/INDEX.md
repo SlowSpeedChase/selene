@@ -47,6 +47,8 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-29 | [2026-05-29-remote-ipad-development-design.md](2026-05-29-remote-ipad-development-design.md) | ipad, tailscale, dev-environment, travel | Develop SeleneMarkup remotely while traveling. MacBook Air + iPad = self-contained build/deploy station (`./redeploy.sh --dev`); Mac mini stays home as server, reached over Tailscale (`100.111.6.10`). Persistent dev-mode server on :5679 (prod-seeded dev DB, writes isolated from prod) via a new `com.selene.dev.server` launchd agent. Only code change: `AppConfig` `#if SELENE_DEV` IP. Pre-trip checklist (GitHub remote, laptop signing, prod→dev snapshot, sleep-disable, cellular pre-flight test). |
+| 2026-05-29 | [2026-05-29-content-based-multitopic-clustering-design.md](2026-05-29-content-based-multitopic-clustering-design.md) | clustering, pipeline, embeddings, ipad-browse | Fix the iPad Notes "E-Ink Empowerment" 104-note bucket (all `eink`): clustering embeds whole multi-topic brain-dump pages → muddy vectors that collapse by source, plus hard single-assignment. Move clustering from note→**chunk** (hybrid structural+LLM segmentation, embed each chunk), so a brain-dump links to **every** topic it touches (multi-membership via existing `topic_note_links`). De-bias source boilerplate; name by theme. **Phase 0 spike gates the build** (do chunks actually separate, or re-collapse into "personal growth"?). Full clean rebuild on a prod→dev snapshot first, then prod one-shot. Reuses unused `note_chunks`/`is_proto`. |
 ---
 
 ## In Progress

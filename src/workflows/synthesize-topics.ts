@@ -1,5 +1,6 @@
 import { randomUUID, createHash } from 'crypto';
 import { db, embed, generate, isAvailable, createWorkflowLogger } from '../lib';
+import { testRunFilter } from '../lib/test-run';
 import { initSynthesisSchema } from '../lib/synthesis-db';
 import { cosineSimilarity } from '../lib/cosine';
 
@@ -24,8 +25,8 @@ async function backfillEmbeddings(): Promise<number> {
     SELECT rn.id, rn.content
     FROM raw_notes rn
     JOIN processed_notes pn ON rn.id = pn.raw_note_id
-    WHERE rn.test_run IS NULL
-      AND rn.status = 'processed'
+    WHERE rn.status = 'processed'
+      ${testRunFilter('rn')}
       AND NOT EXISTS (SELECT 1 FROM note_embeddings ne WHERE ne.raw_note_id = rn.id)
     LIMIT 200
   `).all() as Array<{ id: number; content: string }>;
@@ -63,7 +64,7 @@ function loadAllEmbeddings(): NoteEmbedding[] {
     FROM raw_notes rn
     JOIN processed_notes pn ON rn.id = pn.raw_note_id
     JOIN note_embeddings ne ON rn.id = ne.raw_note_id
-    WHERE rn.test_run IS NULL AND rn.status = 'processed'
+    WHERE rn.status = 'processed' ${testRunFilter('rn')}
   `).all() as Array<{
     noteId: number; title: string; createdAt: string;
     essence: string | null; concepts: string | null; embedding: string;
