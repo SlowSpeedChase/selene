@@ -76,21 +76,42 @@ cp ~/selene-data-dev/selene.db ~/selene-data-dev/selene.db.fixtures-backup-2026-
 ```
 Expected: backup file created.
 
-### Task 2.2: Snapshot prod → dev
+### Task 2.2: Snapshot prod → dev (use the online backup API, NOT `cp`)
 
-**Step 1:** Copy the live prod DB over the dev DB:
+**IMPORTANT:** prod runs in **WAL mode** while the prod server is live. A plain
+`cp ~/selene-data/selene.db ...` grabs the main file without the uncommitted `-wal`
+sidecar → a **malformed** snapshot. Use SQLite's online backup, which is consistent
+even on a live DB. (Discovered during execution 2026-05-29.)
+
+**Step 1:** Remove any stale dev DB sidecars, then back up online:
 ```bash
-cp ~/selene-data/selene.db ~/selene-data-dev/selene.db
+rm -f ~/selene-data-dev/selene.db ~/selene-data-dev/selene.db-wal ~/selene-data-dev/selene.db-shm
+sqlite3 ~/selene-data/selene.db ".backup '/Users/chaseeasterling/selene-data-dev/selene.db'"
 ```
 Expected: no error.
 
-**Step 2:** Verify the dev DB now has the synthesis layer and schema:
+**Step 2:** Verify integrity + synthesis layer + schema:
 ```bash
 DEV=~/selene-data-dev/selene.db
+sqlite3 "$DEV" "PRAGMA integrity_check;"
 sqlite3 "$DEV" "SELECT COUNT(*) FROM raw_notes; SELECT COUNT(*) FROM processed_notes; SELECT COUNT(*) FROM topic_clusters;"
 sqlite3 "$DEV" "PRAGMA table_info(raw_notes);" | grep source_note_id
 ```
-Expected: 293 / 302 / 83, and the `source_note_id` column present.
+Expected: `ok`, then 293 / 302 / 83, and the `source_note_id` column present.
+
+**Step 3 (REQUIRED): stamp the snapshot as a development DB.** `src/lib/db.ts` refuses
+to boot a `development` server unless `_selene_metadata.environment = 'development'`
+exists (a guard so dev never runs against a non-dev DB). The prod snapshot lacks it:
+```bash
+sqlite3 ~/selene-data-dev/selene.db "
+CREATE TABLE IF NOT EXISTS _selene_metadata (
+  key TEXT PRIMARY KEY, value TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
+INSERT OR REPLACE INTO _selene_metadata (key, value) VALUES ('environment', 'development');
+INSERT OR REPLACE INTO _selene_metadata (key, value) VALUES ('created_at', datetime('now'));"
+sqlite3 ~/selene-data-dev/selene.db "SELECT value FROM _selene_metadata WHERE key='environment';"
+```
+Expected: `development`.
 
 ---
 
