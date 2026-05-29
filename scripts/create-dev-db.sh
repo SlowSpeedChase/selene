@@ -82,7 +82,9 @@ CREATE TABLE raw_notes (
     tasks_extracted BOOLEAN DEFAULT 0,
     tasks_extracted_at TEXT,
     source_uuid TEXT DEFAULT NULL,
-    calendar_event TEXT
+    calendar_event TEXT,
+    capture_type TEXT DEFAULT 'drafts',
+    source_note_id INTEGER REFERENCES raw_notes(id)
 );
 CREATE INDEX idx_raw_notes_status ON raw_notes(status);
 CREATE INDEX idx_raw_notes_content_hash ON raw_notes(content_hash);
