@@ -219,8 +219,10 @@ git commit -m "feat(clustering): pure category-membership helpers (multi-members
 
 Classifies the ~148 notes that have `processed_notes.category IS NULL` (mostly older drafts predating the category feature) so they participate in category clusters. Reuses `EXTRACT_PROMPT` and `extractCategoryFields` from Task 1; updates **only** `category` + `cross_ref_categories` (preserves existing concepts/essence/sentiment).
 
+> **Note — this REPLACES an existing script.** `scripts/backfill-categories.ts` already exists on `main` (commit `10b4d20`). The old version classified on the *distilled* note (a custom `BACKFILL_PROMPT` over theme/essence/concepts) with a hardcoded `test_run IS NULL` guard. The rewrite is intentional: classify on full content via the shared `EXTRACT_PROMPT` (so backfilled notes get the *same* category they'd get at ingest via `process-llm.ts`), the shared `extractCategoryFields`, and the env-aware `testRunFilter`. **Preserve** the old version's one beneficial side effect — resetting `exported_to_obsidian = 0` after a successful backfill so the Obsidian MOCs rebuild with the new categories (the design unifies *both* surfaces on categories).
+
 **Files:**
-- Create: `scripts/backfill-categories.ts`
+- Modify (replace): `scripts/backfill-categories.ts`
 
 **Step 1: Implement the script:**
 
@@ -275,6 +277,15 @@ async function backfillCategories(): Promise<{ updated: number; failed: number }
       failed++;
       log.warn({ noteId: note.id, err: err as Error }, 'Classification failed');
     }
+  }
+
+  // Preserve main's behavior: force the Obsidian MOCs to rebuild with the new
+  // categories on the next export run (the design unifies both surfaces on categories).
+  if (updated > 0) {
+    const reset = db.prepare(
+      `UPDATE raw_notes SET exported_to_obsidian = 0 WHERE status = 'processed' ${testRunFilter()}`
+    ).run();
+    log.info({ resetCount: reset.changes }, 'Reset export flags for MOC rebuild');
   }
 
   log.info({ updated, failed }, 'Backfill complete');
