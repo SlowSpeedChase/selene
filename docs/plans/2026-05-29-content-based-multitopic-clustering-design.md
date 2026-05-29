@@ -220,6 +220,11 @@ now splits/strips these, recovering ~9 multi-topic notes as proper multi-members
   remove in a follow-up.
 - **`process-llm.ts` writes `category` unvalidated** — root cause of the messy values; a
   future hardening could validate on write (out of scope here; read-side normalization covers it).
+- **`export-obsidian.ts` reads `category` raw** (no `normalizeToValidCategories`) — comma-joined
+  values land in the fallback MOC bucket on the Obsidian surface, so its multi-membership won't
+  fully match the iPad's. Pre-existing; apply the helper there for full cross-surface consistency.
+- **`src/lib/cosine.ts` is now orphaned** — `cosineSimilarity` has no production importer after
+  embedding clustering was removed (its test still runs). Harmless dead code; delete in a follow-up.
 
 ## ADHD check
 
