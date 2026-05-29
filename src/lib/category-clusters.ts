@@ -23,10 +23,26 @@ export function parseCrossRefs(json: string | null): string[] {
   }
 }
 
+/**
+ * Normalize a possibly-messy category value into the valid controlled categories it names.
+ *
+ * `process-llm.ts` stores `category` UNVALIDATED, so real data contains comma-joined lists
+ * ("Personal Growth, Relationships & Social") and parentheticals ("Health & Body (for ...)").
+ * No valid category contains a comma, so we split on commas, strip parentheticals, trim, and
+ * keep only exact matches. A comma-joined value therefore yields genuine multi-membership.
+ */
+export function normalizeToValidCategories(value: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((part) => part.replace(/\(.*?\)/g, '').trim())
+    .filter((part) => VALID.has(part));
+}
+
 function validCategoriesFor(note: CategorizableNote): Set<string> {
   const cats = new Set<string>();
-  if (note.category && VALID.has(note.category)) cats.add(note.category);
-  for (const cr of note.crossRefs) if (VALID.has(cr)) cats.add(cr);
+  for (const c of normalizeToValidCategories(note.category)) cats.add(c);
+  for (const cr of note.crossRefs) for (const c of normalizeToValidCategories(cr)) cats.add(c);
   return cats;
 }
 

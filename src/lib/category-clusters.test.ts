@@ -4,7 +4,32 @@ import {
   groupNotesByCategory,
   uncategorizedNoteIds,
   extractCategoryFields,
+  normalizeToValidCategories,
 } from './category-clusters';
+
+describe('normalizeToValidCategories', () => {
+  it('returns [] for null/empty', () => {
+    expect(normalizeToValidCategories(null)).toEqual([]);
+    expect(normalizeToValidCategories('')).toEqual([]);
+  });
+  it('passes a single valid category through', () => {
+    expect(normalizeToValidCategories('Health & Body')).toEqual(['Health & Body']);
+  });
+  it('splits a comma-joined value into multiple valid categories', () => {
+    expect(normalizeToValidCategories('Personal Growth, Relationships & Social'))
+      .toEqual(['Personal Growth', 'Relationships & Social']);
+    expect(normalizeToValidCategories('Personal Growth, Relationships & Social, Daily Systems'))
+      .toEqual(['Personal Growth', 'Relationships & Social', 'Daily Systems']);
+  });
+  it('strips a parenthetical annotation', () => {
+    expect(normalizeToValidCategories('Health & Body (for Body Pillow and Dog Enrichment Plan)'))
+      .toEqual(['Health & Body']);
+  });
+  it('drops parts that are not exact valid categories', () => {
+    expect(normalizeToValidCategories('Personal Growth, Made Up')).toEqual(['Personal Growth']);
+    expect(normalizeToValidCategories('Totally Invalid')).toEqual([]);
+  });
+});
 
 describe('slugForCategory', () => {
   it('lowercases and replaces non-alphanumerics with single hyphens', () => {
@@ -51,6 +76,15 @@ describe('groupNotesByCategory', () => {
       { noteId: 9, category: 'Made Up', crossRefs: ['Also Fake'] },
     ]);
     for (const ids of groups.values()) expect(ids).not.toContain(9);
+  });
+  it('treats a comma-joined primary category (real prod data) as multi-membership', () => {
+    const groups = groupNotesByCategory([
+      { noteId: 5, category: 'Health & Body, Projects & Tech, Career & Work', crossRefs: [] },
+    ]);
+    expect(groups.get('Health & Body')).toEqual([5]);
+    expect(groups.get('Projects & Tech')).toEqual([5]);
+    expect(groups.get('Career & Work')).toEqual([5]);
+    expect(groups.get('Personal Growth')).toEqual([]);
   });
 });
 
