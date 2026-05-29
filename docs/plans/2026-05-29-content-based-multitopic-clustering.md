@@ -386,16 +386,19 @@ Write in second person ("You've been exploring..."):
 3. Keep it under 200 words total.
 
 Do not invent information not present in the notes.`;
-  return generate(prompt, { timeoutMs: 60000 });
+  return generate(prompt, { timeoutMs: 60000, numCtx: 4096 });
 }
 ```
+
+**Also add `numCtx` to `GenerateOptions` in `src/lib/ollama.ts`** and pass it as `num_ctx` in the `/api/generate` options block (undefined keys are dropped by `JSON.stringify`, so it's opt-in and harmless for other callers). `mistral:7b`'s default `num_ctx` is 2048; a 40-member category synthesis prompt can exceed that and Ollama would **silently truncate**, degrading the synthesis from a partial view. `num_ctx: 4096` removes that risk.
 
 **Step 4: Replace the build loop.** Rewrite `synthesizeTopics()` so it:
 1. (One-shot guard + orphan cleanup — see Step 5) wipes/​reconciles non-category clusters.
 2. Loads classified notes; logs `uncategorizedNoteIds(...)` length (no silent drops).
 3. Computes `const groups = groupNotesByCategory(notes)` and a `Map<number, CategoryMember>` from noteId → member.
-4. For each `cat` in `CATEGORIES` where `groups.get(cat)!.length >= 1`:
-   - `const noteIds = groups.get(cat)!`, `slug = slugForCategory(cat)`, `name = cat`.
+4. For each `cat` in `CATEGORIES`:
+   - `const noteIds = groups.get(cat) ?? []`, `slug = slugForCategory(cat)`, `name = cat`.
+   - **Empty category:** if `noteIds.length === 0`, delete any existing cluster row for `slug` **and** its links, then `continue`. (The orphan cleanup can't catch this — an emptied category still has a valid slug, so without this it would linger with a stale `note_count`. This fires during the reclassification backfill.)
    - `members = noteIds.map(id => byId.get(id)!)`.
    - **Aggregate top concepts** for this category (retain the deleted `conceptFreq` logic, now per-category): parse each member's `concepts` JSON, count frequencies, sort desc → `topConcepts: string[]`. Wrap the `JSON.parse` in try/catch (`log.debug` on malformed) exactly as the old code did.
    - Look up the existing row by slug (reuse the existing `SELECT id, synthesis_text … WHERE slug = ?` pattern) → `existing`. `const id = existing?.id ?? randomUUID()`.

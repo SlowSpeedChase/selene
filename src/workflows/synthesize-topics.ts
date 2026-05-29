@@ -3,7 +3,7 @@ import { db, generate, isAvailable, createWorkflowLogger } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { initSynthesisSchema } from '../lib/synthesis-db';
 import { CATEGORIES } from '../lib/prompts';
-import { groupNotesByCategory, parseCrossRefs, slugForCategory } from '../lib/category-clusters';
+import { groupNotesByCategory, parseCrossRefs, slugForCategory, uncategorizedNoteIds } from '../lib/category-clusters';
 
 const log = createWorkflowLogger('synthesize-topics');
 
@@ -64,7 +64,9 @@ Write in second person ("You've been exploring..."):
 3. Keep it under 200 words total.
 
 Do not invent information not present in the notes.`;
-  return generate(prompt, { timeoutMs: 60000 });
+  // num_ctx 4096 (vs mistral:7b's 2048 default): a 40-member category can exceed 2048
+  // tokens, which Ollama would silently truncate — degrading the synthesis invisibly.
+  return generate(prompt, { timeoutMs: 60000, numCtx: 4096 });
 }
 
 async function generateWeeklyRollup(): Promise<void> {
@@ -111,11 +113,14 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
   const byId = new Map(notes.map((n) => [n.noteId, n]));
   const groups = groupNotesByCategory(notes.map((n) => ({ noteId: n.noteId, category: n.category, crossRefs: n.crossRefs })));
 
-  // No silent drops: report notes that matched zero valid categories.
-  const grouped = new Set<number>();
-  for (const ids of groups.values()) for (const id of ids) grouped.add(id);
-  const ungrouped = notes.filter((n) => !grouped.has(n.noteId)).length;
-  log.info({ total: notes.length, ungrouped }, 'Loaded classified notes');
+  // No silent drops: surface the IDs of notes that matched zero valid categories.
+  const ungroupedIds = uncategorizedNoteIds(
+    notes.map((n) => ({ noteId: n.noteId, category: n.category, crossRefs: n.crossRefs }))
+  );
+  log.info(
+    { total: notes.length, ungrouped: ungroupedIds.length, ungroupedIds: ungroupedIds.slice(0, 50) },
+    'Loaded classified notes'
+  );
 
   let clustersProcessed = 0;
   let evolved = 0;
@@ -123,10 +128,22 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
 
   for (const cat of CATEGORIES) {
     const noteIds = groups.get(cat) ?? [];
-    if (noteIds.length === 0) continue;
+    const slug = slugForCategory(cat);
+
+    // Category emptied out (e.g. all its notes reclassified away): delete its stale row +
+    // links so the iPad never shows a category cluster with a wrong count. The orphan
+    // cleanup below can't catch this — an empty category still has a valid slug.
+    if (noteIds.length === 0) {
+      const stale = db.prepare('SELECT id FROM topic_clusters WHERE slug = ?').get(slug) as { id: string } | undefined;
+      if (stale) {
+        db.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(stale.id);
+        db.prepare('DELETE FROM topic_clusters WHERE id = ?').run(stale.id);
+        log.info({ category: cat }, 'Removed now-empty category cluster');
+      }
+      continue;
+    }
 
     const members = noteIds.map((id) => byId.get(id)).filter((m): m is CategoryMember => m !== undefined);
-    const slug = slugForCategory(cat);
 
     // Aggregate recurring concepts for this category (retained from old per-cluster logic).
     const conceptFreq = new Map<string, number>();
