@@ -71,11 +71,11 @@ tables and columns already exist; we change what populates them.
 - **`capture_type` stays as metadata**, never drives a cluster.
 
 ```
-ingest ─▶ process-llm.ts                      ─▶ synthesize-topics.ts (rewritten)
+ingest ─▶ process-llm.ts (unchanged)          ─▶ synthesize-topics.ts (rewritten)
           • classify into category +              • buildCategoryClusters():
             cross_ref_categories (already)           for each of 8 CATEGORIES:
-          • (whole-note embed → REMOVED,              members = notes WHERE category=C
-            note_embeddings now unused)                        OR cross_ref_categories ∋ C
+          • embed() stays (feeds LanceDB +           members = notes WHERE category=C
+            note_connections, not just clusters)             OR cross_ref_categories ∋ C
                                                       • upsert topic_clusters (stable slug,
 backfill ─▶ classify-categories (one-shot)              name=C, synthesis over members)
           • fills category on the ~148 older         • link each member → its category rows
@@ -116,12 +116,13 @@ with categories — not chunks — as the unit.
 - **Full clean rebuild**: wipe `topic_clusters` + `topic_note_links` before the first
   category build (clean transition from embedding clusters).
 
-### `src/workflows/process-llm.ts`
-- **Remove the now-unused whole-note embedding** (`embed(note.content)` →
-  `note_embeddings`). Grep confirms nothing reads `note_embeddings` except the clustering
-  code being removed (`worksheets.ts` does its own live `embed()`, unrelated). Saves one
-  Ollama call per note. Leave the `note_embeddings` **table** in place (no destructive
-  migration; can be dropped later if desired).
+### `src/workflows/process-llm.ts` — **unchanged**
+- Leave the per-note `embed(note.content)` block alone. Although the `note_embeddings`
+  **table** becomes write-only after clustering is removed (nothing reads it anymore), the
+  same `embed()` result also feeds **LanceDB** (`indexNote`) and **connection detection**
+  (`searchSimilarNotes` → `note_connections`), both still live. Removing the embed would
+  break those, so it stays. (`note_embeddings` is left as inert write-only state — no
+  destructive migration; can be dropped later if desired.)
 
 ### Schema
 - **No changes.** `topic_clusters`, `topic_note_links`, `category`, `cross_ref_categories`
