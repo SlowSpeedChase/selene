@@ -124,12 +124,29 @@ if ! ( cd "$TARGET" && npm install --omit=dev --no-audit --no-fund --silent ); t
     exit 1
 fi
 
-# --- 7. (Re)load prod launchd agents ----------------------------------------
+# --- 7. Restart prod agents to pick up the new dist/ ------------------------
+# Use `launchctl kickstart -k` (restart-in-place), NOT install-prod.sh's
+# bootout+bootstrap. Re-bootstrapping the running KeepAlive server races its
+# own teardown ("Bootstrap failed: 5: Input/output error") and can leave prod
+# DOWN. kickstart never unloads anything, so a failure leaves the OLD process
+# still serving — prod stays up (on old code) instead of going dark.
+#
+# Workflow agents (StartInterval) re-exec `node dist/...` each tick, so they
+# pick up new code on their next run regardless; kickstart just makes it
+# immediate. The long-running server MUST be kicked to load new code.
+#
+# NOTE: this only RESTARTS already-loaded agents. The initial cutover, and any
+# change to the agent SET or plist content, still uses install-prod.sh (run
+# interactively, not from the launchd-spawned watcher).
 if [[ "$SKIP_AGENTS" -eq 0 ]]; then
-    if ! "$HERE/install-prod.sh" --prod-dir "$TARGET" --label-prefix "$LABEL_PFX"; then
-        selene_notify "Selene deploy WARN" "shipped $NEW_SHA but loading prod agents failed — check launchctl; prod still recorded on $OLD_SHA"
-        echo "ERROR: install-prod.sh failed after shipping $NEW_SHA" >&2
-        exit 1
+    restart_failed=()
+    PROD_AGENTS="$(launchctl list | awk '{print $3}' | grep "^${LABEL_PFX}" | grep -v "${LABEL_PFX}deploy-watcher" || true)"
+    for label in $PROD_AGENTS; do
+        launchctl kickstart -k "gui/$(id -u)/$label" 2>/dev/null || restart_failed+=("$label")
+    done
+    if [[ ${#restart_failed[@]} -gt 0 ]]; then
+        selene_notify "Selene deploy WARN" "shipped $NEW_SHA but restart failed for: ${restart_failed[*]} — prod may be serving old code; check launchctl"
+        echo "WARNING: kickstart failed for: ${restart_failed[*]} (prod stayed up on old code)" >&2
     fi
 else
     echo "--skip-agents: leaving launchd agents untouched"
