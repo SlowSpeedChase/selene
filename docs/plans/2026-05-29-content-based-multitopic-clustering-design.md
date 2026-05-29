@@ -248,7 +248,7 @@ membership, date demoted to reference). Wrap-up: create/update the relevant entr
 
 Run against a read-only prod snapshot (`/tmp/spike-snapshot.db`; the dev DB had been
 re-seeded with fictional fixtures by the parallel prod/dev work, so it could not be used).
-Script: `scripts/spike-chunk-separation.ts` (throwaway).
+Script: `scripts/spike-chunk-separation.ts` (throwaway — removed after the gate; findings below are the record).
 
 - **Whole-note e-ink cohesion = 0.714** > current threshold 0.65 → confirms why all 104
   collapse today.
