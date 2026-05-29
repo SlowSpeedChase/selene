@@ -1,6 +1,7 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { createWorkflowLogger, db, config, generate, isAvailable } from '../lib';
+import { testRunFilter } from '../lib/test-run';
 import { MOC_PROMPT, CATEGORIES } from '../lib/prompts';
 
 const log = createWorkflowLogger('export-obsidian');
@@ -90,7 +91,7 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
       JOIN processed_notes pn ON rn.id = pn.raw_note_id
       WHERE rn.exported_to_obsidian = 0
         AND rn.status = 'processed'
-        AND rn.test_run IS NULL
+        ${testRunFilter('rn')}
       ORDER BY rn.created_at DESC
       LIMIT 50`
     )
@@ -188,8 +189,8 @@ async function generateMocs(vaultPath: string, hasNewNotes: boolean): Promise<{ 
       FROM raw_notes rn
       JOIN processed_notes pn ON rn.id = pn.raw_note_id
       WHERE rn.exported_to_obsidian = 1
-        AND rn.test_run IS NULL
         AND rn.status = 'processed'
+        ${testRunFilter('rn')}
       ORDER BY rn.created_at DESC`
     )
     .all() as Array<ExportableNote & { category: string | null; cross_ref_categories: string | null }>;

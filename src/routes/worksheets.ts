@@ -8,6 +8,7 @@ import { ingest } from '../workflows/ingest';
 import { embed } from '../lib/ollama';
 import { searchSimilarNotes } from '../lib/lancedb';
 import { db } from '../lib/db';
+import { testRunFilter } from '../lib/test-run';
 import { logger } from '../lib/logger';
 import type { WorksheetSubmission, ReviewNote, RelatedNote } from '../types/worksheets';
 
@@ -18,7 +19,7 @@ function fetchReviewNotes(): Promise<ReviewNote[]> {
     SELECT id, title, content, created_at
     FROM raw_notes
     WHERE inbox_status = 'pending'
-      AND test_run IS NULL
+      ${testRunFilter()}
       AND created_at < datetime('now', '-1 day')
     ORDER BY created_at ASC
     LIMIT 3
