@@ -84,3 +84,16 @@ Move any blocked checklist items here with reason:
   - **Existing anonymizer is inadequate for journal content (PII-adequacy flag).** `src/lib/anonymize.ts` is regex-only (EMAIL/PHONE/URL/UUID) + optional Ollama NER (names/orgs). It does NOT scrub the *substance* of a personal ADHD journal (reflections, feelings, relationship/work/health context — the actually-sensitive part). Wrapping it in a refresh script would ship exactly the "weak scrubber" the task said to avoid.
   - **Schema divergence.** Real DB has ~45 tables (agent_*, meal_plans, recipes, projects, topic_clusters, note_facets, ...); `create-dev-db.sh` builds a bespoke ~20-table schema. Wholesale copy is off-design.
   - **REBUILDABILITY GAP (needs user decision).** `scripts/CLAUDE.md` documents `seed-dev-data.ts`, `reset-dev-data.sh`, `generate-dev-fixture.py` as existing, but NONE exist on disk (stale docs). So the 541-note dev DB cannot currently be regenerated. Recommendation: reconstruct the fictional-fixture generators (safe, zero PII risk, matches code intent) rather than invest in a genuine content-rewriting anonymization pipeline — but flagged for the user since originals are gone and it's a larger build than Task 8.
+
+## Tooling phase complete (Tasks 1–8 + load-path proof)
+
+All deploy machinery built, integration-tested, and committed on feat/prod-dev-split (pushed to origin):
+- T1 build pipeline · T2 install-prod.sh (plist generator) · T3 deploy-prod.sh + notify.sh · T4 rollback-prod.sh · T5 deploy-watcher · T7 Claude hooks + launchd-auditor.
+- **T6 integration test PASSED** end-to-end vs throwaway ~/selene-prod-test: build-gate blocks broken build, .env preserved across deploy/rollback, release archiving + rollback work.
+- **Load-path proof PASSED** (staging-isolated): launchd actually bootstraps generated plists and `node dist/...` agents spawn + log (:5699/health ok); system left pristine (real prod DB untouched). install-prod.sh gained `--db-path` + filename-follows-prefix fixes.
+- **T8 dev sandbox:** dev already works on fictional fixtures (541 notes, routing verified, no scheduled dev agents). "Anonymized copy of real data" found infeasible/unsafe — design doc corrected to fictional fixtures. Fixture generators missing on disk = separate follow-up.
+
+## NOT YET DONE (require the user / separate repo)
+- **T9 CUTOVER** (live, human-supervised): build ~/selene-prod, write its .env (real secrets), atomic swap of 11 live com.selene.* → com.selene.prod.*, install deploy-watcher. The only step that touches real prod.
+- **T10 iPad apps** in ~/SeleneMarkup (SEPARATE repo): second xcodegen target (Selene / Selene Dev).
+- **T11 docs/wrap-up**: releases guide, PROJECT-STATUS, diagram-sync, move design to Done.
