@@ -1,7 +1,7 @@
 # Content-Based, Multi-Topic Clustering
 
 **Date:** 2026-05-29
-**Status:** Ready (design approved — category-derived clusters)
+**Status:** Done — built + validated on a prod copy (branch `feat/content-multitopic-clustering`)
 **Topic:** clustering, processing-pipeline, categories, ipad-browse, reprocessing
 
 ---
@@ -174,14 +174,52 @@ with categories — not chunks — as the unit.
 
 ## Acceptance criteria
 
-- [ ] After backfill, every note has a `category` (no unclassified notes silently dropped).
-- [ ] `topic_clusters` contains one row per non-empty category, named from the fixed list
-      (no source/format words; no LLM-named buckets).
-- [ ] On the prod copy, the 104-note e-ink bucket is gone; e-ink notes are spread across the
+- [x] After backfill, every note has a `category` — **138 reclassified**; 4 genuine LLM
+      failures remain `NULL` and are **logged by ID** (not silently dropped), 11 `test_run`
+      notes correctly excluded.
+- [x] `topic_clusters` contains one row per non-empty category, named from the fixed list —
+      **8 rows, 0 source/format-named clusters** (no "E-Ink Empowerment").
+- [x] On the prod copy, the 104-note e-ink bucket is gone; notes are spread across the
       content categories.
-- [ ] At least one brain-dump note appears under **multiple** categories (multi-membership).
-- [ ] Drafts and e-ink are grouped by the **same** mechanism (unified).
-- [ ] After prod deploy + backfill + one-shot rebuild, the iPad Notes section reflects the above.
+- [x] At least one brain-dump note appears under **multiple** categories — **104 notes** in
+      ≥2 categories.
+- [x] Drafts and e-ink are grouped by the **same** mechanism (unified).
+- [ ] After prod deploy + backfill + one-shot rebuild, the iPad Notes section reflects the
+      above. *(Pending — see "Production rollout" in the plan; runs post-merge.)*
+
+## Validation results (2026-05-29, prod copy `/tmp/selene-rebuild-test.db`)
+
+Run with `SELENE_ENV=production SELENE_DB_PATH=/tmp/...` (verified the resolved path was the
+copy, never live prod). Backfill: 138 updated / 4 failed. Rebuild (`SELENE_REBUILD_CLUSTERS=1`):
+
+| Category | note_count |
+|----------|-----------:|
+| Relationships & Social | 120 |
+| Projects & Tech | 82 |
+| Personal Growth | 81 |
+| Health & Body | 57 |
+| Career & Work | 54 |
+| Daily Systems | 31 |
+| Creativity & Expression | 23 |
+| Politics & Society | 23 |
+
+Coverage: **282 / 286 distinct notes clustered**; the 4 uncovered all have `NULL` category
+(backfill failures, identifiable). `uncovered_with_nonnull_category = 0` — every classified
+note is in a cluster. Synthesis narratives are concept-aware, second-person, source-word-free
+(spot-checked Health & Body). A real-data fix surfaced during validation: `process-llm.ts`
+stores `category` **unvalidated**, so the DB held comma-joined values
+("Personal Growth, Relationships & Social") and parentheticals — `normalizeToValidCategories`
+now splits/strips these, recovering ~9 multi-topic notes as proper multi-membership.
+
+## Known follow-ups (not blocking)
+
+- **4 `NULL`-category notes** after backfill — re-run `scripts/backfill-categories.ts` or
+  classify manually; they currently appear in no category cluster (logged).
+- **Dead `is_proto = 1` path** in `src/lib/synthesis-digest.ts` ("Pattern forming" digest
+  section) — proto-clusters are retired, so that section is permanently empty. Harmless;
+  remove in a follow-up.
+- **`process-llm.ts` writes `category` unvalidated** — root cause of the messy values; a
+  future hardening could validate on write (out of scope here; read-side normalization covers it).
 
 ## ADHD check
 
