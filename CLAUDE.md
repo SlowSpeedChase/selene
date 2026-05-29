@@ -288,7 +288,7 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 ./scripts/rollback-prod.sh           # newest archived release
 ./scripts/rollback-prod.sh <sha>     # a specific archived sha
 ```
-Prod agents are `com.selene.prod.*` (compiled `dist/`); dev keeps the `com.selene.*` agents. Not yet live — activates at the one-time cutover. See `docs/guides/features/releases.md`.
+Prod agents are `com.selene.prod.*` (compiled `dist/`). The cutover retires the old `com.selene.*` agents entirely; dev (`~/selene`) then runs NO scheduled agents — its workflows are manual via `./scripts/dev-process-batch.sh`. Not yet live — activates at the one-time cutover. See `docs/guides/features/releases.md`.
 
 **Full command reference:** `@.claude/OPERATIONS.md`
 
