@@ -110,6 +110,35 @@ cluster, hand-segment, embed the chunks, and inspect pairwise cosine similarity.
 - **Gate:** if the spike fails, **stop and rethink** (hierarchical topics, or accept broad
   themes) rather than build a pipeline that reproduces the bucket.
 
+### Spike RESULTS (2026-05-29) — GATE: the embedding-clustering approach FAILED; pivot required
+
+Run against a read-only prod snapshot (`/tmp/spike-snapshot.db`; the dev DB had been
+re-seeded with fictional fixtures by the parallel prod/dev work, so it could not be used).
+Script: `scripts/spike-chunk-separation.ts`.
+
+- **Whole-note e-ink cohesion = 0.714** > current threshold 0.65 → confirms why all 104
+  collapse today.
+- **Chunk-level** loosens cohesion (within-note 0.563 ≈ cross-note 0.546) but does **not**
+  separate clean topics. Clustering raw chunk text produced **grab-bags + OCR-boilerplate
+  clusters**: the dominant cluster is a 31–61-note *"What Went Well today?"* daily-journal
+  blob; clusters [2]/[3] were pure OCR scaffolding (`**Page Numbering and Footer** 3 of 3`).
+  Aggressive OCR de-biasing is needed but is not sufficient.
+- **The content is genuinely homogeneous daily journaling.** The LLM gave **102 distinct
+  `primary_theme` strings for 110 notes** — near-unique paraphrases ("Work and Personal
+  Relations" / "…Development" / "…Life Balance") all orbiting the same few domains. No hidden
+  clean taxonomy emerges from free-form theming; distilled-theme clustering would re-collapse
+  or fragment just like raw text.
+- **Decisive:** a **controlled taxonomy already exists** (`CATEGORIES` in `prompts.ts`, 8
+  values) and every e-ink note is **already classified** into it via
+  `processed_notes.category` (+ `cross_ref_categories` for multi-membership):
+  Personal Growth 32, Relationships & Social 19, Projects & Tech 19, Daily Systems 10,
+  Career & Work 8, Health & Body 7, Politics & Society 2 — plus several multi-category notes.
+- **Conclusion:** embedding-based `topic_clusters` clustering is the wrong tool for this
+  homogeneous content. The user's goals (content-based groups, theme names, multi-membership)
+  are met *for free* by the controlled categories. Drafts, by contrast, DID embedding-cluster
+  cleanly. → Pivot to a **category-based grouping** (hybrid: categories top-level, embedding
+  sub-clusters optional/for drafts). Pending user decision before re-planning Phases 1–5.
+
 ## Components / changes
 
 ### `src/workflows/process-llm.ts`

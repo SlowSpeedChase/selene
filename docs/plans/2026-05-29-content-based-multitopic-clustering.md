@@ -17,6 +17,7 @@ Full design: `docs/plans/2026-05-29-content-based-multitopic-clustering-design.m
 ## Conventions for this plan
 
 - **Tests:** Jest style (`describe`/`it`, in-memory `better-sqlite3`), modeled on `src/routes/notes.test.ts`. Run a single file with `npx jest <path> --runInBand`.
+- **IMPORTANT — `jest.config.js` uses an explicit `testMatch` allowlist** (only 4 files today). Every new test file (`src/lib/segmentation.test.ts`, `src/workflows/process-llm.chunks.test.ts`, `src/workflows/synthesize-topics.membership.test.ts`) MUST be added to that `testMatch` array in the same task, or jest finds 0 tests in it.
 - **Never test against the prod DB** (`~/selene-data/selene.db`). The spike and reprocess run against the dev DB (`~/selene-data-dev/selene.db`), seeded from a prod snapshot.
 - **Reviewer:** after editing `synthesize-topics.ts`, invoke the `synthesis-reviewer` subagent. After editing Ollama-touching code, invoke `ollama-dependency-reviewer`.
 - **Commit after every green step.**
