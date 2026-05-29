@@ -1,126 +1,60 @@
-import { randomUUID, createHash } from 'crypto';
-import { db, embed, generate, isAvailable, createWorkflowLogger } from '../lib';
+import { randomUUID } from 'crypto';
+import { db, generate, isAvailable, createWorkflowLogger } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { initSynthesisSchema } from '../lib/synthesis-db';
-import { cosineSimilarity } from '../lib/cosine';
+import { CATEGORIES } from '../lib/prompts';
+import { groupNotesByCategory, parseCrossRefs, slugForCategory, uncategorizedNoteIds } from '../lib/category-clusters';
 
 const log = createWorkflowLogger('synthesize-topics');
 
-const CLUSTER_SIMILARITY_THRESHOLD = 0.65;
-const MIN_CLUSTER_SIZE = 4;
-
 initSynthesisSchema(db);
 
-interface NoteEmbedding {
+interface CategoryMember {
   noteId: number;
   title: string;
   essence: string | null;
   concepts: string | null;
-  createdAt: string;
-  vector: number[];
+  category: string | null;
+  crossRefs: string[];
 }
 
-async function backfillEmbeddings(): Promise<number> {
-  const missing = db.prepare(`
-    SELECT rn.id, rn.content
-    FROM raw_notes rn
-    JOIN processed_notes pn ON rn.id = pn.raw_note_id
-    WHERE rn.status = 'processed'
-      ${testRunFilter('rn')}
-      AND NOT EXISTS (SELECT 1 FROM note_embeddings ne WHERE ne.raw_note_id = rn.id)
-    LIMIT 200
-  `).all() as Array<{ id: number; content: string }>;
-
-  if (missing.length === 0) {
-    log.info('No embeddings to backfill');
-    return 0;
-  }
-
-  log.info({ count: missing.length }, 'Backfilling embeddings');
-  let backfilled = 0;
-
-  for (const note of missing) {
-    try {
-      const vector = await embed(note.content);
-      db.prepare(
-        `INSERT OR REPLACE INTO note_embeddings (raw_note_id, embedding, model_version, created_at)
-         VALUES (?, ?, 'nomic-embed-text', ?)`
-      ).run(note.id, JSON.stringify(vector), new Date().toISOString());
-      backfilled++;
-    } catch (err) {
-      log.warn({ noteId: note.id, err }, 'Backfill embedding failed for note');
-    }
-  }
-
-  log.info({ backfilled }, 'Embedding backfill complete');
-  return backfilled;
-}
-
-function loadAllEmbeddings(): NoteEmbedding[] {
+function loadClassifiedNotes(): CategoryMember[] {
   const rows = db.prepare(`
-    SELECT rn.id AS noteId, rn.title, rn.created_at AS createdAt,
-           pn.essence, pn.concepts,
-           ne.embedding
+    SELECT rn.id AS noteId, rn.title AS title,
+           pn.essence, pn.concepts, pn.category, pn.cross_ref_categories
     FROM raw_notes rn
     JOIN processed_notes pn ON rn.id = pn.raw_note_id
-    JOIN note_embeddings ne ON rn.id = ne.raw_note_id
     WHERE rn.status = 'processed' ${testRunFilter('rn')}
   `).all() as Array<{
-    noteId: number; title: string; createdAt: string;
-    essence: string | null; concepts: string | null; embedding: string;
+    noteId: number; title: string; essence: string | null;
+    concepts: string | null; category: string | null; cross_ref_categories: string | null;
   }>;
-
-  return rows.map(r => ({
+  return rows.map((r) => ({
     noteId: r.noteId,
     title: r.title,
-    createdAt: r.createdAt,
     essence: r.essence,
     concepts: r.concepts,
-    vector: JSON.parse(r.embedding) as number[],
+    category: r.category,
+    crossRefs: parseCrossRefs(r.cross_ref_categories),
   }));
 }
 
-function clusterNotes(notes: NoteEmbedding[]): Map<string, number[]> {
-  const assigned = new Set<number>();
-  const clusters = new Map<string, number[]>();
-
-  for (let i = 0; i < notes.length; i++) {
-    if (assigned.has(notes[i].noteId)) continue;
-    assigned.add(notes[i].noteId);  // mark pivot immediately
-
-    const members: number[] = [notes[i].noteId];
-
-    for (let j = i + 1; j < notes.length; j++) {
-      if (assigned.has(notes[j].noteId)) continue;
-      const sim = cosineSimilarity(notes[i].vector, notes[j].vector);
-      if (sim >= CLUSTER_SIMILARITY_THRESHOLD) {
-        members.push(notes[j].noteId);
-        assigned.add(notes[j].noteId);
-      }
-    }
-
-    clusters.set(randomUUID(), members);
+async function generateSynthesis(
+  clusterName: string,
+  members: Array<{ title: string; essence: string | null }>,
+  topConcepts: string[],
+): Promise<string> {
+  const capped = members.slice(0, 40);
+  if (capped.length < members.length) {
+    log.info({ clusterName, shown: capped.length, total: members.length }, 'Capped synthesis members');
   }
-
-  return clusters;
-}
-
-async function generateClusterName(concepts: string[]): Promise<string> {
-  const topConcepts = concepts.slice(0, 5).join(', ');
-  const prompt = `Given these recurring concepts from a person's notes: ${topConcepts}
-Give this cluster a 2-4 word topic name that captures the essence. No explanation, just the name.`;
-  const response = await generate(prompt, { temperature: 0 });
-  return response.trim().replace(/^["']|["']$/g, '');
-}
-
-async function generateSynthesis(clusterName: string, members: NoteEmbedding[]): Promise<string> {
-  const noteLines = members
-    .map(n => `Title: ${n.title}\nEssence: ${n.essence ?? n.title}`)
-    .join('\n\n');
-
+  const noteLines = capped.map((n) => `Title: ${n.title}\nEssence: ${n.essence ?? n.title}`).join('\n\n');
+  const conceptLine = topConcepts.length
+    ? `\nRecurring concepts across these notes: ${topConcepts.slice(0, 15).join(', ')}\n`
+    : '';
   const prompt = `You are synthesizing a personal knowledge base.
 Topic: "${clusterName}"
-Notes (${members.length} total):
+${conceptLine}Notes (${members.length} total):
 
 ${noteLines}
 
@@ -130,8 +64,9 @@ Write in second person ("You've been exploring..."):
 3. Keep it under 200 words total.
 
 Do not invent information not present in the notes.`;
-
-  return generate(prompt, { timeoutMs: 60000 });
+  // num_ctx 4096 (vs mistral:7b's 2048 default): a 40-member category can exceed 2048
+  // tokens, which Ollama would silently truncate — degrading the synthesis invisibly.
+  return generate(prompt, { timeoutMs: 60000, numCtx: 4096 });
 }
 
 async function generateWeeklyRollup(): Promise<void> {
@@ -168,102 +103,111 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
     return { clusters: 0, evolved: 0, proto: 0 };
   }
 
-  await backfillEmbeddings();
-
-  const notes = loadAllEmbeddings();
-  log.info({ noteCount: notes.length }, 'Loaded embeddings');
-
-  if (notes.length < MIN_CLUSTER_SIZE) {
-    log.info('Not enough notes to cluster');
-    return { clusters: 0, evolved: 0, proto: 0 };
+  // One-shot full rebuild (clean transition from old embedding clusters)
+  if (process.env.SELENE_REBUILD_CLUSTERS === '1') {
+    db.exec('DELETE FROM topic_note_links; DELETE FROM topic_clusters;');
+    log.info('Full cluster rebuild: wiped topic_clusters + topic_note_links');
   }
 
-  const rawClusters = clusterNotes(notes);
-  const noteById = new Map(notes.map(n => [n.noteId, n]));
+  const notes = loadClassifiedNotes();
+  const byId = new Map(notes.map((n) => [n.noteId, n]));
+  const groups = groupNotesByCategory(notes.map((n) => ({ noteId: n.noteId, category: n.category, crossRefs: n.crossRefs })));
+
+  // No silent drops: surface the IDs of notes that matched zero valid categories.
+  const ungroupedIds = uncategorizedNoteIds(
+    notes.map((n) => ({ noteId: n.noteId, category: n.category, crossRefs: n.crossRefs }))
+  );
+  log.info(
+    { total: notes.length, ungrouped: ungroupedIds.length, ungroupedIds: ungroupedIds.slice(0, 50) },
+    'Loaded classified notes'
+  );
+
   let clustersProcessed = 0;
   let evolved = 0;
-  let proto = 0;
   const now = new Date().toISOString();
 
-  for (const [, noteIds] of rawClusters) {
-    const isProto = noteIds.length < MIN_CLUSTER_SIZE;
-    const members = noteIds
-      .map(id => noteById.get(id))
-      .filter((n): n is NoteEmbedding => n !== undefined);
+  for (const cat of CATEGORIES) {
+    const noteIds = groups.get(cat) ?? [];
+    const slug = slugForCategory(cat);
 
-    // Extract top concept strings for cluster naming
+    // Category emptied out (e.g. all its notes reclassified away): delete its stale row +
+    // links so the iPad never shows a category cluster with a wrong count. The orphan
+    // cleanup below can't catch this — an empty category still has a valid slug.
+    if (noteIds.length === 0) {
+      const stale = db.prepare('SELECT id FROM topic_clusters WHERE slug = ?').get(slug) as { id: string } | undefined;
+      if (stale) {
+        db.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(stale.id);
+        db.prepare('DELETE FROM topic_clusters WHERE id = ?').run(stale.id);
+        log.info({ category: cat }, 'Removed now-empty category cluster');
+      }
+      continue;
+    }
+
+    const members = noteIds.map((id) => byId.get(id)).filter((m): m is CategoryMember => m !== undefined);
+
+    // Aggregate recurring concepts for this category (retained from old per-cluster logic).
     const conceptFreq = new Map<string, number>();
     for (const m of members) {
       if (!m.concepts) continue;
       try {
-        const parsed = JSON.parse(m.concepts) as string[];
-        for (const c of parsed) {
-          conceptFreq.set(c, (conceptFreq.get(c) ?? 0) + 1);
+        const parsed = JSON.parse(m.concepts) as unknown;
+        if (Array.isArray(parsed)) {
+          for (const c of parsed) if (typeof c === 'string') conceptFreq.set(c, (conceptFreq.get(c) ?? 0) + 1);
         }
       } catch (err) {
         log.debug({ noteId: m.noteId, err }, 'Skipping malformed concepts JSON');
       }
     }
-    const sortedConcepts = [...conceptFreq.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([c]) => c);
-
-    const slugBase = sortedConcepts[0]
-      ? sortedConcepts[0].toLowerCase().replace(/[^a-z0-9]+/g, '-')
-      : 'cluster';
-    const disambig = createHash('sha256')
-      .update(sortedConcepts.slice(0, 3).sort().join('|'))
-      .digest('base64url')
-      .substring(0, 8);
-    const slug = `${slugBase}-${disambig}`;
+    const topConcepts = [...conceptFreq.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
 
     const existing = db.prepare(
-      'SELECT id, synthesis_text, synthesis_updated_at FROM topic_clusters WHERE slug = ?'
-    ).get(slug) as { id: string; synthesis_text: string | null; synthesis_updated_at: string | null } | undefined;
-
-    // Delta guard: skip if cluster exists and no new notes since last synthesis
-    // Proto-clusters skip the delta guard — no synthesis is generated so re-upserting is cheap.
-    if (existing && !isProto) {
-      const hasNewNotes = db.prepare(`
-        SELECT 1 FROM topic_note_links
-        WHERE topic_id = ? AND added_at > ?
-        LIMIT 1
-      `).get(existing.id, existing.synthesis_updated_at ?? '1970-01-01');
-      if (!hasNewNotes) {
-        log.debug({ slug }, 'Delta guard: skipping unchanged cluster');
-        continue;
-      }
-    }
-
-    const clusterName = sortedConcepts.length > 0
-      ? await generateClusterName(sortedConcepts)
-      : 'General Notes';
-
+      'SELECT id, synthesis_text FROM topic_clusters WHERE slug = ?'
+    ).get(slug) as { id: string; synthesis_text: string | null } | undefined;
     const id = existing?.id ?? randomUUID();
+
+    // Delta-guard: pure set comparison BEFORE touching topic_note_links.
+    const desired = new Set(noteIds);
+    const currentLinks = existing
+      ? new Set((db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
+          .all(existing.id) as Array<{ note_id: number }>).map((r) => r.note_id))
+      : new Set<number>();
+    const unchanged =
+      existing != null &&
+      existing.synthesis_text != null &&
+      desired.size === currentLinks.size &&
+      [...desired].every((n) => currentLinks.has(n));
+    if (unchanged) { clustersProcessed++; continue; }
+
     const prevSynthesis = existing?.synthesis_text ?? null;
-    const newSynthesis = isProto ? null : await generateSynthesis(clusterName, members);
+    const newSynthesis = await generateSynthesis(cat, members, topConcepts);
 
     db.prepare(`
       INSERT INTO topic_clusters
         (id, name, slug, synthesis_text, prev_synthesis_text, synthesis_updated_at, note_count, is_proto, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
       ON CONFLICT(slug) DO UPDATE SET
         name = excluded.name,
         synthesis_text = excluded.synthesis_text,
         prev_synthesis_text = excluded.prev_synthesis_text,
         synthesis_updated_at = excluded.synthesis_updated_at,
         note_count = excluded.note_count,
-        is_proto = excluded.is_proto
-    `).run(id, clusterName, slug, newSynthesis, prevSynthesis, now, noteIds.length, isProto ? 1 : 0, now);
+        is_proto = 0
+    `).run(id, cat, slug, newSynthesis, prevSynthesis, now, noteIds.length, now);
 
+    // Reconcile links (insert missing, delete stale).
+    for (const { note_id } of (db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
+        .all(id) as Array<{ note_id: number }>)) {
+      if (!desired.has(note_id)) {
+        db.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(id, note_id);
+      }
+    }
     for (const noteId of noteIds) {
-      db.prepare(
-        `INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)`
-      ).run(id, noteId, now);
+      db.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)')
+        .run(id, noteId, now);
     }
 
     // Evolution detection: compare prev vs new synthesis
-    if (!isProto && prevSynthesis && newSynthesis && prevSynthesis !== newSynthesis) {
+    if (prevSynthesis && newSynthesis && prevSynthesis !== newSynthesis) {
       try {
         const safe = (s: string) => s.substring(0, 300).replace(/"/g, "'");
         const evolutionPrompt = `Old synthesis: "${safe(prevSynthesis)}"
@@ -297,15 +241,29 @@ Did the understanding meaningfully change (not just grow)? JSON only: { "changed
       }
     }
 
-    if (isProto) proto++; else clustersProcessed++;
+    clustersProcessed++;
   }
+
+  // Always-on orphan cleanup: remove any cluster whose slug isn't one of the 8 category slugs
+  // (self-heals if the scheduled agent ran before a one-shot rebuild). Safe: category slugs
+  // cannot collide with the old `${concept}-${hash}` slugs.
+  const keepSlugs = CATEGORIES.map(slugForCategory);
+  const placeholders = keepSlugs.map(() => '?').join(',');
+  const orphanIds = (db.prepare(
+    `SELECT id FROM topic_clusters WHERE slug NOT IN (${placeholders})`
+  ).all(...keepSlugs) as Array<{ id: string }>).map((r) => r.id);
+  for (const oid of orphanIds) {
+    db.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(oid);
+    db.prepare('DELETE FROM topic_clusters WHERE id = ?').run(oid);
+  }
+  if (orphanIds.length) log.info({ removed: orphanIds.length }, 'Removed non-category (orphan) clusters');
 
   if (new Date().getDay() === 0) {
     await generateWeeklyRollup();
   }
 
-  log.info({ clusters: clustersProcessed, evolved, proto }, 'synthesize-topics complete');
-  return { clusters: clustersProcessed, evolved, proto };
+  log.info({ clusters: clustersProcessed, evolved, proto: 0 }, 'synthesize-topics complete');
+  return { clusters: clustersProcessed, evolved, proto: 0 };
 }
 
 // CLI entry point

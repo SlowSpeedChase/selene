@@ -26,6 +26,9 @@ export interface GenerateOptions {
   timeoutMs?: number;
   temperature?: number;
   maxTokens?: number;
+  /** Ollama context window (num_ctx). Omit to use the model default (mistral:7b = 2048).
+   *  Set higher for large prompts that would otherwise be silently truncated. */
+  numCtx?: number;
 }
 
 const ollamaLogger = logger.child({ module: 'ollama' });
@@ -59,6 +62,7 @@ export async function generate(
         options: {
           temperature: options.temperature,
           num_predict: options.maxTokens,
+          num_ctx: options.numCtx,
         },
       }),
       signal: controller.signal,

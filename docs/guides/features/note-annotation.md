@@ -6,8 +6,8 @@
 
 In the **SeleneMarkup** app on your iPad, tap the **Notes** tab (the `note.text` icon).
 
-1. **Pick a topic cluster.** The first screen lists your synthesis clusters (e.g. *"ADHD Time Management Strategies"*) with note counts and a one-line synthesis snippet. These are the same topics Selene builds in the [synthesis layer](synthesis-layer.md).
-2. **Pick a note.** Tapping a cluster shows the raw captures in it, newest first.
+1. **Pick a category.** The first screen lists your content categories (e.g. *"Relationships & Social"*, *"Health & Body"*) with note counts and a one-line synthesis snippet, largest first. These are the content groups Selene builds in the [synthesis layer](synthesis-layer.md) — a brain-dump note that spans several topics appears under **each** category it touches.
+2. **Pick a note.** Tapping a category shows the raw captures in it, newest first.
 3. **Read + annotate.** Tapping a note shows its text at the top with an **infinite canvas** below. Write a follow-up thought with the Apple Pencil — a reaction, an update, a connection you just made.
 4. **Peek at the back of the card.** The **ⓘ** button (top-right) slides up Selene's processed metadata for that note: its essence, primary theme, and concept tags.
 5. **Send it back.** Tap **Send to Selene** (↑). Vision OCR converts your handwriting to text and shows it to you in a review alert. Tap **Send** to confirm. You'll see a **"Sent to Selene ✓"** toast and the canvas clears.
@@ -55,7 +55,7 @@ The iPad app reads two server URLs and a token from `UserDefaults` (see `SeleneM
 
 - Design doc: `docs/plans/2026-05-26-selene-mobile-companion-design.md`
 - Implementation plan: `docs/plans/2026-05-28-note-annotation-implementation.md`
-- Connected guides: [Interactive worksheets](interactive-worksheets.md) (same iPad app), [Synthesis layer](synthesis-layer.md) (where the topic clusters come from)
+- Connected guides: [Interactive worksheets](interactive-worksheets.md) (same iPad app), [Synthesis layer](synthesis-layer.md) (where the content categories come from)
 
 ---
-*Last updated: 2026-05-28*
+*Last updated: 2026-05-29*
