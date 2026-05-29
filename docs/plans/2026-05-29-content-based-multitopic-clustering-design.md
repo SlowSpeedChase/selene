@@ -1,8 +1,8 @@
 # Content-Based, Multi-Topic Clustering
 
 **Date:** 2026-05-29
-**Status:** Ready
-**Topic:** clustering, processing-pipeline, embeddings, ipad-browse, reprocessing
+**Status:** Ready (design approved — category-derived clusters)
+**Topic:** clustering, processing-pipeline, categories, ipad-browse, reprocessing
 
 ---
 
@@ -12,7 +12,9 @@ In the SeleneMarkup iPad app, the Notes section shows **"E-Ink Empowerment: Pers
 Growth & Relations"** as a giant category with **104 notes — all 104 are `eink`**. Every
 other cluster is small (≤11) and almost entirely `drafts`. The owner does not care *how*
 or *where* a note was captured (source is fine to keep as metadata); they care about the
-**content**. Two distinct failures produce this:
+**content**, and a single brain-dump page should appear under **every** topic it touches.
+
+Two failures in the embedding clusterer produce the mega-bucket:
 
 1. **Clustering by muddiness, which correlates with source.** `synthesize-topics.ts`
    embeds the **whole note** (`embed(note.content)`). E-ink notes are long, multi-topic
@@ -26,194 +28,202 @@ or *where* a note was captured (source is fine to keep as metadata); they care a
    `topic_note_links` across 286 distinct notes — 1:1). A brain-dump page touching five
    topics can never appear under more than one; its other topics vanish.
 
-A third, fixable contributor: e-ink `content` contains **source boilerplate**
-(`# E-Ink: <date> kindle journal`, `--- Page 1 ---`, `E-Ink:` title prefix) that is
-embedded along with the real content, injecting an "e-ink-ness" signal into all 110
-vectors.
+## What we learned (the pivot)
 
-## Goal / success criterion
+The original plan was to fix this by clustering at the **chunk** level (segment each note,
+embed each chunk, cluster chunks, link a note to every topic its chunks hit). A Phase 0
+spike was built to gate that approach. **The spike failed the gate** — see "Spike RESULTS"
+below. The decisive finding: embedding clustering is simply the wrong tool for this
+content, because the e-ink notes are **homogeneous daily journaling** with no clean latent
+topic taxonomy to discover (the LLM produced 102 distinct `primary_theme` strings for 110
+notes — near-unique paraphrases of the same few domains).
 
-The real deliverable is the **iPad Notes browse view**. Success =
+But a **controlled taxonomy already exists and is already applied**: every note is
+classified by `process-llm.ts` into the 8-value `CATEGORIES` list (`processed_notes.category`
++ `cross_ref_categories`). Grouping by those categories satisfies all three of the owner's
+goals **directly**: content-based (category = what the note is *about*), multi-membership
+(`cross_ref_categories` is a many-to-many list), and theme-named (names come from a fixed
+list, so a source-named bucket is impossible). The Obsidian export **already** organizes the
+library this exact way (`export-obsidian.ts` + `MOC_PROMPT`); only the iPad cluster view was
+out of step.
 
-- the 104-note e-ink bucket is gone, replaced by **content-themed topics**;
-- a single brain-dump page appears under **every** topic it actually touches;
-- the list is **not** shattered into ~150 one-note clusters;
-- `capture_type` remains as metadata but never drives a cluster.
+## Approved design — category-derived clusters
 
-## Constraints / decisions made
+Rewrite the cluster-build so `topic_clusters` / `topic_note_links` are derived from the
+controlled categories instead of from whole-note embeddings. **No schema migration** — the
+tables and columns already exist; we change what populates them.
 
-- **Scope:** Full — segment each note into topical chunks, embed each chunk, cluster at
-  the **chunk** level, and link a note to **every** topic its chunks land in.
-- **Segmentation:** Hybrid — split on natural boundaries (`--- Page N ---`, Markdown
-  headings, blank-line paragraphs), then the local LLM merges/splits into clean topical
-  segments and labels each (`note_chunks.topic`).
-- **Transition:** Full clean rebuild — wipe and regenerate clusters from chunks (no mixing
-  old whole-note clusters with new chunk clusters).
-- **De-bias:** strip source boilerplate from content before embedding/segmenting; the
-  cluster-naming prompt must name by **theme**, never by source/format.
-- **Build gate:** a Phase 0 spike must prove chunks separate topics before the pipeline is
-  built (see below).
-- **Project rule:** never test on the prod DB — validate on a prod→dev snapshot first.
-
-## Key facts verified (2026-05-29)
-
-- Largest non-proto cluster: "E-Ink Empowerment: Personal Growth & Relations", `note_count`
-  104, **all 104 notes are `eink`**. Next largest is 11 (`drafts`).
-- `capture_type` counts: `drafts` 182, `eink` 110, `annotation` 1.
-- The app's `/api/clusters` reads real `topic_clusters` (`WHERE is_proto = 0 ORDER BY
-  note_count DESC`) — there is **no** grouping by source in the route code. The "eink"
-  category is a genuine content cluster, not a source filter.
-- Clustering embeds **whole-note content** (`process-llm.ts:127`, `synthesize-topics.ts`
-  backfill). `clusterNotes()` is greedy single-pass with **hard exclusive assignment**.
-- **Unused infrastructure already exists:** `note_chunks` (per-chunk `topic` + `embedding`
-  BLOB) and `topic_note_links` (many-to-many, PK = topic+note) and `topic_clusters.is_proto`.
-  The clustering workflow ignores chunks and uses whole-note vectors.
-- `note_chunks` currently holds **176 stale rows** from the archived chunker (chunk_index 0,
-  10-char content, garbage repeated topics; only referenced under `archive/`). Must be
-  wiped, not reused.
-- `synthesize-topics` **is** scheduled — `com.selene.synthesize-topics.plist`, and
-  `com.selene.prod.synthesize-topics` is loaded in prod (compiled `dist/`). A one-time full
-  rebuild is therefore a **manual one-shot run** (dev first, then prod after deploy).
-- A sample e-ink note confirms genuine multi-topic content (Vision Board, core drivers,
-  life areas, finances, health) split by `--- Page N ---` and `**Title:**`/heading markers
-  — highly segmentable.
-
-## Architecture
+- **One `topic_clusters` row per category** (8 total). Stable per-category `slug`
+  (slugified category name); `name` = the category itself. Because names come from a fixed
+  list, **no LLM ever names a cluster** — "E-Ink Empowerment" cannot recur.
+- **Membership = the union of `category` + `cross_ref_categories`.** A note links (via
+  `topic_note_links`) to its primary category **and** every cross-referenced category →
+  genuine multi-topic membership.
+- **`note_count` = distinct member notes.** All non-empty categories stay visible — a fixed
+  8-category taxonomy should not hide "Politics & Society" just because it has 2 notes, so
+  the `is_proto` / `MIN_CLUSTER_SIZE` hiding is retired for this model.
+- **`synthesis_text` per category** = the existing `generateSynthesis()` over the category's
+  member essences. This is where "I care about the **concepts** I spoke about" is surfaced —
+  concepts roll up into a per-category synthesis, the analysis surface the app already reads.
+- **Date is a reference, not the axis.** Within a category, member notes carry `created_at`
+  for ordering/reference; the **category** is the organizing principle, the date is "when I
+  was discussing it."
+- **`capture_type` stays as metadata**, never drives a cluster.
 
 ```
-ingest ─▶ process-llm.ts                                 ─▶ synthesize-topics.ts
-          • debiasContent(): strip E-Ink/Page boilerplate    • clusterChunks(): greedy over chunk
-          • segmentNote(): structure split → LLM merge/        vectors, re-tuned threshold θ
-            split/label → note_chunks(content, topic)         • note → link to EVERY topic its
-          • embed EACH chunk → note_chunks.embedding            chunks hit (union, dedup)
-          • keep whole-note embedding (for search)            • note_count = DISTINCT parent notes
-                                                              • min-size guard → small = is_proto
-                                                              • name by THEME, never source
+ingest ─▶ process-llm.ts                      ─▶ synthesize-topics.ts (rewritten)
+          • classify into category +              • buildCategoryClusters():
+            cross_ref_categories (already)           for each of 8 CATEGORIES:
+          • (whole-note embed → REMOVED,              members = notes WHERE category=C
+            note_embeddings now unused)                        OR cross_ref_categories ∋ C
+                                                      • upsert topic_clusters (stable slug,
+backfill ─▶ classify-categories (one-shot)              name=C, synthesis over members)
+          • fills category on the ~148 older         • link each member → its category rows
+            notes (mostly drafts) that predate       • note_count = DISTINCT members
+            the category feature                     • all non-empty categories visible
 ```
 
-The clustering unit moves from **note → chunk**. That single change unlocks multi-topic
-membership: a note's chunks scatter into different clusters and the parent note links to
-each. Chunks are embedded *in addition to* the whole-note embedding — vector **search**
-wants one vector per note; **clustering** wants chunks.
+### Decision: unify everything on categories (chosen)
 
-## Phase 0 — SPIKE (gates the build)
-
-Before building anything, validate the core hypothesis on real data: **do chunks from
-different topics actually pull apart?** Take ~8 notes from the current "E-Ink Empowerment"
-cluster, hand-segment, embed the chunks, and inspect pairwise cosine similarity.
-
-- **Risk being tested:** if the owner genuinely brain-dumps about *personal growth* on the
-  e-ink device, those chunks may stay mutually similar and **re-collapse** into a "Personal
-  Growth" cluster that is *still* ~all e-ink — same outcome, new name.
-- **Question answered:** is there a threshold θ that separates distinct topics without
-  shattering everything?
-- **Gate:** if the spike fails, **stop and rethink** (hierarchical topics, or accept broad
-  themes) rather than build a pipeline that reproduces the bucket.
-
-### Spike RESULTS (2026-05-29) — GATE: the embedding-clustering approach FAILED; pivot required
-
-Run against a read-only prod snapshot (`/tmp/spike-snapshot.db`; the dev DB had been
-re-seeded with fictional fixtures by the parallel prod/dev work, so it could not be used).
-Script: `scripts/spike-chunk-separation.ts`.
-
-- **Whole-note e-ink cohesion = 0.714** > current threshold 0.65 → confirms why all 104
-  collapse today.
-- **Chunk-level** loosens cohesion (within-note 0.563 ≈ cross-note 0.546) but does **not**
-  separate clean topics. Clustering raw chunk text produced **grab-bags + OCR-boilerplate
-  clusters**: the dominant cluster is a 31–61-note *"What Went Well today?"* daily-journal
-  blob; clusters [2]/[3] were pure OCR scaffolding (`**Page Numbering and Footer** 3 of 3`).
-  Aggressive OCR de-biasing is needed but is not sufficient.
-- **The content is genuinely homogeneous daily journaling.** The LLM gave **102 distinct
-  `primary_theme` strings for 110 notes** — near-unique paraphrases ("Work and Personal
-  Relations" / "…Development" / "…Life Balance") all orbiting the same few domains. No hidden
-  clean taxonomy emerges from free-form theming; distilled-theme clustering would re-collapse
-  or fragment just like raw text.
-- **Decisive:** a **controlled taxonomy already exists** (`CATEGORIES` in `prompts.ts`, 8
-  values) and every e-ink note is **already classified** into it via
-  `processed_notes.category` (+ `cross_ref_categories` for multi-membership):
-  Personal Growth 32, Relationships & Social 19, Projects & Tech 19, Daily Systems 10,
-  Career & Work 8, Health & Body 7, Politics & Society 2 — plus several multi-category notes.
-- **Conclusion:** embedding-based `topic_clusters` clustering is the wrong tool for this
-  homogeneous content. The user's goals (content-based groups, theme names, multi-membership)
-  are met *for free* by the controlled categories. Drafts, by contrast, DID embedding-cluster
-  cleanly. → Pivot to a **category-based grouping** (hybrid: categories top-level, embedding
-  sub-clusters optional/for drafts). Pending user decision before re-planning Phases 1–5.
+E-ink is **97% classified** (107/110 have a category, 58 have cross-refs). Drafts are only
+**22% classified** (40/185) — they predate the category feature. The owner chose to
+**unify all notes on categories** rather than keep the (cleanly-clustering) draft embedding
+clusters as a second mechanism. This requires a one-time **classification backfill** of the
+~148 unclassified notes (mostly drafts) before the rebuild, so no draft vanishes from the
+browse view. One mechanism for everything; the "full clean rebuild" the owner approved,
+with categories — not chunks — as the unit.
 
 ## Components / changes
 
-### `src/workflows/process-llm.ts`
-- `debiasContent(content, title)`: strip `# E-Ink: …` header, `--- Page N ---` separators,
-  and the `E-Ink:` title prefix (extensible to other source markers).
-- `segmentNote(content)`: structural pre-split (page markers, headings, blank lines), then
-  an LLM pass to merge/split into coherent topical segments and label each.
-- Write segments to `note_chunks` (content, chunk_index, topic, token_count, embedding).
-- Embed each chunk; keep the existing whole-note embedding for search.
+### New: one-shot classification backfill (`scripts/backfill-categories.ts`)
+- Select `processed_notes` rows where `category IS NULL` (≈148: mostly older drafts).
+- Re-run **`EXTRACT_PROMPT`** (reuse `src/lib/prompts.ts`) on each note's title+content;
+  parse the JSON; update **only** `category` + `cross_ref_categories`. Leave concepts/
+  essence/sentiment untouched (already populated).
+- Idempotent (re-running skips rows that now have a category); local Ollama, background,
+  not time-critical (~148 calls ≈ minutes).
 
-### `src/workflows/synthesize-topics.ts`
-- Replace `clusterNotes()` (whole-note) with `clusterChunks()` over chunk vectors.
-- Derive note membership as the **union** of the clusters its chunks fall into; dedup so a
-  note links once per topic; `note_count` = **distinct** parent notes.
-- **Re-tune `CLUSTER_SIMILARITY_THRESHOLD`** on the chunk-similarity distribution (the old
-  whole-note value will not transfer). Keep the greedy algorithm — no k-means/HDBSCAN
-  dependency (YAGNI).
-- Enforce a **min-cluster-size**: clusters below it become `is_proto = 1` (hidden from the
-  app) rather than littering the browse view.
-- Cluster-naming prompt forbids source/format words (no "e-ink", "kindle", "page", etc.).
+### `src/workflows/synthesize-topics.ts` (rewrite the build, shrink the file)
+- **Remove** `clusterNotes()` (embedding greedy), `loadAllEmbeddings()`,
+  `backfillEmbeddings()`, and `generateClusterName()` — all now dead.
+- **Add** `buildCategoryClusters()`: for each category in `CATEGORIES`, gather members
+  (`category = C OR cross_ref_categories` contains `C`), upsert the `topic_clusters` row
+  with a stable slug, link members in `topic_note_links`, set `note_count` = distinct
+  members, `is_proto = 0`.
+- **Keep** `generateSynthesis()` (called per category) and the delta-guard /
+  evolution-detection / weekly-rollup machinery — they operate on the cluster regardless of
+  how membership was derived.
+- **Full clean rebuild**: wipe `topic_clusters` + `topic_note_links` before the first
+  category build (clean transition from embedding clusters).
+
+### `src/workflows/process-llm.ts`
+- **Remove the now-unused whole-note embedding** (`embed(note.content)` →
+  `note_embeddings`). Grep confirms nothing reads `note_embeddings` except the clustering
+  code being removed (`worksheets.ts` does its own live `embed()`, unrelated). Saves one
+  Ollama call per note. Leave the `note_embeddings` **table** in place (no destructive
+  migration; can be dropped later if desired).
 
 ### Schema
-- **No changes** — `note_chunks`, `topic_note_links`, and `is_proto` already exist.
+- **No changes.** `topic_clusters`, `topic_note_links`, `category`, `cross_ref_categories`
+  all already exist.
 
-## Reprocess procedure (dev-first; never test on prod DB)
+## Validation / reprocess procedure (never write to the live prod DB)
 
-1. Snapshot prod → dev DB (the **same snapshot the remote-iPad design already needs** —
-   sequence the two together).
-2. On dev: **wipe** `note_chunks` (176 stale rows), `topic_clusters`, `topic_note_links`;
-   run the new pipeline end-to-end; eyeball the resulting topic list as the app would show it.
-3. Iterate θ and min-size until the browse view looks right.
-4. Merge → deploy to prod (compiled `dist/`) → run the one-shot rebuild on prod → verify on
-   the iPad.
+1. **Work on a writable COPY of prod**, never the live file:
+   `cp ~/selene-data/selene.db /tmp/selene-rebuild-test.db`. (The dev DB now holds fictional
+   `dev-seed` fixtures, so it cannot validate real-content grouping — a prod copy is the
+   only realistic surface, and a copy in `/tmp` never touches prod.)
+2. On the copy: run the **classification backfill**, then **wipe** `topic_clusters` +
+   `topic_note_links`, then run the **category build**.
+3. Eyeball the resulting `topic_clusters` exactly as the app's `/api/clusters` query would
+   render them (`WHERE is_proto = 0 ORDER BY note_count DESC`): 8 content-themed categories,
+   sane `note_count`s, at least one note appearing under multiple categories.
+4. Merge → deploy to prod (compiled `dist/`) → run the backfill + one-shot rebuild on prod
+   → verify on the iPad.
+
+## Out of scope / deferred
+
+- **Embedding sub-clusters within a category** — the spike showed embedding clustering
+  re-collapses/​fragments on this homogeneous content; the per-category `synthesis_text`
+  already captures the through-lines (YAGNI).
+- **OCR-boilerplate cleanup** (`**Page Number Indicator…**`, `[unclear]`, `--- Page N ---`)
+  — pollutes essences/search system-wide, but does **not** affect category grouping
+  (categories are already assigned). Tracked as a separate task.
+- **A bespoke "analysis dashboard"** — the category browse view *is* the analysis surface.
 
 ## Risks / mitigations
 
-- **Re-collapse into a broad theme** → Phase 0 spike gates the build.
-- **Singleton explosion** (many one-note clusters) → min-size + `is_proto` guard; judge by
-  the browse view, not cluster count.
-- **Threshold drift** (old θ tuned on whole-note sims) → re-derive empirically from chunk sims.
-- **LLM segmentation cost** → 293 notes × local Ollama in a background workflow; not
-  time-critical.
-- **Stale chunk reuse** → full wipe of `note_chunks` is mandatory, not optional.
+- **Backfill misclassifies old drafts** → validate on the prod copy before prod; backfill is
+  re-runnable, and a later quality re-pass can refine categories if the iPad view shows drift.
+- **Large-category synthesis prompt** (Personal Growth could exceed ~30 members) → cap/sample
+  member essences in `generateSynthesis` if the prompt grows too large (implementation note).
+- **A note with no category after backfill** (LLM fails to classify) → assign a fallback
+  bucket or leave unlinked; decide in the plan (prefer: retry, then a "Daily Systems"/"General"
+  fallback so nothing silently vanishes — and **log** any drops, no silent truncation).
+- **Stale embedding artifacts** → embedding-clustering code removed; `note_embeddings` left
+  inert (no reader), not relied upon.
 
 ## Testing
 
-- TDD on pure functions: `debiasContent`, `segmentNote` boundary logic, membership
-  union/dedup, min-size → proto.
-- `synthesis-reviewer` subagent reviews `synthesize-topics` changes (workflow + schema
-  contract).
-- Full pipeline validated against the dev snapshot (step 2–3) before any prod run.
+- TDD on pure functions: category-membership union/dedup (primary + cross-refs → distinct
+  cluster set), stable slug derivation, backfill JSON parse → `{category, cross_ref_categories}`.
+- `synthesis-reviewer` subagent reviews `synthesize-topics` changes (workflow + DB contract).
+- Full backfill + rebuild validated on the prod **copy** (steps 1–3) before any prod run.
+- New test files must be added to `jest.config.js` `testMatch` (explicit allowlist).
 
 ## Acceptance criteria
 
-- [ ] Phase 0 spike shows distinct in-note topics separate at a usable θ (else: stop/rethink).
-- [ ] On the dev snapshot, the 104-note e-ink bucket is replaced by content-themed topics.
-- [ ] At least one brain-dump note appears under **multiple** topics (multi-membership works).
-- [ ] No source/format words appear in cluster names.
-- [ ] The app browse view is neither one mega-bucket nor a wall of singletons.
-- [ ] After prod deploy + one-shot rebuild, the iPad Notes section reflects the above.
+- [ ] After backfill, every note has a `category` (no unclassified notes silently dropped).
+- [ ] `topic_clusters` contains one row per non-empty category, named from the fixed list
+      (no source/format words; no LLM-named buckets).
+- [ ] On the prod copy, the 104-note e-ink bucket is gone; e-ink notes are spread across the
+      content categories.
+- [ ] At least one brain-dump note appears under **multiple** categories (multi-membership).
+- [ ] Drafts and e-ink are grouped by the **same** mechanism (unified).
+- [ ] After prod deploy + backfill + one-shot rebuild, the iPad Notes section reflects the above.
 
 ## ADHD check
 
 Makes the knowledge base **visual and trustworthy** — topics reflect what notes are *about*,
 not where they came from, so the browse view externalizes meaning instead of mirroring
-capture mechanics. Multi-topic membership matches how brain dumps actually work (one page,
-many threads), reducing the friction of "which single bucket does this belong in?". Passes.
+capture mechanics. Multi-category membership matches how brain dumps actually work (one page,
+many threads), reducing the friction of "which single bucket does this belong in?". A small,
+fixed, predictable taxonomy (8 categories) is easier to hold than an ever-shifting list of
+emergent cluster names. Passes.
 
 ## Scope check
 
-Two workflow files changed (no schema migration), a gated spike, and a one-shot reprocess.
-The spike de-risks the largest unknown up front. Under a week. Passes.
+One rewritten workflow (smaller than before), one one-shot backfill script, no schema
+migration, and a copy-based validation pass. Net code is **negative** (an entire embedding
+clustering mechanism is removed). Under a week. Passes.
 
 ## User-facing change?
 
-**Yes** — the iPad Notes browse experience changes (topic names, multi-topic membership).
-Wrap-up: update/create the relevant entry under `docs/guides/features/` (clustering / notes
-browse) and link it in `docs/USER-EXPERIENCE.md`.
+**Yes** — the iPad Notes browse experience changes (category names, multi-category
+membership, date demoted to reference). Wrap-up: create/update the relevant entry under
+`docs/guides/features/` (notes browse / clustering) and link it in `docs/USER-EXPERIENCE.md`.
+
+---
+
+## Spike RESULTS (2026-05-29) — evidence the embedding approach was abandoned
+
+Run against a read-only prod snapshot (`/tmp/spike-snapshot.db`; the dev DB had been
+re-seeded with fictional fixtures by the parallel prod/dev work, so it could not be used).
+Script: `scripts/spike-chunk-separation.ts` (throwaway).
+
+- **Whole-note e-ink cohesion = 0.714** > current threshold 0.65 → confirms why all 104
+  collapse today.
+- **Chunk-level** loosens cohesion (within-note 0.563 ≈ cross-note 0.546) but does **not**
+  separate clean topics. Clustering raw chunk text produced **grab-bags + OCR-boilerplate
+  clusters** (a 31–61-note *"What Went Well today?"* daily-journal blob; clusters of pure
+  OCR scaffolding). Aggressive OCR de-biasing is needed but not sufficient.
+- **The content is genuinely homogeneous daily journaling.** The LLM gave **102 distinct
+  `primary_theme` strings for 110 notes** — near-unique paraphrases all orbiting the same few
+  domains. No hidden clean taxonomy emerges from free-form theming.
+- **Decisive:** a **controlled taxonomy already exists** (`CATEGORIES`, 8 values) and every
+  e-ink note is **already classified** into it (Personal Growth 32, Relationships & Social 19,
+  Projects & Tech 19, Daily Systems 10, Career & Work 8, Health & Body 7, Politics & Society 2,
+  plus multi-category notes). Drafts, by contrast, DID embedding-cluster cleanly — but are only
+  22% classified, which is why unification needs the backfill.
+- **Conclusion:** embedding-based clustering is the wrong tool for this homogeneous content;
+  the controlled categories meet the goals for free. → Category-derived clusters (above).
