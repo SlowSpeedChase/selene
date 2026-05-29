@@ -614,6 +614,15 @@ if (!rawNotesColumns.some((c) => c.name === 'source_note_id')) {
   logger.info('Migrated raw_notes: added source_note_id column');
 }
 
+// Ensure raw_notes.inbox_status exists (worksheet daily-review triage state).
+// Distinct from `status` (LLM processing pipeline): inbox_status is the
+// user-facing triage state read by the worksheet /today endpoint.
+// Idempotent column-add so a fresh clone / rebuilt DB gets it without a manual ALTER.
+if (!rawNotesColumns.some((c) => c.name === 'inbox_status')) {
+  db.exec(`ALTER TABLE raw_notes ADD COLUMN inbox_status TEXT DEFAULT 'pending'`);
+  logger.info('Migrated raw_notes: added inbox_status column');
+}
+
 // Helper: Register a device token (upsert)
 export function registerDevice(token: string, platform = 'ios'): void {
   const stmt = db.prepare(`

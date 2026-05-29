@@ -5,6 +5,7 @@ import { exportObsidian } from './workflows/export-obsidian';
 import { agentRoutes } from './routes/agents';
 import { dashboardRoutes } from './routes/dashboard';
 import { notesRoutes } from './routes/notes';
+import { worksheetRoutes } from './routes/worksheets';
 import type { IngestInput, WebhookResponse } from './types';
 
 const server = Fastify({
@@ -83,6 +84,7 @@ server.post<{ Body: { noteId?: number } }>('/webhook/api/export-obsidian', async
 server.register(agentRoutes);
 server.register(dashboardRoutes);
 server.register(notesRoutes);
+server.register(worksheetRoutes);
 
 // ---------------------------------------------------------------------------
 // Start server
