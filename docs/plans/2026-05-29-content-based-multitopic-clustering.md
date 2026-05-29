@@ -531,7 +531,24 @@ git commit -m "docs(clustering): notes-browse guide + design doc done"
 
 ## Production rollout (after merge — not part of branch work)
 
-After merge + prod deploy (compiled `dist/`), run once against prod: `node dist/scripts/backfill-categories.js` then `SELENE_REBUILD_CLUSTERS=1 node dist/workflows/synthesize-topics.js`, then verify on the iPad. The scheduled `com.selene.prod.synthesize-topics` agent maintains clusters in place thereafter (no rebuild flag).
+**Heads-up — prod auto-deploys on merge.** The prod/dev split is live, so merging to `main`
+triggers the launchd deploy-watcher to build-gate + deploy within ~5 min, after which the
+scheduled `com.selene.prod.synthesize-topics` agent will run the **incremental** build on its
+own tick. That incremental run already (a) builds the 8 category clusters from whatever notes
+currently have a category and (b) **orphan-cleans the old embedding clusters** (incl.
+"E-Ink Empowerment"). So if the scheduled tick fires *before* you run the manual backfill, the
+iPad will briefly show 8 categories **missing the ~153 still-NULL notes** — incomplete, not
+broken, and fixed once you backfill.
+
+**Sequence (run promptly after the deploy notification, before the next scheduled tick — check
+its schedule first, e.g. `launchctl print gui/$(id -u)/com.selene.prod.synthesize-topics | grep -i interval`):**
+1. Merge → wait for the deploy-success notification.
+2. Run once against **real prod** (this is the one intentional prod mutation):
+   `node dist/scripts/backfill-categories.js` then
+   `SELENE_REBUILD_CLUSTERS=1 node dist/workflows/synthesize-topics.js`.
+3. Verify on the iPad (8 content categories, no "E-Ink Empowerment", notes under multiple categories).
+
+The scheduled agent maintains clusters in place thereafter (no rebuild flag).
 
 ---
 
