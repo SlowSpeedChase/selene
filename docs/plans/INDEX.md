@@ -47,6 +47,7 @@ These have acceptance criteria, ADHD check, and scope check. Ready to create a b
 
 | Date | Document | Topic | Notes |
 |------|----------|-------|-------|
+| 2026-05-29 | [2026-05-29-remote-ipad-development-design.md](2026-05-29-remote-ipad-development-design.md) | ipad, tailscale, dev-environment, travel | Develop SeleneMarkup remotely while traveling. MacBook Air + iPad = self-contained build/deploy station (`./redeploy.sh --dev`); Mac mini stays home as server, reached over Tailscale (`100.111.6.10`). Persistent dev-mode server on :5679 (prod-seeded dev DB, writes isolated from prod) via a new `com.selene.dev.server` launchd agent. Only code change: `AppConfig` `#if SELENE_DEV` IP. Pre-trip checklist (GitHub remote, laptop signing, prod→dev snapshot, sleep-disable, cellular pre-flight test). |
 ---
 
 ## In Progress
