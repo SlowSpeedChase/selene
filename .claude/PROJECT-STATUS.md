@@ -259,6 +259,30 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 
 ---
 
+## In Progress
+
+### Prod/Dev Split — tooling complete & integration-tested; one-time cutover pending
+
+**Branch:** `feat/prod-dev-split`
+
+Establishes a release boundary so dev work never touches what's running. **The tooling is built and integration-tested, but it is NOT yet live** — it activates at a one-time cutover that has not run. Until then, production still runs the old `com.selene.*` agents from `~/selene` via ts-node, unchanged.
+
+Three-directory model (post-cutover):
+- `~/selene` — dev sandbox (dev DB `~/selene-data-dev`, ts-node, port 5679, manual workflows)
+- `~/selene-build` — scratch build clone (build site only; never edited by hand)
+- `~/selene-prod` — production (compiled `dist/`, real DB `~/selene-data/selene.db`, iCloud vault, port 5678, `com.selene.prod.*` agents)
+
+Release flow: merge to `main` → a launchd deploy-watcher (`com.selene.prod.deploy-watcher`, `StartInterval` 300) polls `origin/main`, build-gates in the scratch clone, ships only `dist/` to prod (preserving `.env`), archives the prior release for rollback, reloads prod agents, health-checks `:5678`, and notifies on success or failure. Roll back with `./scripts/rollback-prod.sh`.
+
+- Scripts: `scripts/deploy-watch.sh`, `scripts/deploy-prod.sh`, `scripts/install-prod.sh`, `scripts/rollback-prod.sh`, `scripts/lib/notify.sh`
+- Agent: `launchd/com.selene.prod.deploy-watcher.plist`
+- Two coexisting iPad app targets (Selene / Selene Dev) built in `~/SeleneMarkup` on branch `feat/dev-prod-apps`
+- User guide: `docs/guides/features/releases.md` (marked "activates after cutover")
+- Design doc: `docs/plans/2026-05-28-prod-dev-split-design.md` (In Progress — not Done; cutover pending)
+- Deferred to cutover: `docs/backend-block-diagrams.md` (live launchd layout hasn't changed yet)
+
+---
+
 ## Recent Achievements
 
 ### 2026-05-28
