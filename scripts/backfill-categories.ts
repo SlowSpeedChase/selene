@@ -1,131 +1,63 @@
+// scripts/backfill-categories.ts
+// One-shot: classify processed_notes that still lack a category (predate the feature).
+// Reads title+content from raw_notes, runs EXTRACT_PROMPT, writes ONLY category +
+// cross_ref_categories. Idempotent: rows that already have a category are skipped.
+// Run (dev/copy): SELENE_ENV=development npx ts-node scripts/backfill-categories.ts
 import { db, generate, isAvailable, createWorkflowLogger } from '../src/lib';
-import { CATEGORIES } from '../src/lib/prompts';
+import { EXTRACT_PROMPT } from '../src/lib/prompts';
+import { extractCategoryFields } from '../src/lib/category-clusters';
+import { testRunFilter } from '../src/lib/test-run';
 
 const log = createWorkflowLogger('backfill-categories');
 
-// --- Migration (harmless no-op if columns exist) ---
-try {
-  db.exec('ALTER TABLE processed_notes ADD COLUMN category TEXT');
-} catch { /* column already exists */ }
-try {
-  db.exec('ALTER TABLE processed_notes ADD COLUMN cross_ref_categories TEXT');
-} catch { /* column already exists */ }
-
-const BACKFILL_PROMPT = `Given this note, pick the best category and optionally 1-2 cross-references.
-
-Title: {title}
-Theme: {theme}
-Essence: {essence}
-Concepts: {concepts}
-
-Categories:
-- Personal Growth
-- Relationships & Social
-- Health & Body
-- Projects & Tech
-- Career & Work
-- Creativity & Expression
-- Politics & Society
-- Daily Systems
-
-Respond in JSON ONLY: {"category": "...", "cross_ref_categories": ["..."]}`;
-
-interface BackfillNote {
-  id: number;
-  raw_note_id: number;
-  primary_theme: string | null;
-  essence: string | null;
-  concepts: string | null;
-}
-
-async function backfill(): Promise<void> {
-  log.info('Starting category backfill');
-
+async function backfillCategories(): Promise<{ updated: number; failed: number }> {
   if (!(await isAvailable())) {
-    log.error('Ollama is not available');
-    process.exit(1);
+    log.error('Ollama not available');
+    return { updated: 0, failed: 0 };
   }
 
-  // Get all processed notes without a category
-  const notes = db
-    .prepare(
-      `SELECT pn.id, pn.raw_note_id, pn.primary_theme, pn.essence, pn.concepts
-       FROM processed_notes pn
-       JOIN raw_notes rn ON rn.id = pn.raw_note_id
-       WHERE pn.category IS NULL
-         AND rn.test_run IS NULL`
-    )
-    .all() as BackfillNote[];
+  const rows = db.prepare(`
+    SELECT rn.id AS id, rn.title AS title, rn.content AS content
+    FROM raw_notes rn
+    JOIN processed_notes pn ON pn.raw_note_id = rn.id
+    WHERE pn.category IS NULL ${testRunFilter('rn')}
+  `).all() as Array<{ id: number; title: string; content: string }>;
 
-  log.info({ count: notes.length }, 'Found notes to backfill');
+  log.info({ count: rows.length }, 'Notes to classify');
+  let updated = 0;
+  let failed = 0;
 
-  // Also need titles from raw_notes
-  const getTitle = db.prepare('SELECT title FROM raw_notes WHERE id = ?');
-
-  let success = 0;
-  let errors = 0;
-
-  for (const note of notes) {
+  for (const note of rows) {
     try {
-      const titleRow = getTitle.get(note.raw_note_id) as { title: string } | undefined;
-      const title = titleRow?.title || 'Untitled';
-
-      const prompt = BACKFILL_PROMPT
-        .replace('{title}', title)
-        .replace('{theme}', note.primary_theme || 'unknown')
-        .replace('{essence}', note.essence || 'none')
-        .replace('{concepts}', note.concepts || '[]');
-
-      const response = await generate(prompt, { timeoutMs: 30000 });
-
-      // Parse JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const result = JSON.parse(jsonMatch[0]);
-      const category = CATEGORIES.includes(result.category) ? result.category : null;
-      const crossRefs = Array.isArray(result.cross_ref_categories)
-        ? result.cross_ref_categories.filter((c: string) => CATEGORIES.includes(c))
-        : [];
-
+      const prompt = EXTRACT_PROMPT
+        .replace('{title}', note.title)
+        .replace('{content}', note.content);
+      const response = await generate(prompt);
+      const { category, crossRefs } = extractCategoryFields(response);
       if (!category) {
-        log.warn({ noteId: note.raw_note_id, response: result.category }, 'LLM returned invalid category, skipping');
-        errors++;
+        failed++;
+        log.warn({ noteId: note.id }, 'No valid category extracted; left NULL');
         continue;
       }
-
       db.prepare(
-        'UPDATE processed_notes SET category = ?, cross_ref_categories = ? WHERE id = ?'
+        `UPDATE processed_notes SET category = ?, cross_ref_categories = ? WHERE raw_note_id = ?`
       ).run(category, JSON.stringify(crossRefs), note.id);
-
-      log.info({ noteId: note.raw_note_id, category, crossRefs }, 'Backfilled');
-      success++;
+      updated++;
+      if (updated % 25 === 0) log.info({ updated }, 'progress');
     } catch (err) {
-      const error = err as Error;
-      log.error({ noteId: note.raw_note_id, err: error }, 'Backfill failed for note');
-      errors++;
+      failed++;
+      log.warn({ noteId: note.id, err: err as Error }, 'Classification failed');
     }
   }
 
-  // Reset export flags so next export rebuilds MOCs
-  if (success > 0) {
-    const resetCount = db
-      .prepare(
-        `UPDATE raw_notes SET exported_to_obsidian = 0
-         WHERE status = 'processed' AND test_run IS NULL`
-      )
-      .run();
-    log.info({ resetCount: resetCount.changes }, 'Reset export flags for MOC rebuild');
-  }
-
-  log.info({ success, errors, total: notes.length }, 'Backfill complete');
+  log.info({ updated, failed }, 'Backfill complete');
+  return { updated, failed };
 }
 
-backfill()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error('Backfill failed:', err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  backfillCategories()
+    .then((r) => { console.log('backfill-categories:', r); process.exit(0); })
+    .catch((err) => { console.error('backfill-categories failed:', err); process.exit(1); });
+}
+
+export { backfillCategories };
