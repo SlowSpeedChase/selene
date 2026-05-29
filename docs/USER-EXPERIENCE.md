@@ -173,6 +173,12 @@ curl http://localhost:5678/health
 tail -f logs/selene.log | npx pino-pretty
 ```
 
+### Operating Selene (maintenance)
+
+This is for keeping Selene running, not for daily use:
+
+- [Releases (prod/dev split)](guides/features/releases.md) — develop in `~/selene`, ship to production by merging to `main` (auto-deploys, build-gated, with rollback). *(Activates after the one-time cutover.)*
+
 ---
 
 ## When Something Seems Off

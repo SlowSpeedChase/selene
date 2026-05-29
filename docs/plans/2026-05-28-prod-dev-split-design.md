@@ -110,10 +110,19 @@ Step 4  ~/selene is now free — edit it freely; it only touches the dev DB.
 
 ## Dev sandbox data
 
-- **DB:** `~/selene-data-dev/selene.db`, periodically refreshed from a **sanitized copy** of the real DB (via `scripts/anonymize-debug.ts` + `scripts/create-dev-db.sh`). Realistic testing, zero risk to real notes.
-  - *Note:* `seed-dev-data.ts` referenced in CLAUDE.md is gone (archived); use the anonymize path, do not assume the seed script exists.
-- **Vault:** `~/selene-data-dev/vault` — a throwaway scratch vault (gitignored). Dev Obsidian export never writes the real iCloud vault.
-- Config already routes all dev paths to `~/selene-data-dev/*` and disables digest/TRMNL/Apple Notes in dev.
+> **Revised during implementation (2026-05-28).** The original design said the dev DB
+> would be a *sanitized copy of real data*. Implementation found this is **infeasible
+> and unsafe** in this codebase, so the dev sandbox uses **fictional fixtures** instead.
+> Three independent reasons:
+> 1. **Startup guard** — `src/lib/db.ts:14-15` throws unless `_selene_metadata.environment='development'`; the real DB has no such marker, so a literal copy of real→dev fails to boot by design.
+> 2. **Schema divergence** — the real DB has ~45 tables; `create-dev-db.sh` builds ~20 bespoke ones. They are not interchangeable.
+> 3. **Anonymizer scope** — `src/lib/anonymize.ts` only scrubs *structured* PII (email/phone/URL/UUID + optional NER names). It cannot remove the *substance* of a personal ADHD journal, which is the sensitive part. Wrapping it would ship a false sense of safety.
+
+- **DB:** `~/selene-data-dev/selene.db` — **fictional fixtures**, not real data. A 541-note fictional dev DB already exists and works (created 2026-02-21, marked `environment='development'`).
+  - *Gap (pre-existing):* the fixture generators documented in `scripts/CLAUDE.md` (`seed-dev-data.ts`, `generate-dev-fixture.py`, `reset-dev-data.sh`) **do not exist on disk** — so the dev DB cannot currently be regenerated. Reconstructing the fictional-fixture generators is a **separate follow-up** (not part of the prod/dev split). `scripts/CLAUDE.md` is stale and should be corrected when that happens.
+- **Vault:** `~/selene-data-dev/vault` — a throwaway scratch vault. Dev Obsidian export never writes the real iCloud vault.
+- Config routes all dev paths to `~/selene-data-dev/*` and disables digest/TRMNL/Apple Notes in dev (verified: `SELENE_ENV=development` → dev DB + scratch vault, `appleNotes=false`, `trmnl=false`).
+- *Aside:* the `test` env tier is effectively dead — `config.ts:10-11` loads `.env.development` with `override:true` whenever `SELENE_ENV !== 'production'`, clobbering a CLI `SELENE_ENV=test`. `development` and `production` both work; the split does not rely on `test`.
 
 ---
 
