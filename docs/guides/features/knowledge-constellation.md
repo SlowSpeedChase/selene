@@ -34,6 +34,7 @@ The pure logic lives in `src/lib/constellation.ts` (unit-tested in `constellatio
 |---------|-----|
 | Clusters don't render in ExcaliBrain | Confirm **Dataview** is enabled, and that a note's `parent:: [[X]]` basename exactly matches a file in `Constellation/` (the #1 failure mode). |
 | A note has no parent cluster | It isn't in any `topic_note_links` row yet — it may be unclassified. Re-run `synthesize-topics` so it joins a category cluster. |
+| Only recent notes connect to clusters; older notes float free | Run the export — it now re-checks **every** note each run and backfills `parent::` links across the whole corpus, not just newly captured notes. A large first backfill may take two hourly runs to fully drain (the log shows a `deferred` count when it does). |
 | Graph looks stale after notes changed | Re-run the export: `npx ts-node src/workflows/export-obsidian.ts` (or wait for the hourly agent). Output fully regenerates. |
 | Duplicate / broken nodes after a re-run | Shouldn't happen — `Constellation/` and `parent::` are deterministic. If it does, delete `Constellation/` and re-export. |
 

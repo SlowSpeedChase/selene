@@ -3,7 +3,8 @@ import { join } from 'path';
 import { createWorkflowLogger, db, config, generate, isAvailable } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { MOC_PROMPT, CATEGORIES } from '../lib/prompts';
-import { loadNoteClusters, buildParentFields, exportClusterNotes } from '../lib/constellation';
+import { exportClusterNotes } from '../lib/constellation';
+import { reconcileExportedNotes, createSlug } from '../lib/obsidian-render';
 
 const log = createWorkflowLogger('export-obsidian');
 
@@ -13,6 +14,11 @@ try {
 } catch { /* column already exists */ }
 try {
   db.exec('ALTER TABLE processed_notes ADD COLUMN essence_at TEXT');
+} catch { /* column already exists */ }
+try {
+  // Authoritative "is the vault file current?" signal — replaces the write-once
+  // exported_to_obsidian gate so post-export enrichment (parent:: edges, essences) re-exports.
+  db.exec('ALTER TABLE raw_notes ADD COLUMN obsidian_export_hash TEXT');
 } catch { /* column already exists */ }
 
 // --- Types ---
@@ -45,14 +51,6 @@ interface CategoryData {
 
 // --- Helpers ---
 
-function createSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .slice(0, 50);
-}
-
 function parseJson<T>(field: string | null, defaultValue: T): T {
   if (!field) return defaultValue;
   try {
@@ -68,122 +66,23 @@ function ensureDir(dirPath: string): void {
   }
 }
 
-function sanitizeContent(content: string): string {
-  // Strip old processing metadata blocks embedded in note content
-  // Pattern: "---\n✅ Processed by Selene...\n🤖...\n📊...\n🗃️...\n" (sometimes repeated)
-  return content
-    .replace(/\n---\n✅ Processed by Selene[^\n]*\n(?:[^\n]*\n)*?(?=\n---\n✅|\s*$)/g, '')
-    .replace(/\n---\n✅ Processed by Selene[\s\S]*$/g, '')
-    .trim();
-}
-
 // --- Phase 1: Export Notes ---
 
+// Idempotent + self-healing: every run renders each processed note's full markdown and rewrites
+// the vault file only when its content hash changed (cluster edges, essence, theme...). The
+// render + hash + write-cap logic lives in lib/obsidian-render so it stays unit-testable in-memory.
+// `exported` here means "rewritten this run" — it drives MOC regeneration below.
 function exportNotes(vaultPath: string): { exported: number; errors: number } {
   const notesDir = join(vaultPath, 'Notes');
-  ensureDir(notesDir);
-
-  const notes = db
-    .prepare(
-      `SELECT
-        rn.id, rn.title, rn.content, rn.created_at,
-        pn.primary_theme, pn.concepts, pn.essence
-      FROM raw_notes rn
-      JOIN processed_notes pn ON rn.id = pn.raw_note_id
-      WHERE rn.exported_to_obsidian = 0
-        AND rn.status = 'processed'
-        ${testRunFilter('rn')}
-      ORDER BY rn.created_at DESC
-      LIMIT 50`
-    )
-    .all() as ExportableNote[];
-
-  log.info({ noteCount: notes.length }, 'Found notes for export');
-
-  // Constellation: note id -> its topic cluster name(s), loaded once for the batch.
-  const noteClusters = loadNoteClusters(db);
-
-  let exported = 0;
-  let errors = 0;
-
-  for (const note of notes) {
-    try {
-      const concepts = parseJson<string[]>(note.concepts, []);
-      const createdAt = new Date(note.created_at);
-      const dateStr = createdAt.toISOString().split('T')[0];
-      const slug = createSlug(note.title);
-      const filename = `${dateStr}-${slug}.md`;
-      const theme = note.primary_theme || 'uncategorized';
-
-      // YAML frontmatter
-      const conceptsYaml = concepts.length > 0
-        ? concepts.map((c) => `  - ${c}`).join('\n')
-        : '  - uncategorized';
-      const titleEscaped = note.title.replace(/"/g, '\\"');
-
-      // Content in blockquote (strip old processing metadata)
-      const cleanContent = sanitizeContent(note.content);
-      const blockquotedContent = cleanContent
-        .split('\n')
-        .map((line) => `> ${line}`)
-        .join('\n');
-
-      // Build markdown
-      const parts: string[] = [
-        `---`,
-        `title: "${titleEscaped}"`,
-        `date: ${dateStr}`,
-        `theme: ${theme}`,
-        `concepts:`,
-        conceptsYaml,
-        `---`,
-        ``,
-        `# ${note.title}`,
-        ``,
-        blockquotedContent,
-        ``,
-        `---`,
-      ];
-
-      if (note.essence) {
-        parts.push(``, `*${note.essence}*`);
-      }
-
-      // Theme and concept wiki-links
-      const links: string[] = [`[[${theme}]]`];
-      for (const concept of concepts) {
-        links.push(`[[${concept}]]`);
-      }
-      parts.push(``, links.join(' '));
-
-      // Constellation: parent:: edges to this note's topic cluster(s) so ExcaliBrain
-      // renders cluster -> note (children) and note -> cluster (parent). One line per
-      // cluster the note belongs to (multi-membership safe).
-      const parentBlock = buildParentFields(noteClusters.get(note.id) ?? []);
-      if (parentBlock) parts.push(``, parentBlock);
-
-      const markdown = parts.join('\n');
-      const filePath = join(notesDir, filename);
-
-      writeFileSync(filePath, markdown, 'utf-8');
-
-      // Mark as exported
-      db.prepare(
-        `UPDATE raw_notes
-         SET exported_to_obsidian = 1, exported_at = ?
-         WHERE id = ?`
-      ).run(new Date().toISOString(), note.id);
-
-      log.info({ noteId: note.id, filename }, 'Exported note');
-      exported++;
-    } catch (err) {
-      const error = err as Error;
-      log.error({ noteId: note.id, err: error }, 'Failed to export note');
-      errors++;
-    }
+  const result = reconcileExportedNotes(db, notesDir, testRunFilter('rn'));
+  log.info(
+    { written: result.written, skipped: result.skipped, deferred: result.deferred, errors: result.errors },
+    'Reconciled notes for export'
+  );
+  if (result.deferred > 0) {
+    log.info({ deferred: result.deferred }, 'Backfill not fully drained — next run will continue');
   }
-
-  return { exported, errors };
+  return { exported: result.written, errors: result.errors };
 }
 
 // --- Phase 2: Generate MOCs ---

@@ -53,11 +53,13 @@ Each page in `Selene/Notes/` is one captured note: its original text, the date, 
 
 Each run happens in two phases:
 
-**Phase 1 — Export notes (always runs).** Pulls up to 50 processed notes that haven't been exported yet (test notes are excluded), writes each as a markdown file in `Selene/Notes/` named `YYYY-MM-DD-slug.md`, and marks them as exported so they're never duplicated.
+**Phase 1 — Export notes (always runs, idempotent).** Looks at **every** processed note (test notes excluded), renders each one's full markdown, and compares a hash of that rendered page to the hash stored from the last export. A note is rewritten **only when its rendered output changed** — a new cluster link, an updated essence, a theme change — and skipped cheaply when nothing changed. This makes the vault **self-healing**: improvements Selene makes to a note *after* its first export now reach the page, instead of being frozen at whatever the very first export produced. Files are written to `Selene/Notes/` as `YYYY-MM-DD-slug.md`. To avoid one giant pass, each run writes at most ~200 changed files; if more changed, the rest drain on the next hourly run (the log reports a `deferred` count when that happens).
+
+> **These pages are generated artifacts — don't hand-edit them.** Because Selene rewrites a note's page whenever its content changes, any manual edits to files in `Selene/Notes/` will be overwritten on a later export. Treat them as read-only output; capture changes as new notes instead.
 
 **Phase 2 — Generate maps and dashboard.**
 
-- **Maps (MOCs):** regenerated **only when new notes were exported in Phase 1 _and_ Ollama is available.** A local LLM groups each category's notes into named sub-sections. Each map is written to `Selene/Maps/<Category>.md`. If nothing new was captured, the maps are left as-is (no needless rebuilds).
+- **Maps (MOCs):** regenerated **only when at least one note was (re)written in Phase 1 _and_ Ollama is available.** A local LLM groups each category's notes into named sub-sections. Each map is written to `Selene/Maps/<Category>.md`. If nothing changed, the maps are left as-is (no needless rebuilds).
 - **Dashboard:** regenerated on **every** run and is **code-generated, not LLM-generated** — so its links always point to real pages (no hallucinated or empty stub links). Written to `Selene/Dashboard.md`.
 
 ## Configure & customize
@@ -98,15 +100,19 @@ The categories themselves are fixed in code (`CATEGORIES` in `src/lib/prompts.ts
 | Dashboard didn't update | The dashboard regenerates on every run. Check for errors: `tail -f logs/export-obsidian.error.log`. Force a run: `npx ts-node src/workflows/export-obsidian.ts` |
 | Want to force the scheduled job now | `launchctl kickstart -k gui/$(id -u)/com.selene.export-obsidian` |
 | A note shows under the wrong map | The category is assigned during note processing, not by this export. Uncategorized notes fall back to **Daily Systems**. Re-processing the note (upstream) is what changes its category. |
+| My hand-edits to a note page disappeared | Expected — `Selene/Notes/` pages are regenerated whenever the note's content changes. Don't edit them directly; they're output, not source. |
+| Notes are missing constellation (`parent::`) links | Run the export; it now backfills links for the whole corpus, not just newly captured notes. After a large backfill, check the log for a `deferred` count — if non-zero, a second run finishes the rest. |
 
 ## Related
 
 - Design docs in `docs/plans/`:
   - `docs/plans/2026-03-21-obsidian-librarian-design.md` (the curated vault: notes, topic indexes, dashboard)
   - `docs/plans/2026-03-21-obsidian-moc-design.md` (the eight fixed categories, Maps of Content, and code-generated dashboard)
+  - `docs/plans/2026-05-30-idempotent-obsidian-reexport-design.md` (the content-hash re-export that makes the vault self-healing)
 - Connected guides:
   - [Capturing notes](capturing-notes.md) (how notes get into Selene in the first place)
   - [Daily digest](daily-digest.md) (the daily summary, which also lands in the vault)
+  - [Knowledge constellation](knowledge-constellation.md) (the `parent::` links this export now backfills across the whole corpus)
 
 ---
-*Last updated: 2026-05-25*
+*Last updated: 2026-05-30*
