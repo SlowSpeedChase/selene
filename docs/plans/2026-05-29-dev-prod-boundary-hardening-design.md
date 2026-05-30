@@ -166,3 +166,68 @@ documented prod-down recovery procedure ([[project_prod_dev_split]]).
    documented temporary settings edit? an env flag the hook respects?).
 4. **`settings.local.json` cleanup blast radius:** verify removing the prod-read allows doesn't
    break a dev script that legitimately shares a path prefix.
+
+---
+
+## Refinement — content-aware boundary (2026-05-29, post-review)
+
+**Trigger:** during the roadmap review the operator clarified the boundary they actually want:
+
+> "I recognize value in Claude being able to see that new columns are added correctly, do
+> aggregated status, check for completeness, etc — but I don't love actual notes going into it."
+
+That is a **content-vs-structure** line *inside the same prod DB path*, which collides with
+Workstream B mechanism 2 as originally written ("block **by path, not by parsing SQL**").
+A pure path-block is all-or-nothing: it would also kill the `.schema` / `PRAGMA` / `COUNT` /
+`GROUP BY` / coverage checks the operator wants to keep. But teaching the hook to tell a
+content-`SELECT` from a row-count by parsing arbitrary SQL is exactly the fragility the
+original design rejected — and rightly so.
+
+### Resolution: keep the robust path-block, add ONE sanctioned read-only hole
+
+Do **not** parse SQL. Instead:
+
+1. **Raw prod access stays path-blocked** — ad-hoc `sqlite3`/`ts-node`/`node -e`/`cat`/`grep`
+   against `~/selene-data/…` (and the vault) is denied, unconditionally, by path. Robust.
+2. **Add `scripts/selene-inspect.ts`** — a read-only inspector that is the *only* sanctioned way
+   to look at the prod DB, and is **allowlisted** by exact command. Its design invariant is
+   structural: it has **no code path that projects a content-bearing column** (`content`,
+   `title`, `essence`, `transcript`, `summary`, raw note text). Every query it can run returns
+   only schema, counts, distributions, or coverage numbers. So "no note text reaches Claude's
+   context" is guaranteed by the *tool's surface area*, not by inspecting each command.
+
+This gives the operator exactly the three uses they named, with note text provably fenced out:
+
+| Operator need | `selene-inspect` subcommand | Returns (never content) |
+|---|---|---|
+| "new columns added correctly" | `schema [table]` | `PRAGMA table_info` / `.schema` — column names, types, nullability |
+| "aggregated status" | `counts` | row counts per table; processed vs. unprocessed; per-category counts |
+| "check for completeness" | `coverage` | # notes missing category / essence / embedding; cluster + multi-membership stats; test_run leakage |
+
+### Guard logic (still "deny by path", with an allowlist)
+A PreToolUse **Bash** hook denies (`exit 2`) any command that references a prod-data path
+**unless** it matches the allowlist:
+- `scripts/selene-inspect.ts` (the sanctioned read-only inspector)
+- operational scripts: `deploy-prod.sh`, `rollback-prod.sh`, `install-prod.sh`,
+  `deploy-watch.sh`, `install-launchd.sh`, `uninstall-launchd.sh`
+- file-level snapshot ops that move bytes without surfacing them to Claude
+  (`sqlite3 … ".backup …"`, `cp` of the DB file) — content never enters context
+- the clustering rollout scripts (`backfill-categories.ts`, the one-shot synthesis rebuild)
+- health/log: `curl …/health`, `tail`/`log show` on prod logs
+
+**Substring trap (load-bearing):** the discriminator matches `selene-data/` (prod) and must
+**exclude** `selene-data-dev/` (dev). `selene-data/` is *not* a substring of `selene-data-dev/`
+(the char after `data` is `-`, not `/`) — anchor on that boundary.
+
+**Override for incident recovery:** the hook respects an env escape hatch
+(`SELENE_GUARD_OFF=1`) so the operator can deliberately lift it during a documented prod-down
+procedure; absent that var, the guard is always on. Documented in the releases guide.
+
+### Acceptance criteria (supersede/extend Workstream B's)
+- [ ] `sqlite3 ~/selene-data/selene.db "SELECT content …"` → **denied**.
+- [ ] `npx ts-node scripts/selene-inspect.ts coverage` → **allowed**, prints only counts/coverage.
+- [ ] `selene-inspect` has no branch that selects a content column (asserted by a unit test).
+- [ ] Dev DB (`~/selene-data-dev/…`) commands → **unaffected**.
+- [ ] Operational + rollout + snapshot scripts → **allowed**; `SELENE_GUARD_OFF=1` lifts the guard.
+- [ ] Permissive prod-read allow-rules removed from `settings.local.json`; `permissions.deny`
+      added to `settings.json` for `Read`/`Edit`/`Write` on the prod DB + vault.
