@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync, readFileSync, readdirSync } from 'fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { reconcileExportedNotes } from './obsidian-render';
@@ -72,6 +72,22 @@ describe('reconcileExportedNotes', () => {
     // A rewrite would be byte-identical to a skip, so only the counts discriminate.
     expect(second.written).toBe(0);
     expect(second.skipped).toBe(1);
+  });
+
+  it('rewrites a note whose vault file was deleted out of band, even though its hash is unchanged', () => {
+    const db = seed();
+    const dir = vault();
+    reconcileExportedNotes(db, dir);
+    const file = join(dir, readdirSync(dir)[0]);
+
+    // Simulate an out-of-band delete (iCloud conflict, vault restore, accidental rm).
+    rmSync(file);
+    expect(existsSync(file)).toBe(false);
+
+    // Self-healing: the DB hash still matches, but the file is gone, so it must be recreated.
+    const after = reconcileExportedNotes(db, dir);
+    expect(after.written).toBe(1);
+    expect(existsSync(file)).toBe(true);
   });
 
   it('defers changed notes past the per-run write cap for the next run', () => {

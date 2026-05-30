@@ -98,6 +98,17 @@ hashes via the `parent::` block, so MOCs will refresh on the next run.
 Add a small step that removes vault subfolders the exporter no longer writes (e.g. a stale `Topics/`).
 Out of scope for the core fix; list as a follow-up so future scheme changes self-clean.
 
+### Known follow-up: note filename collisions (deferred)
+
+`noteFilename` is `YYYY-MM-DD-<slug>.md`. Two notes with the same date and slugged title map to the
+same path; the second overwrites the first. This is **pre-existing** (the old write-once exporter
+derived filenames identically) and not introduced by this change — but the idempotent model masks it
+harder: both notes persist matching hashes, so neither self-corrects. Fixing it means disambiguating
+the filename (e.g. appending the note id), which **re-paths the entire vault on deploy** (every note
+rewritten to a new filename, old files orphaned) and needs an orphan-cleanup story — a separate,
+breaking migration. Deferred deliberately; do not bundle into this bugfix. (Surfaced in code review,
+2026-05-30.)
+
 ---
 
 ## Implementation Notes

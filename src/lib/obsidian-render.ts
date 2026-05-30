@@ -185,8 +185,12 @@ export function reconcileExportedNotes(
       const parentClusters = noteClusters.get(note.id) ?? [];
       const markdown = renderNoteMarkdown(note, parentClusters);
       const hash = exportHash(markdown);
+      const filePath = join(notesDir, noteFilename(note));
 
-      if (hash === note.obsidian_export_hash) {
+      // Skip only when the rendered output is unchanged AND the file is actually present. The
+      // existsSync guard keeps "self-healing" honest: an out-of-band delete (iCloud conflict,
+      // vault restore) flips a matching hash back into a rewrite instead of being skipped forever.
+      if (hash === note.obsidian_export_hash && existsSync(filePath)) {
         skipped++;
         continue;
       }
@@ -197,7 +201,7 @@ export function reconcileExportedNotes(
         continue;
       }
 
-      writeFileSync(join(notesDir, noteFilename(note)), markdown, 'utf-8');
+      writeFileSync(filePath, markdown, 'utf-8');
       updateStmt.run(hash, new Date().toISOString(), note.id);
       written++;
     } catch {

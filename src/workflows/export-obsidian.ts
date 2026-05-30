@@ -327,7 +327,10 @@ export async function exportObsidian(noteId?: number): Promise<{
   }
 
   // Phase 2: Generate MOCs and dashboard
-  // MOCs only regenerate when new notes are exported, but dashboard always regenerates
+  // MOCs only regenerate when notes were (re)written this run, but dashboard always regenerates.
+  // Note: during a multi-run backfill the first run flags only the first ~writeCap notes as
+  // exported, so that run's MOCs are built against a partial corpus and complete on the next run
+  // once the backfill drains — self-correcting, expected for a one-time drain.
   let phase2 = { mocs: 0, dashboard: false };
   try {
     phase2 = await generateMocs(vaultPath, phase1.exported > 0);
