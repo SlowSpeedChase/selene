@@ -19,6 +19,15 @@
             "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -qE '(\\.env$|\\.env\\.|selene\\.db)'; then echo 'BLOCKED: Cannot edit .env files or production database' >&2; exit 2; fi"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/prod-data-guard.sh"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -68,6 +77,16 @@
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(/Users/chaseeasterling/selene-data/**)",
+      "Edit(/Users/chaseeasterling/selene-data/**)",
+      "Write(/Users/chaseeasterling/selene-data/**)",
+      "Read(/Users/chaseeasterling/Library/Mobile Documents/iCloud~md~obsidian/Documents/Selene/**)",
+      "Edit(/Users/chaseeasterling/Library/Mobile Documents/iCloud~md~obsidian/Documents/Selene/**)",
+      "Write(/Users/chaseeasterling/Library/Mobile Documents/iCloud~md~obsidian/Documents/Selene/**)"
     ]
   }
 }

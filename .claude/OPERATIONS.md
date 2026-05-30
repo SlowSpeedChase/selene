@@ -511,6 +511,41 @@ sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM processed_notes;"
 sqlite3 "$DEV_DB" "SELECT value FROM _selene_metadata WHERE key='environment';"
 ```
 
+### Prod-data boundary (Claude-out-of-prod guard)
+
+Real notes live **only** in prod (`~/selene-data/` + the iCloud Obsidian vault). To keep that
+private journal content out of Claude's context, two mechanisms are enforced (see
+`docs/plans/2026-05-29-dev-prod-boundary-hardening-design.md`):
+
+- **`permissions.deny`** (in `.claude/settings.json`) blocks the `Read`/`Edit`/`Write` tools on
+  the prod DB dir and the prod vault.
+- **PreToolUse Bash hook** (`.claude/hooks/prod-data-guard.sh`) blocks any Bash command that
+  references a prod data path, *unless* it's allowlisted (the inspector, `.backup` snapshots,
+  `deploy-prod.sh`/`rollback-prod.sh`/`install-prod.sh`). Matched by path — `selene-data/` is
+  prod, `selene-data-dev/` is dev (the trailing-slash boundary is load-bearing).
+
+**Inspect prod WITHOUT reading notes** — the sanctioned, content-free path:
+
+```bash
+npx ts-node scripts/selene-inspect.ts schema [table]   # column names / types (verify migrations)
+npx ts-node scripts/selene-inspect.ts counts           # row counts, processed/unprocessed, test_run leakage
+npx ts-node scripts/selene-inspect.ts coverage         # missing category/essence/embedding, clusters, multi-membership
+```
+
+(`selene-inspect` opens a **read-only** connection and has no code path that selects a
+content-bearing column — that invariant is unit-tested in `src/lib/inspect.test.ts`.)
+
+**Override for incident recovery / known-safe false positives:** the guard matches by path, so
+a command that merely *mentions* `selene-data/` (editing settings, grepping, writing docs) is
+also blocked even though it reads no notes. When you know a command is safe — or a real prod
+incident requires raw access — prefix it:
+
+```bash
+SELENE_GUARD_OFF=1 sqlite3 ~/selene-data/selene.db "SELECT ..."   # deliberate, logged by intent
+```
+
+Test the guard after changing it: `bash .claude/hooks/test-prod-data-guard.sh` (deny/allow matrix).
+
 ---
 
 ## Related Context Files
