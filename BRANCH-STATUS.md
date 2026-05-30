@@ -40,7 +40,7 @@ separate diagnostic spike into why `note_connections` is empty despite a wired w
 - [x] Conflict check completed (rebased on main incl. clustering merge; reads synthesis tables read-only)
 - [x] Dependencies identified and noted
 - [x] Branch and worktree created
-- [ ] Implementation plan written (superpowers:writing-plans)
+- [x] Implementation plan written (superpowers:writing-plans) → docs/plans/2026-05-29-knowledge-constellation-phase-a-plan.md
 
 ### Dev
 - [ ] Tests written first (superpowers:test-driven-development)
