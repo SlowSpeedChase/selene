@@ -25,13 +25,18 @@ async function buildApp(db: DB): Promise<FastifyInstance> {
 }
 
 describe('isLanIp', () => {
-  it('allows private/loopback, denies public', () => {
+  it('allows private/loopback + Tailscale, denies public', () => {
     expect(isLanIp('127.0.0.1')).toBe(true);
     expect(isLanIp('192.168.1.50')).toBe(true);
     expect(isLanIp('10.0.0.4')).toBe(true);
     expect(isLanIp('172.16.5.5')).toBe(true);
+    // Tailscale tailnet (CGNAT 100.64.0.0/10) — e.g. the Mac mini at 100.111.6.10.
+    expect(isLanIp('100.111.6.10')).toBe(true);
+    expect(isLanIp('100.64.0.1')).toBe(true);
+    expect(isLanIp('100.127.255.255')).toBe(true);
     expect(isLanIp('8.8.8.8')).toBe(false);
     expect(isLanIp('172.32.0.1')).toBe(false);
+    expect(isLanIp('100.128.0.1')).toBe(false); // just outside the /10
   });
 });
 

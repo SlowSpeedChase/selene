@@ -554,9 +554,11 @@ the category grid, on-this-day, a note to revisit, and the due-for-review count.
 `/pkm/categories`, `/pkm/concepts`, `/pkm/notes/:id`, `/pkm/essences`, `/pkm/review/today`,
 `/pkm/on-this-day`, `/pkm/random`.
 
-**Privacy:** LAN-only — a preHandler rejects any non-private/loopback client IP with 403. No auth
-(reduce friction). Don't expose port 5678 beyond your LAN. Every query gates on `test_run IS NULL`,
-so test notes never appear. Viewing a note records a resurfacing signal in `pkm_review_state`.
+**Privacy:** private-network only — a preHandler rejects any client IP outside loopback, RFC1918
+(`10/8`, `192.168/16`, `172.16–31`), or your Tailscale tailnet (`100.64.0.0/10`) with 403, so you
+can reach it over Tailscale when away. No auth (reduce friction). Don't port-forward 5678 to the
+public internet. Every query gates on `test_run IS NULL`, so test notes never appear. Viewing a
+note records a resurfacing signal in `pkm_review_state`.
 
 ---
 

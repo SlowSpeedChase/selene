@@ -28,14 +28,14 @@ Spaced resurfacing: viewing a note calls `markSurfaced('note', id)`; the review 
 
 - **Review window:** `REVIEW_WINDOW_DAYS` in `src/lib/pkm-db.ts` (default 7).
 - **Essence page size:** `PAGE_SIZE` in `src/routes/pkm.ts` (default 50).
-- **LAN ranges:** `isLanIp()` in `src/routes/pkm.ts` allows loopback + `10/8`, `192.168/16`, `172.16–31`.
+- **Allowed networks:** `isLanIp()` in `src/routes/pkm.ts` allows loopback + `10/8`, `192.168/16`, `172.16–31`, and your **Tailscale** tailnet (`100.64.0.0/10`) — so you can browse over Tailscale when away from home, not just on local WiFi.
 - **Categories** come from the synthesis pipeline (the 8 controlled categories); concepts/essences from `process-llm`/`distill-essences`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| `403 PKM browse is LAN-only` | You're hitting it from a non-private IP. Use the Mac's LAN address from a device on the same network; don't port-forward 5678. |
+| `403 PKM browse is LAN-only` | You're hitting it from an IP outside loopback/RFC1918/Tailscale. Use the Mac's local WiFi address (same network) or its Tailscale address over Tailscale; don't port-forward 5678 to the public internet. |
 | A category/concept page is empty | Those notes may be unclassified or pre-date categorization — run the category backfill / let the pipeline catch up. |
 | A page errors on one note | Concept JSON is guarded (`json_valid`), so a bad row degrades to empty rather than crashing — check that note's `processed_notes.concepts`. |
 | Page not found at `/pkm/` | Confirm the server is running (`curl -s localhost:5678/health`) and on a build that includes the PKM routes. |

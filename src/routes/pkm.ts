@@ -21,6 +21,9 @@ export function isLanIp(ip: string): boolean {
   if (/^10\./.test(v4)) return true;
   if (/^192\.168\./.test(v4)) return true;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(v4)) return true;
+  // Tailscale tailnet (CGNAT 100.64.0.0/10) — second octet 64–127. This is the
+  // trusted, encrypted way the iPad reaches the Mac remotely.
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(v4)) return true;
   return false;
 }
 
