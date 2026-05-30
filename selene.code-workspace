@@ -1,7 +1,37 @@
 {
 	"folders": [
 		{
+			"name": "selene",
 			"path": "."
+		},
+		{
+			"name": "SeleneMarkup",
+			"path": "../SeleneMarkup"
+		},
+		{
+			"name": "Lumen",
+			"path": "../Lumen"
 		}
-	]
+	],
+	"settings": {
+		"editor.formatOnSave": true,
+		"files.exclude": {
+			"**/.DS_Store": true,
+			"**/node_modules": true,
+			"**/.build": true,
+			"**/dist": true
+		},
+		"search.exclude": {
+			"**/node_modules": true,
+			"**/.build": true,
+			"**/dist": true,
+			"**/*.db": true,
+			"**/logs": true
+		},
+		"files.watcherExclude": {
+			"**/node_modules/**": true,
+			"**/.build/**": true,
+			"**/dist/**": true
+		}
+	}
 }

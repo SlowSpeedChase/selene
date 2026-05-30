@@ -57,6 +57,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Local-only notes + scripts (machine/setup specific, never committed)
+*.local.md
+*.local.sh
+
 # Logs and backups
 logs/
 *.log
