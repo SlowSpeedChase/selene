@@ -7,6 +7,7 @@ module.exports = {
   testMatch: [
     '**/src/lib/category-clusters.test.ts',
     '**/src/lib/cosine.test.ts',
+    '**/src/lib/db-config.test.ts',
     '**/src/lib/inspect.test.ts',
     '**/src/lib/synthesis-db.test.ts',
     '**/src/lib/synthesis-digest.test.ts',

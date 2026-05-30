@@ -1,13 +1,15 @@
 import Database, { Database as DatabaseType } from 'better-sqlite3';
 import { config } from './config';
 import { logger } from './logger';
+import { applyConnectionPragmas } from './db-config';
 import type { CalendarEvent } from '../types';
 
 // Initialize database connection
 export const db: DatabaseType = new Database(config.dbPath);
 
-// Enable WAL mode for better concurrency
-db.pragma('journal_mode = WAL');
+// WAL + busy_timeout: concurrent agents (process-llm every 5 min vs. the nightly
+// synthesize-topics rebuild) must wait for a lock, not throw SQLITE_BUSY.
+applyConnectionPragmas(db);
 
 logger.info({ dbPath: config.dbPath, env: config.env }, 'Database connected');
 
