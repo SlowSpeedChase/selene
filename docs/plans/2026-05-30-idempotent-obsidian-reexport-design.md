@@ -1,6 +1,6 @@
 # Idempotent Obsidian Re-Export Design
 
-**Status:** In Progress (implementation complete on `feat/idempotent-obsidian-reexport`; merge held for operator review)
+**Status:** Done (merged to main 2026-05-30, `f185580`)
 **Created:** 2026-05-30
 **Updated:** 2026-05-30
 
