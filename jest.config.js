@@ -6,6 +6,8 @@ module.exports = {
   // Existing tests use a custom runTests() + assert pattern and are excluded.
   testMatch: [
     '**/src/lib/category-clusters.test.ts',
+    '**/src/lib/constellation.test.ts',
+    '**/src/lib/constellation.db.test.ts',
     '**/src/lib/cosine.test.ts',
     '**/src/lib/db-config.test.ts',
     '**/src/lib/inspect.test.ts',

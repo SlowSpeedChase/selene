@@ -44,6 +44,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [Interactive worksheets](guides/features/interactive-worksheets.md) — daily review form on your iPad: write freehand, Selene OCRs and saves, then shows where you've mentioned the same things before.
 - [Note annotation](guides/features/note-annotation.md) — browse your notes by topic on the iPad, then hand-write a follow-up below one with the Apple Pencil; Selene OCRs it and files it as a new linked note.
 - [Synthesis layer](guides/features/synthesis-layer.md) — topics you keep circling, when your understanding shifts, and unexpected connections between old and new notes — delivered in the morning digest automatically.
+- [Knowledge constellation](guides/features/knowledge-constellation.md) — a fly-through visual map of your notes in Obsidian (via ExcaliBrain), with each note under its topic cluster(s).
 
 ---
 

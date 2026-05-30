@@ -3,6 +3,7 @@ import { join } from 'path';
 import { createWorkflowLogger, db, config, generate, isAvailable } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { MOC_PROMPT, CATEGORIES } from '../lib/prompts';
+import { loadNoteClusters, buildParentFields, exportClusterNotes } from '../lib/constellation';
 
 const log = createWorkflowLogger('export-obsidian');
 
@@ -99,6 +100,9 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
 
   log.info({ noteCount: notes.length }, 'Found notes for export');
 
+  // Constellation: note id -> its topic cluster name(s), loaded once for the batch.
+  const noteClusters = loadNoteClusters(db);
+
   let exported = 0;
   let errors = 0;
 
@@ -151,6 +155,12 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
         links.push(`[[${concept}]]`);
       }
       parts.push(``, links.join(' '));
+
+      // Constellation: parent:: edges to this note's topic cluster(s) so ExcaliBrain
+      // renders cluster -> note (children) and note -> cluster (parent). One line per
+      // cluster the note belongs to (multi-membership safe).
+      const parentBlock = buildParentFields(noteClusters.get(note.id) ?? []);
+      if (parentBlock) parts.push(``, parentBlock);
 
       const markdown = parts.join('\n');
       const filePath = join(notesDir, filename);
@@ -409,6 +419,14 @@ export async function exportObsidian(noteId?: number): Promise<{
   // Phase 1: Export notes (always runs)
   const phase1 = exportNotes(vaultPath);
 
+  // Phase 1b: Constellation cluster index notes (regenerated each run; non-blocking).
+  let clusterNotes = 0;
+  try {
+    clusterNotes = exportClusterNotes(db, vaultPath);
+  } catch (err) {
+    log.error({ err: err as Error }, 'Cluster note export failed (non-blocking)');
+  }
+
   // Phase 2: Generate MOCs and dashboard
   // MOCs only regenerate when new notes are exported, but dashboard always regenerates
   let phase2 = { mocs: 0, dashboard: false };
@@ -421,6 +439,7 @@ export async function exportObsidian(noteId?: number): Promise<{
 
   const message = [
     `Exported ${phase1.exported} notes`,
+    clusterNotes > 0 ? `${clusterNotes} constellation notes` : null,
     phase2.mocs > 0 ? `${phase2.mocs} MOC pages` : null,
     phase2.dashboard ? 'dashboard updated' : null,
   ]
