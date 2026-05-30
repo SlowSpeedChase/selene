@@ -12,6 +12,8 @@ module.exports = {
     '**/src/lib/db-config.test.ts',
     '**/src/lib/inspect.test.ts',
     '**/src/lib/pkm-db.test.ts',
+    '**/src/lib/pkm-queries.test.ts',
+    '**/src/lib/pkm-render.test.ts',
     '**/src/lib/synthesis-db.test.ts',
     '**/src/lib/synthesis-digest.test.ts',
     '**/src/routes/notes.test.ts',
