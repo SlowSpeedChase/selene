@@ -1,7 +1,9 @@
 # Selene Project - Current Status
 
-**Last Updated:** 2026-05-28
-**Status:** Simplified Core | Agent Layer Active | Folio Delivery Workflows Active | Per-Feature User Guides Active | Interactive Worksheets Shipped | Synthesis Layer Shipped | Note Annotation (iPad) Shipped
+**Last Updated:** 2026-05-30
+**Status:** Simplified Core | Agent Layer Active | Synthesis Layer Shipped | Note Annotation (iPad) Shipped | Dev/Prod Boundary Hardened (guard + corpus) | Content Clustering Rolled Out (8 categories, multi-membership) | Knowledge Constellation Phase A Shipped | PKM Browse Dashboard Shipped (`/pkm/*`)
+
+> **2026-05-30 session:** Hardened the dev/prod boundary (Claude-out-of-prod guard + `selene-inspect` + designed dev corpus). Diagnosed a silent prod incident — the nightly `synthesize-topics` agent was crashing on `SQLITE_BUSY` (no `busy_timeout`), so content-clustering never rolled out; fixed (`db.ts` busy_timeout) and rolled out (prod: 83 old clusters → 8 content categories, multi-membership). Shipped Knowledge Constellation Phase A (`parent::` + `Constellation/` for ExcaliBrain) and the PKM browse dashboard (`/pkm/*`, Tracks 1+2). All deployed; 230 tests. Remaining: PKM Track 3 (exporter slim upgrade), Constellation Phase B (`friend::`, gated on `note_connections` spike), and the operator's visual ExcaliBrain check.
 
 ---
 
