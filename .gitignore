@@ -30,6 +30,10 @@ vault-test/*
 # Git worktrees
 .worktrees/
 
+# Transient Claude session artifacts
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
 # Local n8n data (credentials, settings, execution history)
 .n8n-local/
 
