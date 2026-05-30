@@ -56,7 +56,7 @@ Branch exists, actively being worked on.
 
 | Date | Document | Branch | Notes |
 |------|----------|--------|-------|
-| 2026-05-29 | [2026-05-29-knowledge-constellation-design.md](2026-05-29-knowledge-constellation-design.md) | `feat/knowledge-constellation` | **Phase A** (data-ready): teach `export-obsidian.ts` to emit `parent::` Dataview fields from existing `topic_clusters`/`topic_note_links` so ExcaliBrain renders a cluster→note hierarchy you fly through in Obsidian. Validated by feel-test on real notes. Phase B (note↔note `friend::` edges) gated on a diagnostic spike into why `note_connections` is empty. Research: [2026-05-29-excalidraw-excalibrain-research.md](2026-05-29-excalidraw-excalibrain-research.md). |
+| 2026-05-29 | [2026-05-29-knowledge-constellation-design.md](2026-05-29-knowledge-constellation-design.md) | `feat/knowledge-constellation` | **Phase A** (data-ready): teach `export-obsidian.ts` to emit `parent::` Dataview fields from existing `topic_clusters`/`topic_note_links` so ExcaliBrain renders a cluster→note hierarchy you fly through in Obsidian. Validated by feel-test on real notes. Phase B (note↔note `friend::` edges) gated on a diagnostic spike into why `note_connections` is empty. Plan: [2026-05-29-knowledge-constellation-phase-a-plan.md](2026-05-29-knowledge-constellation-phase-a-plan.md). Research: [2026-05-29-excalidraw-excalibrain-research.md](2026-05-29-excalidraw-excalibrain-research.md). |
 
 ---
 
