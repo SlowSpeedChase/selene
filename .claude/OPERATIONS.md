@@ -546,6 +546,18 @@ SELENE_GUARD_OFF=1 sqlite3 ~/selene-data/selene.db "SELECT ..."   # deliberate, 
 
 Test the guard after changing it: `bash .claude/hooks/test-prod-data-guard.sh` (deny/allow matrix).
 
+### Browse on iPad (PKM dashboard)
+
+Read-only HTML browse layer served by the main server under `/pkm/*` (no separate process/port).
+Open `http://<mac-lan-ip>:5678/pkm/` in iPad Safari — home shows recent essences, top concepts,
+the category grid, on-this-day, a note to revisit, and the due-for-review count. Pages:
+`/pkm/categories`, `/pkm/concepts`, `/pkm/notes/:id`, `/pkm/essences`, `/pkm/review/today`,
+`/pkm/on-this-day`, `/pkm/random`.
+
+**Privacy:** LAN-only — a preHandler rejects any non-private/loopback client IP with 403. No auth
+(reduce friction). Don't expose port 5678 beyond your LAN. Every query gates on `test_run IS NULL`,
+so test notes never appear. Viewing a note records a resurfacing signal in `pkm_review_state`.
+
 ---
 
 ## Related Context Files

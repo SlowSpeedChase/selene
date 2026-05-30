@@ -139,6 +139,52 @@ export function getRandomEssence(db: DB): EssenceRow | undefined {
     .get() as EssenceRow | undefined;
 }
 
+export interface NoteDetailRow {
+  id: number;
+  title: string;
+  content: string;
+  essence: string | null;
+  concepts: string | null;
+  category: string | null;
+  primary_theme: string | null;
+}
+
+export function getNoteDetail(db: DB, id: number): NoteDetailRow | undefined {
+  return db
+    .prepare(
+      `SELECT rn.id, rn.title, rn.content, pn.essence, pn.concepts, pn.category, pn.primary_theme
+       FROM raw_notes rn
+       JOIN processed_notes pn ON pn.raw_note_id = rn.id
+       WHERE rn.id = ? AND ${baseNoteFilter()}`
+    )
+    .get(id) as NoteDetailRow | undefined;
+}
+
+export function getRandomNoteId(db: DB): number | undefined {
+  const row = db
+    .prepare(
+      `SELECT rn.id FROM raw_notes rn
+       JOIN processed_notes pn ON pn.raw_note_id = rn.id
+       WHERE ${baseNoteFilter()} ORDER BY RANDOM() LIMIT 1`
+    )
+    .get() as { id: number } | undefined;
+  return row?.id;
+}
+
+export function getNoteSummariesByIds(db: DB, ids: number[]): NoteSummary[] {
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  return db
+    .prepare(
+      `SELECT rn.id, rn.title, rn.created_at, pn.essence, pn.primary_theme, pn.category
+       FROM raw_notes rn
+       JOIN processed_notes pn ON pn.raw_note_id = rn.id
+       WHERE rn.id IN (${placeholders}) AND ${baseNoteFilter()}
+       ORDER BY rn.created_at DESC`
+    )
+    .all(...ids) as NoteSummary[];
+}
+
 export function getEssences(db: DB, limit: number, offset: number): EssenceRow[] {
   return db
     .prepare(

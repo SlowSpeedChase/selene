@@ -45,6 +45,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [Note annotation](guides/features/note-annotation.md) — browse your notes by topic on the iPad, then hand-write a follow-up below one with the Apple Pencil; Selene OCRs it and files it as a new linked note.
 - [Synthesis layer](guides/features/synthesis-layer.md) — topics you keep circling, when your understanding shifts, and unexpected connections between old and new notes — delivered in the morning digest automatically.
 - [Knowledge constellation](guides/features/knowledge-constellation.md) — a fly-through visual map of your notes in Obsidian (via ExcaliBrain), with each note under its topic cluster(s).
+- [PKM browse (iPad dashboard)](guides/features/pkm-browse.md) — a read-only web dashboard at `/pkm/` you open on the iPad: browse by category/concept, skim essences, on-this-day, and spaced review.
 
 ---
 

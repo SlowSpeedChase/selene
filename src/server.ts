@@ -1,11 +1,12 @@
 import Fastify from 'fastify';
-import { config, logger } from './lib';
+import { config, logger, db } from './lib';
 import { ingest } from './workflows/ingest';
 import { exportObsidian } from './workflows/export-obsidian';
 import { agentRoutes } from './routes/agents';
 import { dashboardRoutes } from './routes/dashboard';
 import { notesRoutes } from './routes/notes';
 import { worksheetRoutes } from './routes/worksheets';
+import { pkmRoutes } from './routes/pkm';
 import type { IngestInput, WebhookResponse } from './types';
 
 const server = Fastify({
@@ -85,6 +86,8 @@ server.register(agentRoutes);
 server.register(dashboardRoutes);
 server.register(notesRoutes);
 server.register(worksheetRoutes);
+// PKM browse dashboard — LAN-only HTML pages under /pkm/* (registered after /health + /webhook).
+server.register(pkmRoutes(db), { prefix: '/pkm' });
 
 // ---------------------------------------------------------------------------
 // Start server
