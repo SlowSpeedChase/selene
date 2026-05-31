@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { parseSchedule, parseMapComment, renderWorkflowTable, WorkflowRow, injectGenerated } from './system-map';
+import { parseSchedule, parseMapComment, renderWorkflowTable, WorkflowRow, injectGenerated, buildRow } from './system-map';
 
 describe('parseSchedule', () => {
   it('humanizes StartInterval seconds', () => {
@@ -66,5 +66,16 @@ describe('injectGenerated', () => {
   });
   it('throws if markers are missing', () => {
     expect(() => injectGenerated('no markers here', 'X')).toThrow();
+  });
+});
+
+describe('buildRow', () => {
+  it('prefers plist schedule, falls back to @map trigger, then dash', () => {
+    const meta = { purpose: 'P', reads: 'a', writes: 'b' };
+    expect(buildRow('export-obsidian', meta, 'hourly').schedule).toBe('hourly');
+    expect(buildRow('ingest', { ...meta, trigger: 'webhook' }, null).schedule).toBe('webhook');
+    expect(buildRow('mystery', {}, null)).toEqual({
+      name: 'mystery', schedule: '—', purpose: '—', reads: '—', writes: '—',
+    });
   });
 });

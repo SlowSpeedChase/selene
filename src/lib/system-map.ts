@@ -65,3 +65,13 @@ export function injectGenerated(doc: string, generated: string): string {
   const after = doc.slice(end);
   return `${before}\n${generated}\n${after}`;
 }
+
+export function buildRow(name: string, meta: MapMeta, plistSchedule: string | null): WorkflowRow {
+  return {
+    name,
+    schedule: plistSchedule ?? meta.trigger ?? '—',
+    purpose: meta.purpose ?? '—',
+    reads: meta.reads ?? '—',
+    writes: meta.writes ?? '—',
+  };
+}
