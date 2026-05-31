@@ -1,0 +1,33 @@
+#!/bin/bash
+# pre-push: refuse to push a stale system map.
+#
+# docs/SYSTEM-MAP.md is generated from src/workflows/*.ts + launchd plists.
+# The session-end reminder only catches drift in *uncommitted* changes, so a
+# workflow edited AND committed within one session slips past it. This hook
+# closes that gap: it runs the generator's --check on every push and blocks
+# the push if the committed map no longer matches the code.
+#
+# Bypass (not recommended): git push --no-verify
+
+# Git runs hooks from the repo root, so relative paths resolve here.
+# Only meaningful on branches that actually contain the generator.
+if [ ! -f scripts/gen-system-map.ts ]; then
+  exit 0
+fi
+
+if ! npx ts-node scripts/gen-system-map.ts --check >/dev/null 2>&1; then
+  echo "" >&2
+  echo "✗ Push blocked: docs/SYSTEM-MAP.md is OUT OF DATE." >&2
+  echo "  The workflow inventory no longer matches src/workflows + launchd plists." >&2
+  echo "" >&2
+  echo "  Fix:" >&2
+  echo "    npx ts-node scripts/gen-system-map.ts" >&2
+  echo "    git add docs/SYSTEM-MAP.md && git commit -m 'docs(system-map): regenerate'" >&2
+  echo "    git push          # try again" >&2
+  echo "" >&2
+  echo "  Bypass (not recommended):  git push --no-verify" >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

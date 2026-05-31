@@ -1,8 +1,23 @@
 # Living System Map — a codebase-comprehension system that can't go stale
 
-**Status:** Ready
+**Status:** Done (core shipped 2026-05-31; pre-push enforcement follow-up 2026-05-31)
 **Date:** 2026-05-31
 **Topic:** documentation, comprehension, drift-prevention, codegen, hooks
+
+---
+
+## Follow-up (2026-05-31): pre-push enforcement
+
+The session-end Stop hook is a *best-effort* reminder — it keys on the working
+tree (`git status`), so a workflow edited **and committed** within one session
+leaves a clean tree and never triggers it. To close that gap, a **pre-push git
+hook** (`scripts/hooks/pre-push`, activated via the existing relative-symlink
+convention `.git/hooks/pre-push → ../../scripts/hooks/pre-push`) runs
+`gen-system-map.ts --check` on every push and **blocks the push** if the
+committed map is stale. `git push --no-verify` is the deliberate bypass. This
+turns the guarantee from "you'll probably be reminded" into "you can't ship
+drift to origin." Always-run (not scoped to changed files) for robustness; the
+~2-3s ts-node cost per push is negligible.
 
 ---
 
