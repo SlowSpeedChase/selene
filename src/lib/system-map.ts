@@ -19,3 +19,20 @@ export function parseSchedule(plistXml: string): string | null {
   }
   return null;
 }
+
+export interface MapMeta {
+  purpose?: string;
+  reads?: string;
+  writes?: string;
+  trigger?: string;
+}
+/** Harvest `// @map <key>: <value>` lines from the top of a workflow file. */
+export function parseMapComment(source: string): MapMeta {
+  const meta: MapMeta = {};
+  const re = /^\/\/\s*@map\s+(purpose|reads|writes|trigger):\s*(.+)$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source)) !== null) {
+    meta[m[1] as keyof MapMeta] = m[2].trim();
+  }
+  return meta;
+}

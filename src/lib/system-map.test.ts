@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { parseSchedule } from './system-map';
+import { parseSchedule, parseMapComment } from './system-map';
 
 describe('parseSchedule', () => {
   it('humanizes StartInterval seconds', () => {
@@ -18,5 +18,24 @@ describe('parseSchedule', () => {
   });
   it('returns null when no schedule key is present', () => {
     expect(parseSchedule(`<key>RunAtLoad</key><true/>`)).toBeNull();
+  });
+});
+
+describe('parseMapComment', () => {
+  it('extracts purpose, reads, writes, trigger', () => {
+    const src = [
+      '// @map purpose: Extract concepts, themes, energy',
+      '// @map reads: raw_notes',
+      '// @map writes: processed_notes',
+      '// @map trigger: webhook',
+      'import { foo } from "bar";',
+    ].join('\n');
+    expect(parseMapComment(src)).toEqual({
+      purpose: 'Extract concepts, themes, energy',
+      reads: 'raw_notes', writes: 'processed_notes', trigger: 'webhook',
+    });
+  });
+  it('returns empty fields when no @map comment present', () => {
+    expect(parseMapComment('import x from "y";')).toEqual({});
   });
 });
