@@ -29,18 +29,7 @@ NC='\033[0m'
 
 DEV_DB="$HOME/selene-data-dev/selene.db"
 
-# Verify dev environment
-if [ ! -f "$DEV_DB" ]; then
-  echo -e "${RED}Error: Dev database not found at $DEV_DB${NC}"
-  echo "Run: ./scripts/reset-dev-data.sh first"
-  exit 1
-fi
-
-ENV=$(sqlite3 "$DEV_DB" "SELECT value FROM _selene_metadata WHERE key='environment';")
-if [ "$ENV" != "development" ]; then
-  echo -e "${RED}Error: Database environment is '$ENV', expected 'development'${NC}"
-  exit 1
-fi
+# --- functions (defined before any env check so the script is sourceable by tests) ---
 
 # Count helper that tolerates not-yet-created tables/columns. The synthesis tables
 # (topic_clusters, note_connections, ...) and processed_notes.essence are migrated
@@ -84,21 +73,46 @@ run_step() {
 }
 
 # Repeatedly run a per-batch workflow until the queried backlog reaches zero.
-# Guarded against infinite loops: if a pass makes no progress (a note never
-# leaves the counted state — e.g. extraction keeps failing on it), stop rather
-# than spin forever.  drain <count-sql> <workflow-path> <label>
+#
+# Runs the workflow AT LEAST ONCE before checking the count. This is deliberate:
+# the gating column may not exist until the workflow's first run migrates it in
+# (distill-essences creates processed_notes.essence), so a pre-check would read 0
+# via safe_count and skip the very run that creates the column. After each pass
+# we re-count; stop when the backlog is empty OR a pass makes no progress (a note
+# that never leaves the counted state — e.g. extraction failing on it — would
+# otherwise spin forever). The no-progress check compares against the PREVIOUS
+# real post-run count, not the artificial pre-column 0.  drain <count-sql> <wf> <label>
 drain() {
-  local count_sql="$1" workflow_path="$2" label="$3" before after
-  while [ "$(safe_count "$count_sql")" -gt 0 ]; do
-    before=$(safe_count "$count_sql")
+  local count_sql="$1" workflow_path="$2" label="$3" before="" after
+  while true; do
     run_step "$label" "$workflow_path"
     after=$(safe_count "$count_sql")
-    if [ "$after" -ge "$before" ]; then
-      echo -e "${RED}No progress: ${after} item(s) still remaining after a pass — stopping to avoid an infinite loop.${NC}" >&2
+    if [ "$after" -eq 0 ]; then
       break
     fi
+    if [ -n "$before" ] && [ "$after" -ge "$before" ]; then
+      echo -e "${RED}No progress: ${after} item(s) remaining after a pass — stopping to avoid an infinite loop.${NC}" >&2
+      break
+    fi
+    before="$after"
   done
 }
+
+# Sourced by a test? stop here with the functions defined, before env checks + main.
+if [ "${DEV_BATCH_SOURCED:-}" = "1" ]; then return 0 2>/dev/null || exit 0; fi
+
+# --- env checks ---
+if [ ! -f "$DEV_DB" ]; then
+  echo -e "${RED}Error: Dev database not found at $DEV_DB${NC}"
+  echo "Run: ./scripts/reset-dev-data.sh first"
+  exit 1
+fi
+
+ENV=$(sqlite3 "$DEV_DB" "SELECT value FROM _selene_metadata WHERE key='environment';")
+if [ "$ENV" != "development" ]; then
+  echo -e "${RED}Error: Database environment is '$ENV', expected 'development'${NC}"
+  exit 1
+fi
 
 # Status-only mode
 if [ "${1:-}" = "--status" ]; then
