@@ -21,12 +21,27 @@ describe('initFactsSchema', () => {
     db.close();
   });
 
-  it('enforces NOT NULL on title/content/content_hash/created_at', () => {
+  it('enforces NOT NULL on each of title/content/content_hash/created_at', () => {
     const db = new Database(':memory:');
     initFactsSchema(db);
-    expect(() =>
-      db.prepare(`INSERT INTO captured_notes (title) VALUES ('x')`).run()
-    ).toThrow(); // content/content_hash/created_at are NOT NULL
+
+    const required = ['title', 'content', 'content_hash', 'created_at'] as const;
+    const values: Record<(typeof required)[number], string> = {
+      title: "'t'",
+      content: "'c'",
+      content_hash: "'h'",
+      created_at: "datetime('now')",
+    };
+
+    // For each required column, insert a row that supplies ALL required columns
+    // EXCEPT that one — each omission must independently violate NOT NULL.
+    for (const omit of required) {
+      const cols = required.filter((c) => c !== omit);
+      const sql = `INSERT INTO captured_notes (${cols.join(', ')}) VALUES (${cols
+        .map((c) => values[c])
+        .join(', ')})`;
+      expect(() => db.prepare(sql).run()).toThrow();
+    }
     db.close();
   });
 });
