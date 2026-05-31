@@ -52,3 +52,16 @@ export function renderWorkflowTable(rows: WorkflowRow[]): string {
     .join('\n');
   return `${header}\n${body}`;
 }
+
+const MARK_START = '<!-- GENERATED:workflows START -->';
+const MARK_END = '<!-- GENERATED:workflows END -->';
+export function injectGenerated(doc: string, generated: string): string {
+  const start = doc.indexOf(MARK_START);
+  const end = doc.indexOf(MARK_END);
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error('SYSTEM-MAP.md is missing the GENERATED:workflows markers');
+  }
+  const before = doc.slice(0, start + MARK_START.length);
+  const after = doc.slice(end);
+  return `${before}\n${generated}\n${after}`;
+}

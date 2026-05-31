@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { parseSchedule, parseMapComment, renderWorkflowTable, WorkflowRow } from './system-map';
+import { parseSchedule, parseMapComment, renderWorkflowTable, WorkflowRow, injectGenerated } from './system-map';
 
 describe('parseSchedule', () => {
   it('humanizes StartInterval seconds', () => {
@@ -50,5 +50,21 @@ describe('renderWorkflowTable', () => {
     expect(md.indexOf('ingest')).toBeLessThan(md.indexOf('process-llm'));
     expect(md).toContain('[ingest](../src/workflows/ingest.ts)');
     expect(md).toContain('| Workflow | Schedule | Reads | Writes | Purpose |');
+  });
+});
+
+describe('injectGenerated', () => {
+  const START = '<!-- GENERATED:workflows START -->';
+  const END = '<!-- GENERATED:workflows END -->';
+  it('replaces content between markers, preserving prose outside', () => {
+    const doc = `# Map\n\nHand-written intro.\n\n${START}\nOLD TABLE\n${END}\n\nHand-written outro.`;
+    const out = injectGenerated(doc, 'NEW TABLE');
+    expect(out).toContain('Hand-written intro.');
+    expect(out).toContain('Hand-written outro.');
+    expect(out).toContain('NEW TABLE');
+    expect(out).not.toContain('OLD TABLE');
+  });
+  it('throws if markers are missing', () => {
+    expect(() => injectGenerated('no markers here', 'X')).toThrow();
   });
 });
