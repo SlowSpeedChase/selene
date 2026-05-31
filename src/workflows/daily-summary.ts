@@ -1,3 +1,6 @@
+// @map purpose: LLM-summarize the past week's notes into an Obsidian daily note plus a condensed digest file
+// @map reads: raw_notes, processed_notes
+// @map writes: Obsidian vault (daily summary), digest .txt file
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { createWorkflowLogger, db, generate, isAvailable, config } from '../lib';

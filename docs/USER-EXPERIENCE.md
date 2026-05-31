@@ -180,6 +180,7 @@ tail -f logs/selene.log | npx pino-pretty
 This is for keeping Selene running, not for daily use:
 
 - [Releases (prod/dev split)](guides/features/releases.md) — develop in `~/selene`, ship to production by merging to `main` (auto-deploys, build-gated, with rollback). *(Activates after the one-time cutover.)*
+- [System map](guides/features/system-map.md) — one page (`docs/SYSTEM-MAP.md`) showing every workflow, its schedule, and what it reads/writes; generated from the code and drift-checked at session end.
 
 ---
 

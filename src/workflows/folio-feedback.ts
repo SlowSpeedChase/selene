@@ -1,3 +1,6 @@
+// @map purpose: Write Kindle-Scribe annotations back as markdown feedback files in each Folio project repo
+// @map reads: raw_notes, processed_notes
+// @map writes: Folio project feedback files, raw_notes (status_folio)
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';

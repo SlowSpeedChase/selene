@@ -1,3 +1,6 @@
+// @map purpose: Render processed notes into an Obsidian vault — note files, LLM Maps-of-Content & dashboard
+// @map reads: raw_notes, processed_notes, topic_clusters
+// @map writes: Obsidian vault, raw_notes (export hash)
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { createWorkflowLogger, db, config, generate, isAvailable } from '../lib';

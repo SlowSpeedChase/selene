@@ -1,3 +1,6 @@
+// @map purpose: OCR handwritten Kindle Scribe PDFs (Ollama vision) and ingest each as a note
+// @map reads: eink watch directory (PDFs)
+// @map writes: raw_notes (via ingest), eink archive + manifest
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { basename, dirname, join } from 'path';

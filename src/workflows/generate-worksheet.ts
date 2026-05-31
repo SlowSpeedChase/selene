@@ -1,3 +1,7 @@
+// @map purpose: Build the daily review worksheet and apply its answers (capture/acknowledge) for the iPad
+// @map reads: raw_notes (via injected route deps)
+// @map writes: raw_notes (new notes, via injected route deps)
+// @map trigger: server routes (GET /api/worksheets/today, POST /api/worksheets/:id/answers)
 import type {
   Worksheet,
   WorksheetSubmission,

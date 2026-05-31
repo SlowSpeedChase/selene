@@ -27,6 +27,7 @@ ADHD-focused knowledge management system using TypeScript workflows, SQLite, and
 
 | Task | Primary Context | Supporting Context |
 |------|-----------------|-------------------|
+| **See the whole system (live map)** | `@docs/SYSTEM-MAP.md` | `@docs/backend-block-diagrams.md` |
 | **Plan new work** | `@docs/plans/INDEX.md` | `@.claude/GITOPS.md` |
 | **Check roadmap** | `@docs/plans/INDEX.md` | — |
 | **Modify workflows** | `@src/workflows/` | `@.claude/OPERATIONS.md` |
@@ -119,15 +120,17 @@ src/
     context-builder.ts    # Tiered context assembly utility
     lancedb.ts        # LanceDB vector utilities
     prompts.ts        # LLM prompt templates
-  workflows/
+  workflows/            # CORE PIPELINE shown below — full live inventory + schedules + reads/writes: docs/SYSTEM-MAP.md
     ingest.ts             # Note ingestion (called by webhook)
     process-llm.ts        # LLM concept extraction
     distill-essences.ts   # Essence backfill + retry
     export-obsidian.ts    # LLM-curated Obsidian library (notes + topic indexes + dashboard)
     daily-summary.ts      # Daily summary generation
     send-digest.ts        # Apple Notes digest delivery
+    # ...and more (eink-ingest, voice-ingest, synthesize-topics, folio-feedback,
+    #    agent-manager, generate-worksheet) — see docs/SYSTEM-MAP.md for the live list
 
-launchd/
+launchd/                               # schedules below are illustrative — full live list: docs/SYSTEM-MAP.md
   com.selene.server.plist             # Webhook server (always running)
   com.selene.process-llm.plist        # Every 5 minutes
   com.selene.distill-essences.plist   # Every 5 minutes
@@ -331,10 +334,10 @@ selene/
 +-- src/                     # TypeScript source code
 |   +-- server.ts           # Fastify webhook server
 |   +-- lib/                # Shared utilities
-|   +-- workflows/          # Background processing scripts (6 active)
+|   +-- workflows/          # Background processing scripts (live list: docs/SYSTEM-MAP.md)
 |   +-- types/              # TypeScript type definitions
-+-- launchd/                 # macOS launch agent plists (6 active)
-+-- scripts/                 # Project utilities (6 active)
++-- launchd/                 # macOS launch agent plists (live list: docs/SYSTEM-MAP.md)
++-- scripts/                 # Project utilities (gen-system-map, install-launchd, cleanup-tests, ...)
 |   +-- CLAUDE.md           # Script documentation
 |   +-- install-launchd.sh  # Install launchd agents
 |   +-- cleanup-tests.sh    # Remove test data
@@ -411,6 +414,7 @@ selene/
 
 ## Version History
 
+- **2026-05-31**: Added the **living system map** (`docs/SYSTEM-MAP.md`) — a generated, drift-proof workflow inventory between this entry point and the deep block diagrams. CLAUDE.md no longer hard-codes workflow/launchd counts; it points at the generated map. A Stop-hook `--check` flags drift. See `docs/plans/2026-05-31-living-system-map-design.md`.
 - **2026-05-25**: Added per-feature user guides (`docs/guides/features/`) + consolidated hub (`docs/USER-EXPERIENCE.md`). User guides are now a mandatory part of feature wrap-up (Done criteria + GitOps `docs` stage).
 - **2026-03-21**: Codebase simplification - archived 11 workflows, SeleneChat/SeleneMobile, ~50 scripts. Core: 6 workflows, 6 launchd agents, 6 scripts.
 - **2026-03-01**: Renamed project from selene-n8n to selene (removed legacy n8n naming)

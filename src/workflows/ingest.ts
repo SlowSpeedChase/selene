@@ -1,3 +1,7 @@
+// @map purpose: Capture a note — dedupe by content hash, store it, link a calendar event
+// @map reads: raw_notes (dedup)
+// @map writes: raw_notes
+// @map trigger: webhook (POST /webhook/api/drafts); also called directly by eink-ingest & voice-ingest
 import { createHash } from 'crypto';
 import { createWorkflowLogger, findByContentHash, insertNote, updateCalendarEvent } from '../lib';
 import { queryCalendar, pickBestEvent } from '../lib/calendar';

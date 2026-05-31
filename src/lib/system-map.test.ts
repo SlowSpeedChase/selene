@@ -1,0 +1,100 @@
+import { describe, it, expect } from '@jest/globals';
+import { parseSchedule, parseMapComment, renderWorkflowTable, WorkflowRow, injectGenerated, buildRow } from './system-map';
+
+describe('parseSchedule', () => {
+  it('humanizes StartInterval seconds', () => {
+    const plist = `<key>StartInterval</key>\n<integer>300</integer>`;
+    expect(parseSchedule(plist)).toBe('every 5 min');
+  });
+  it('humanizes a 30-min interval', () => {
+    expect(parseSchedule(`<key>StartInterval</key><integer>1800</integer>`)).toBe('every 30 min');
+  });
+  it('humanizes an hourly interval', () => {
+    expect(parseSchedule(`<key>StartInterval</key><integer>3600</integer>`)).toBe('hourly');
+  });
+  it('renders StartCalendarInterval as a daily time', () => {
+    const plist = `<key>StartCalendarInterval</key><dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('daily 06:00');
+  });
+  it('treats a Minute-only StartCalendarInterval (no Hour) as hourly', () => {
+    const plist = `<key>StartCalendarInterval</key><dict><key>Minute</key><integer>0</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('hourly');
+  });
+  it('renders a Minute-only interval at a non-zero minute as hourly at :MM', () => {
+    const plist = `<key>StartCalendarInterval</key><dict><key>Minute</key><integer>30</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('hourly at :30');
+  });
+  it('returns null when no schedule key is present', () => {
+    expect(parseSchedule(`<key>RunAtLoad</key><true/>`)).toBeNull();
+  });
+  it('prefers StartInterval when both schedule keys are present', () => {
+    const plist = `<key>StartInterval</key><integer>300</integer><key>StartCalendarInterval</key><dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('every 5 min');
+  });
+});
+
+describe('parseMapComment', () => {
+  it('extracts purpose, reads, writes, trigger', () => {
+    const src = [
+      '// @map purpose: Extract concepts, themes, energy',
+      '// @map reads: raw_notes',
+      '// @map writes: processed_notes',
+      '// @map trigger: webhook',
+      'import { foo } from "bar";',
+    ].join('\n');
+    expect(parseMapComment(src)).toEqual({
+      purpose: 'Extract concepts, themes, energy',
+      reads: 'raw_notes', writes: 'processed_notes', trigger: 'webhook',
+    });
+  });
+  it('returns empty fields when no @map comment present', () => {
+    expect(parseMapComment('import x from "y";')).toEqual({});
+  });
+});
+
+describe('renderWorkflowTable', () => {
+  it('renders a sorted markdown table with links', () => {
+    const rows: WorkflowRow[] = [
+      { name: 'process-llm', schedule: 'every 5 min', purpose: 'Extract concepts', reads: 'raw_notes', writes: 'processed_notes' },
+      { name: 'ingest', schedule: 'webhook', purpose: 'Capture notes', reads: '—', writes: 'raw_notes' },
+    ];
+    const md = renderWorkflowTable(rows);
+    expect(md.indexOf('ingest')).toBeLessThan(md.indexOf('process-llm'));
+    expect(md).toContain('[ingest](../src/workflows/ingest.ts)');
+    expect(md).toContain('| Workflow | Schedule | Reads | Writes | Purpose |');
+  });
+  it('escapes pipe characters in cell values', () => {
+    const rows: WorkflowRow[] = [
+      { name: 'x', schedule: 'hourly', purpose: 'reads a | writes b', reads: '—', writes: '—' },
+    ];
+    const md = renderWorkflowTable(rows);
+    expect(md).toContain('reads a \\| writes b');
+  });
+});
+
+describe('injectGenerated', () => {
+  const START = '<!-- GENERATED:workflows START -->';
+  const END = '<!-- GENERATED:workflows END -->';
+  it('replaces content between markers, preserving prose outside', () => {
+    const doc = `# Map\n\nHand-written intro.\n\n${START}\nOLD TABLE\n${END}\n\nHand-written outro.`;
+    const out = injectGenerated(doc, 'NEW TABLE');
+    expect(out).toContain('Hand-written intro.');
+    expect(out).toContain('Hand-written outro.');
+    expect(out).toContain('NEW TABLE');
+    expect(out).not.toContain('OLD TABLE');
+  });
+  it('throws if markers are missing', () => {
+    expect(() => injectGenerated('no markers here', 'X')).toThrow();
+  });
+});
+
+describe('buildRow', () => {
+  it('prefers plist schedule, falls back to @map trigger, then dash', () => {
+    const meta = { purpose: 'P', reads: 'a', writes: 'b' };
+    expect(buildRow('export-obsidian', meta, 'hourly').schedule).toBe('hourly');
+    expect(buildRow('ingest', { ...meta, trigger: 'webhook' }, null).schedule).toBe('webhook');
+    expect(buildRow('mystery', {}, null)).toEqual({
+      name: 'mystery', schedule: '—', purpose: '—', reads: '—', writes: '—',
+    });
+  });
+});
