@@ -8,6 +8,29 @@ import type { WorkflowResult } from '../types';
 
 const log = createWorkflowLogger('distill-essences');
 
+/**
+ * Ensure the essence columns this workflow produces actually exist.
+ *
+ * essence/essence_at were historically created only by export-obsidian, which
+ * runs LAST in the pipeline. On a freshly-reset DB that left distill-essences'
+ * own `WHERE pn.essence IS NULL` query — and the downstream synthesize-topics
+ * read of pn.essence — throwing "no such column" until export had run once.
+ * The producer of the data now owns the migration. Idempotent (harmless no-op
+ * if the columns already exist). Mirrors the per-workflow migration idiom in
+ * process-llm.ts (category) and export-obsidian.ts (obsidian_export_hash).
+ */
+export function ensureEssenceColumns(database: typeof db = db): void {
+  try {
+    database.exec('ALTER TABLE processed_notes ADD COLUMN essence TEXT');
+  } catch { /* column already exists */ }
+  try {
+    database.exec('ALTER TABLE processed_notes ADD COLUMN essence_at TEXT');
+  } catch { /* column already exists */ }
+}
+
+// Run at module load so the columns exist before any query below executes.
+ensureEssenceColumns();
+
 interface NoteForEssence {
   raw_note_id: number;
   title: string;

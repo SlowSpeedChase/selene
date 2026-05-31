@@ -1,7 +1,7 @@
 # Design: Dev/Prod boundary hardening — showcase corpus + Claude-out-of-prod guard
 
 **Date:** 2026-05-29
-**Status:** Vision → **Ready** (acceptance criteria + ADHD check + scope check below)
+**Status:** Vision → Ready → **Done** (2026-05-31 — both workstreams complete + A5 validated; see Validation below)
 **Builds on:** [2026-05-28-prod-dev-split-design.md](2026-05-28-prod-dev-split-design.md) (the two-tier split, already SHIPPED)
 **Related:** [[project_prod_dev_split]], [[project_lumen]] (prod stays the oracle)
 
@@ -231,3 +231,57 @@ procedure; absent that var, the guard is always on. Documented in the releases g
 - [ ] Operational + rollout + snapshot scripts → **allowed**; `SELENE_GUARD_OFF=1` lifts the guard.
 - [ ] Permissive prod-read allow-rules removed from `settings.local.json`; `permissions.deny`
       added to `settings.json` for `Read`/`Edit`/`Write` on the prod DB + vault.
+
+---
+
+## Validation (2026-05-31) — A5 gate run + two latent bugs fixed
+
+**Workstream B (guard):** confirmed LIVE — `prod-data-guard.sh` blocked an ad-hoc read of the
+iCloud vault during this session; `selene-inspect` is the sanctioned content-free read; the
+deployed override is `SELENE_GUARD_OFF=1`. ✅
+
+**Workstream A (corpus):** A1–A4 were already merged (`24d6a00`, 9/9 contract tests). Running the
+A5 end-to-end gate on a freshly-reset dev DB surfaced **two latent bugs that had silently broken
+the dev processing gate since the 2026-03-21 simplification** — both masked in prod (where the
+schema crossed the needed threshold months ago), fatal only on a fresh DB (dev reset / disaster
+recovery). Branch `fix/dev-process-batch`:
+
+1. **`dev-process-batch.sh` was rotted** — it drove five *archived* workflows (index-vectors,
+   compute-associations, compute-relationships, detect-threads, reconsolidate-threads) and never
+   ran the current core steps, so the dev "gate" was a no-op. Rewrote it to drive the live pipeline
+   (`process-llm → distill-essences → synthesize-topics → export-obsidian`), with an `--all` drain
+   (no-progress break — can't infinite-loop) and a schema-tolerant `--status`. Contract test:
+   `scripts/test-dev-process-batch.sh` (15 checks).
+2. **Fresh-DB migration ordering bug** — `essence`/`essence_at` were created only by
+   `export-obsidian` (runs *last*), so `distill-essences` and `synthesize-topics` threw
+   `no such column: pn.essence` until export had run once. Moved column ownership to the producer:
+   `distill-essences.ensureEssenceColumns()` (idempotent, at module load). In-memory unit test added.
+
+**A5 acceptance results** — validated in two complementary runs on the dev DB (Ollama `mistral:7b`):
+
+*Run 1 — corpus behavior (fresh reset → 90 notes processed via direct `npx ts-node` workflow calls,
+0 errors).* This run also empirically proved the fresh-DB migration fix: after process-llm the
+`essence` column still didn't exist, yet distill then ran clean and synthesize succeeded (previously
+a hard `no such column: pn.essence`).
+- Fresh-DB pipeline runs end-to-end (distill + synthesize succeed *before* export). ✅
+- Category coverage **8/8** (criterion ≥6/8). ✅
+- Coherent threads cluster: Lighthouse 12/12 → Projects & Tech, Half-marathon 10/10 → Health & Body
+  (Spanish realistically scatters across 3 categories). ✅
+- **Monster note → 5-cluster multi-membership** (primary Personal Growth + cross-refs Career & Work,
+  Relationships & Social, Politics & Society, Daily Systems) — the eink-mega-bucket pathology behaves
+  exactly as designed. ✅
+- Near-duplicate pair processed; length extremes present; essences 90/90; deterministic. ✅
+- Multi-membership shape: 85 notes ×1 cluster, 4 ×2, monster ×5 (avg 1.09) — realistic. ✅
+
+*Run 2 — the fixed script's `--all` path end-to-end (fresh reset → 43-note designed core via
+`./scripts/dev-process-batch.sh --all`).* The first attempt surfaced a third bug — the `--all`
+distill drain gated on a count of the not-yet-created `essence` column (safe_count → 0 → skip), so
+distill never ran and synthesize failed. Fixed drain() to run-at-least-once (do-while + no-progress
+guard); re-run drained to **pending 0, essences 43/43, 8 clusters**, and terminated cleanly. ✅
+
+**Operator-only remaining check:** eyeball the dev vault (`~/selene-data-dev/vault/`, 106 notes
+written) for "reads like a legible knowledge base" — the subjective showcase read the design
+deferred to the operator. Assertion harness still deferred (temp-0.8 non-determinism).
+
+**No end-user-facing change** (dev-workflow/safety/infra only) — `scripts/CLAUDE.md` updated; no
+feature guide needed.

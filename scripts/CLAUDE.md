@@ -682,20 +682,22 @@ Creates `~/selene-data-dev/selene.db` with the full production schema, marked wi
 
 ### dev-process-batch.sh
 
-Runs the full pipeline (index-vectors → compute-associations → compute-relationships → detect-threads → reconsolidate-threads → export-obsidian) against the dev database with a configurable batch size.
+Drives the dev notes through the **current** pipeline — `process-llm → distill-essences → synthesize-topics → export-obsidian`. (It previously called the pre-2026-03-21 vector/association/thread workflows, which were archived; that left it a no-op. Fixed 2026-05-31.) `process-llm` and `distill-essences` each handle ~10 notes per invocation, so one pass nibbles the backlog; `--all` drains it.
 
 ```bash
-# Default batch size (15 notes per step)
+# One pass of each step (~10 notes via process-llm)
 ./scripts/dev-process-batch.sh
 
-# Custom batch size
-./scripts/dev-process-batch.sh 25
+# Drain: loop LLM + essences until done, then cluster + export the full corpus
+./scripts/dev-process-batch.sh --all
 
 # Show processing status only (no processing)
 ./scripts/dev-process-batch.sh --status
 ```
 
-**Requires:** `SELENE_ENV=development` (set automatically by `com.selene.dev-process-batch.plist`).
+Status tolerates a freshly-reset DB: the synthesis tables (`topic_clusters`, `note_connections`) and `processed_notes.essence` are migrated in lazily the first time their workflow runs, so they read `0` until then rather than erroring. Contract test: `bash scripts/test-dev-process-batch.sh` (structural + `--status`, no Ollama needed).
+
+**Requires:** `SELENE_ENV=development` (set in the script for the workflow calls) and Ollama running (`mistral:7b`, `nomic-embed-text`).
 
 ### generate-dev-fixture.py
 
