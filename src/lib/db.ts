@@ -2,6 +2,12 @@ import Database, { Database as DatabaseType } from 'better-sqlite3';
 import { config } from './config';
 import { logger } from './logger';
 import { applyConnectionPragmas } from './db-config';
+import {
+  ensureFactsDbInitialized,
+  attachFacts,
+  ensureNoteStateTable,
+  ensureRawNotesView,
+} from './facts-db';
 import type { CalendarEvent } from '../types';
 
 // Initialize database connection
@@ -10,6 +16,16 @@ export const db: DatabaseType = new Database(config.dbPath);
 // WAL + busy_timeout: concurrent agents (process-llm every 5 min vs. the nightly
 // synthesize-topics rebuild) must wait for a lock, not throw SQLITE_BUSY.
 applyConnectionPragmas(db);
+
+// Fact-store split: ensure facts.db exists + has its schema (standalone connection so its
+// UNQUALIFIED tables land in facts.db's own main), ATTACH it here as `facts`, create the
+// derived `note_state` bookkeeping table in selene.db, and (re)build the backward-compatible
+// `raw_notes` TEMP view. Guarded: on an un-migrated DB where raw_notes is still a physical
+// table, ensureRawNotesView is a no-op (Task 8 converts it).
+ensureFactsDbInitialized(config.factsDbPath);
+attachFacts(db, config.factsDbPath);
+ensureNoteStateTable(db);
+ensureRawNotesView(db);
 
 logger.info({ dbPath: config.dbPath, env: config.env }, 'Database connected');
 
