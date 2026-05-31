@@ -3,6 +3,8 @@
 **Last Updated:** 2026-05-29
 **Purpose:** Visual representations of Selene's backend architecture and data flows
 
+> **Inventory of record:** [docs/SYSTEM-MAP.md](SYSTEM-MAP.md) (generated from code + plists). This file is the *deep* view; if the two ever disagree on which workflows exist or their schedules, SYSTEM-MAP.md wins.
+
 ---
 
 ## 1. System Architecture Overview
