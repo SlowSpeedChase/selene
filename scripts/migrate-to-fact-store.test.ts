@@ -290,6 +290,85 @@ describe('migrateToFactStore — single file → two files (id-preserving, trans
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('STALE-note_state: a pre-existing wrong-shaped note_state (missing inbox_status) is DROPPED + recreated, not merged — migration SUCCEEDS and rows carry correct status/inbox_status', () => {
+    // Real-world pollution: a physical raw_notes (correct shape) PLUS a stale note_state left
+    // by an earlier run with an older schema that predates the inbox_status column. The stale
+    // table here has EVERY column ensureNoteStateTable creates EXCEPT inbox_status, so the
+    // pre-fix INSERT fails precisely on "no column named inbox_status" (the reported bug).
+    const dir = mkdtempSync(join(tmpdir(), 'selene-migrate-stale-'));
+    const dbPath = join(dir, 'selene.db');
+    const factsPath = join(dir, 'facts.db');
+    const db = new Database(dbPath);
+
+    db.exec(`
+      CREATE TABLE raw_notes (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        title            TEXT NOT NULL,
+        content          TEXT NOT NULL,
+        content_hash     TEXT NOT NULL,
+        source_type      TEXT,
+        word_count       INTEGER,
+        character_count  INTEGER,
+        tags             TEXT,
+        created_at       DATETIME NOT NULL,
+        imported_at      DATETIME,
+        source_uuid      TEXT,
+        calendar_event   TEXT,
+        capture_type     TEXT,
+        source_note_id   INTEGER,
+        test_run         TEXT,
+        status               TEXT,
+        processed_at         DATETIME,
+        exported_at          DATETIME,
+        exported_to_obsidian INTEGER,
+        obsidian_export_hash TEXT,
+        status_folio         TEXT,
+        inbox_status         TEXT
+      );
+    `);
+    db.prepare(`
+      INSERT INTO raw_notes (id, title, content, content_hash, capture_type, created_at, status, inbox_status)
+      VALUES (?,?,?,?,?,?,?,?)
+    `).run(10, 'Polluted', 'body', 'h10', 'drafts', '2026-01-01T00:00:00Z', 'processed', 'reviewed');
+
+    // STALE note_state: same shape ensureNoteStateTable makes MINUS inbox_status. Seed a BOGUS
+    // status so that if it were merged (kept) instead of dropped, the migrated status would be
+    // wrong — proving "replaced, not merged", not merely "didn't throw".
+    db.exec(`
+      CREATE TABLE note_state (
+        raw_note_id INTEGER PRIMARY KEY,
+        status TEXT,
+        processed_at DATETIME,
+        exported_at DATETIME,
+        exported_to_obsidian INTEGER,
+        obsidian_export_hash TEXT,
+        status_folio TEXT
+      );
+    `);
+    db.prepare(`INSERT INTO note_state (raw_note_id, status) VALUES (?, ?)`).run(10, 'STALE-WRONG');
+    db.close();
+
+    // Pre-fix this THROWS "no column named inbox_status"; post-fix it must SUCCEED.
+    const result = migrateToFactStore(dbPath, factsPath);
+    expect(result.alreadyMigrated).toBe(false);
+    expect(result.notes).toBe(1);
+
+    // The recreated note_state must HAVE the inbox_status column (PRAGMA table_info).
+    const main = new Database(dbPath);
+    const cols = (main.prepare(`PRAGMA table_info(note_state)`).all() as { name: string }[]).map(r => r.name);
+    expect(cols).toContain('inbox_status');
+    main.close();
+
+    // Migrated rows carry the status/inbox_status from raw_notes (NOT the bogus stale status).
+    const two = openTwoFile(dbPath, factsPath);
+    const row = two.prepare(`SELECT status, inbox_status FROM raw_notes WHERE id = 10`).get() as { status: string; inbox_status: string };
+    expect(row.status).toBe('processed');     // from raw_notes, not 'STALE-WRONG'
+    expect(row.inbox_status).toBe('reviewed'); // flowed through the recreated table (not NULL→'pending')
+    two.close();
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('INCOMPLETE-STATE: backup table exists but facts.captured_notes is EMPTY → THROWS "Incomplete prior migration" (not a silent no-op)', () => {
     const dir = mkdtempSync(join(tmpdir(), 'selene-migrate-partial-'));
     const dbPath = join(dir, 'selene.db');

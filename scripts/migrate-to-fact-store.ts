@@ -144,6 +144,10 @@ export function migrateToFactStore(
     db.pragma('journal_mode = DELETE');
     db.pragma('facts.journal_mode = DELETE');
 
+    // note_state is disposable bookkeeping, fully repopulated from raw_notes below. A stale one
+    // (e.g. left by an earlier run with an older schema, missing a column) must be replaced, not
+    // merged — CREATE IF NOT EXISTS would keep the wrong shape.
+    db.exec('DROP TABLE IF EXISTS note_state');
     ensureNoteStateTable(db);
 
     const hasProcessedNotes = tableExists(db, 'processed_notes');
