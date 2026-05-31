@@ -43,6 +43,7 @@ import type { Database as DB } from 'better-sqlite3';
 import { rmSync } from 'fs';
 import { makeTwoFileTestDb } from './test-two-file-db';
 import { testRunFilter } from './test-run';
+import { config } from './config';
 import { initSynthesisSchema } from './synthesis-db';
 import {
   getTopConcepts,
@@ -59,6 +60,14 @@ afterAll(() => {
   } else {
     process.env.SELENE_ENV = ORIGINAL_SELENE_ENV;
   }
+});
+
+// Fail-fast guard: config.env is cached at config.ts module-load time. If any other test file
+// loaded config.ts FIRST in this jest worker (resolving to 'development'), the SELENE_ENV override
+// at the top of this file is too late to take effect, and every testRunFilter-based assertion below
+// would silently pass vacuously. Detect that state and fail LOUDLY instead of rotting in silence.
+test('GATE GUARD: config.env resolved to production (else test_run assertions are vacuous)', () => {
+  expect(config.env).toBe('production');
 });
 
 // ── Fixture helpers ──────────────────────────────────────────────────────────────
