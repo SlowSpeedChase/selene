@@ -75,6 +75,9 @@ describe('getPendingNotes → derivation-absence through the raw_notes view (fac
     expect(pending.map((n) => n.id).sort()).toEqual([id1, id2].sort());
     expect(pending.every((n) => n.status === 'pending')).toBe(true);
 
+    // ORDER BY created_at ASC + LIMIT: with both pending, the single earliest is id1
+    expect(getPendingNotes(1, conn).map((n) => n.id)).toEqual([id1]);
+
     // 2) After markProcessed writes a note_state row, COALESCE flips → that note leaves the set.
     markProcessed(id1, conn);
     pending = getPendingNotes(10, conn);
