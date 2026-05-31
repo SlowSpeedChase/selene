@@ -1,20 +1,26 @@
-import Database from 'better-sqlite3';
+import type { Database as DB } from 'better-sqlite3';
+import { rmSync } from 'fs';
 import Fastify, { FastifyInstance } from 'fastify';
 import { pkmRoutes, isLanIp } from './pkm';
+import { makeTwoFileTestDb } from '../lib/test-two-file-db';
 
-type DB = InstanceType<typeof Database>;
-
-function seedDb(): DB {
-  const db = new Database(':memory:');
+// Fact-store split: review_state lives in facts.db and the routes read the `raw_notes` TEMP view,
+// so the test DB is the real two-file layout. The note FACT goes into facts.captured_notes (+ a
+// note_state row giving it status='processed'); markSurfaced (hit by GET /notes/:id) writes
+// facts.review_state. Returns the dir so the caller can clean up the temp files.
+function seedDb(): { db: DB; dir: string } {
+  const { db, dir } = makeTwoFileTestDb();
   db.exec(`
-    CREATE TABLE raw_notes (id INTEGER PRIMARY KEY, title TEXT, content TEXT, created_at TEXT,
-      status TEXT, test_run TEXT);
     CREATE TABLE processed_notes (raw_note_id INTEGER, concepts TEXT, essence TEXT,
       primary_theme TEXT, category TEXT, cross_ref_categories TEXT);
   `);
-  db.prepare('INSERT INTO raw_notes VALUES (?,?,?,?,?,?)').run(1, 'A note', 'body', '2026-05-01', 'processed', null);
+  db.prepare(
+    `INSERT INTO facts.captured_notes (id, title, content, content_hash, created_at)
+     VALUES (1, 'A note', 'body', 'h1', '2026-05-01')`
+  ).run();
+  db.prepare(`INSERT INTO note_state (raw_note_id, status) VALUES (1, 'processed')`).run();
   db.prepare('INSERT INTO processed_notes VALUES (?,?,?,?,?,?)').run(1, '["focus"]', 'an essence', 't', 'Health & Body', '[]');
-  return db;
+  return { db, dir };
 }
 
 async function buildApp(db: DB): Promise<FastifyInstance> {
@@ -42,10 +48,11 @@ describe('isLanIp', () => {
 
 describe('pkm routes', () => {
   let db: DB;
+  let dir: string;
   let app: FastifyInstance;
 
-  beforeEach(async () => { db = seedDb(); app = await buildApp(db); });
-  afterEach(async () => { await app.close(); db.close(); });
+  beforeEach(async () => { ({ db, dir } = seedDb()); app = await buildApp(db); });
+  afterEach(async () => { await app.close(); db.close(); rmSync(dir, { recursive: true, force: true }); });
 
   it('GET /pkm/ returns HTML home', async () => {
     const res = await app.inject({ method: 'GET', url: '/pkm/', remoteAddress: '127.0.0.1' });
@@ -58,7 +65,7 @@ describe('pkm routes', () => {
     const res = await app.inject({ method: 'GET', url: '/pkm/notes/1', remoteAddress: '127.0.0.1' });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('A note');
-    const row = db.prepare("SELECT surface_count AS c FROM pkm_review_state WHERE entity_type='note' AND entity_id='1'").get() as { c: number };
+    const row = db.prepare("SELECT surface_count AS c FROM review_state WHERE entity_type='note' AND entity_id='1'").get() as { c: number };
     expect(row.c).toBe(1);
   });
 

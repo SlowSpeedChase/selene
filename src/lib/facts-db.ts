@@ -46,6 +46,11 @@ export function initFactsSchema(db: DB): void {
     -- data migration can't fail on any historical duplicates.
     CREATE INDEX IF NOT EXISTS idx_captured_content_hash ON captured_notes(content_hash);
     CREATE INDEX IF NOT EXISTS idx_captured_source_uuid ON captured_notes(source_uuid);
+
+    -- review_state moved into facts.db (precious) in Task 9: the browse layer's
+    -- least-recently-surfaced ordering scans last_surfaced_at, so mirror the old
+    -- idx_pkm_review_last index here (Task 2 omitted it when seeding the schema).
+    CREATE INDEX IF NOT EXISTS idx_review_state_last ON review_state(last_surfaced_at);
   `);
 }
 

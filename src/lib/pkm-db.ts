@@ -1,13 +1,17 @@
 /**
  * PKM Browse — review-state layer (Track 1).
  *
- * A tiny `pkm_review_state` table that records when an entity (note / category / concept) was
+ * A tiny `review_state` table that records when an entity (note / category / concept) was
  * last surfaced and how many times, so the browse layer can do spaced resurfacing ("haven't
  * seen this in 7+ days, here it is again") and least-recently-surfaced ordering.
  *
- * Functions take an explicit `db` (no module singleton) so they're unit-testable in-memory,
- * matching src/lib/synthesis-db.ts. Track 2's routes call these with the shared connection
- * after calling initPkmSchema(db) once at server startup.
+ * Fact-store split (Task 9): review flags are PRECIOUS — they'd be lost on a Phase-2 rebuild of
+ * the disposable selene.db. So `review_state` now lives in facts.db (created by initFactsSchema)
+ * and resolves here via the `facts` ATTACH alias: selene.db's main has no `review_state` table, so
+ * an UNQUALIFIED `review_state` binds to `facts.review_state`. Every connection that calls these
+ * must therefore have facts ATTACHed (the db.ts singleton + test two-file DBs do). `initPkmSchema`
+ * no longer CREATEs the table; it only seeds any selene.db-side PKM schema. The legacy
+ * `pkm_review_state` table is left untouched as a migration backup.
  */
 import type { Database as DB } from 'better-sqlite3';
 
@@ -20,24 +24,19 @@ export interface ReviewItem {
   surfaceCount: number;
 }
 
-/** Idempotent schema init (CREATE TABLE/INDEX IF NOT EXISTS). */
-export function initPkmSchema(db: DB): void {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS pkm_review_state (
-      entity_type      TEXT NOT NULL,
-      entity_id        TEXT NOT NULL,
-      last_surfaced_at TEXT,
-      surface_count    INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (entity_type, entity_id)
-    );
-    CREATE INDEX IF NOT EXISTS idx_pkm_review_last ON pkm_review_state(last_surfaced_at);
-  `);
+/**
+ * Idempotent PKM-side schema init. `review_state` is NO LONGER created here — it lives in facts.db
+ * (initFactsSchema) and is reached via the `facts` attach alias. Kept as a hook for any future
+ * selene.db-side PKM tables; currently a no-op so callers don't need to change.
+ */
+export function initPkmSchema(_db: DB): void {
+  /* review_state moved to facts.db (precious). Nothing to create in selene.db (disposable). */
 }
 
 /** UPSERT: first surface -> count 1; thereafter increment and refresh the timestamp. */
 export function markSurfaced(db: DB, entityType: string, entityId: string): void {
   db.prepare(
-    `INSERT INTO pkm_review_state (entity_type, entity_id, last_surfaced_at, surface_count)
+    `INSERT INTO review_state (entity_type, entity_id, last_surfaced_at, surface_count)
      VALUES (?, ?, datetime('now'), 1)
      ON CONFLICT(entity_type, entity_id) DO UPDATE SET
        surface_count = surface_count + 1,
@@ -54,7 +53,7 @@ export function getDueForReview(db: DB, limit: number): ReviewItem[] {
               prs.last_surfaced_at AS lastSurfacedAt,
               COALESCE(prs.surface_count, 0) AS surfaceCount
        FROM raw_notes rn
-       LEFT JOIN pkm_review_state prs
+       LEFT JOIN review_state prs
          ON prs.entity_type = 'note' AND prs.entity_id = CAST(rn.id AS TEXT)
        WHERE rn.test_run IS NULL AND rn.status = 'processed'
          AND (prs.last_surfaced_at IS NULL
@@ -71,7 +70,7 @@ export function getLeastRecentlySurfaced(db: DB, entityType: string, limit: numb
     .prepare(
       `SELECT entity_type AS entityType, entity_id AS entityId,
               last_surfaced_at AS lastSurfacedAt, surface_count AS surfaceCount
-       FROM pkm_review_state
+       FROM review_state
        WHERE entity_type = ?
        ORDER BY last_surfaced_at ASC
        LIMIT ?`

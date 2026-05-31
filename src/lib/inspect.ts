@@ -45,8 +45,24 @@ const KNOWN_TABLES = [
   'note_associations', 'conversation_memories',
 ];
 
-function tableExists(db: DB, name: string): boolean {
-  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name);
+/**
+ * Does a queryable relation (table OR view) named `name` exist on this connection?
+ *
+ * Fact-store split: `raw_notes` is now a per-connection TEMP VIEW (over facts.captured_notes
+ * LEFT JOIN note_state), so the old `type='table'` check missed it entirely and made
+ * selene-inspect report `raw_notes` as absent (rawNotes = 0) on a migrated DB. We therefore
+ * accept views too, and look in BOTH `main.sqlite_master` and `temp.sqlite_master` (a TEMP view
+ * lives only in temp). The counts/coverage SELECTs all read through the view uniformly, so the
+ * report numbers match the pre-split single-file shape.
+ */
+function relationExists(db: DB, name: string): boolean {
+  return !!db
+    .prepare(
+      `SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name = ?
+       UNION ALL
+       SELECT 1 FROM temp.sqlite_master WHERE type IN ('table','view') AND name = ?`
+    )
+    .get(name, name);
 }
 
 function scalar(db: DB, sql: string, ...params: unknown[]): number {
@@ -78,14 +94,14 @@ export function inspectSchema(db: DB, table?: string): SchemaReport {
 export function inspectCounts(db: DB): CountsReport {
   const tables: Record<string, number> = {};
   for (const t of KNOWN_TABLES) {
-    if (tableExists(db, t)) {
+    if (relationExists(db, t)) {
       tables[t] = scalar(db, `SELECT COUNT(*) AS n FROM ${t}`);
     }
   }
 
   const rawNotesByStatus: Record<string, number> = {};
   let testRunRows = 0;
-  if (tableExists(db, 'raw_notes')) {
+  if (relationExists(db, 'raw_notes')) {
     const rows = db
       .prepare('SELECT status, COUNT(*) AS n FROM raw_notes GROUP BY status')
       .all() as Array<{ status: string | null; n: number }>;
@@ -99,11 +115,11 @@ export function inspectCounts(db: DB): CountsReport {
 }
 
 export function inspectCoverage(db: DB): CoverageReport {
-  const hasRaw = tableExists(db, 'raw_notes');
-  const hasProcessed = tableExists(db, 'processed_notes');
-  const hasClusters = tableExists(db, 'topic_clusters');
-  const hasLinks = tableExists(db, 'topic_note_links');
-  const hasEmbeddings = tableExists(db, 'note_embeddings');
+  const hasRaw = relationExists(db, 'raw_notes');
+  const hasProcessed = relationExists(db, 'processed_notes');
+  const hasClusters = relationExists(db, 'topic_clusters');
+  const hasLinks = relationExists(db, 'topic_note_links');
+  const hasEmbeddings = relationExists(db, 'note_embeddings');
 
   const rawNotes = hasRaw ? scalar(db, 'SELECT COUNT(*) AS n FROM raw_notes') : 0;
   const processedNotes = hasProcessed ? scalar(db, 'SELECT COUNT(*) AS n FROM processed_notes') : 0;
