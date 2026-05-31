@@ -37,6 +37,23 @@ function getDbPath(): string {
   return join(homedir(), 'selene-data/selene.db');
 }
 
+function getFactsDbPath(): string {
+  // Explicit env var always wins
+  if (process.env.SELENE_FACTS_DB_PATH) {
+    return process.env.SELENE_FACTS_DB_PATH;
+  }
+  // Test environment uses project-local test database
+  if (isTestEnv) {
+    return join(projectRoot, 'data-test/facts.db');
+  }
+  // Development environment uses dedicated dev data directory
+  if (isDevEnv) {
+    return join(devDataRoot, 'facts.db');
+  }
+  // Production default
+  return join(homedir(), 'selene-data/facts.db');
+}
+
 function getVectorsPath(): string {
   if (process.env.SELENE_VECTORS_PATH) {
     return process.env.SELENE_VECTORS_PATH;
@@ -97,6 +114,7 @@ export const config = {
 
   // Paths - environment-aware
   dbPath: getDbPath(),
+  factsDbPath: getFactsDbPath(),
   vectorsPath: getVectorsPath(),
   vaultPath: getVaultPath(),
   digestsPath: getDigestsPath(),
