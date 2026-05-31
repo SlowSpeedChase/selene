@@ -46,4 +46,13 @@ if printf '%s' "$status_out" | grep -qiE "cluster"; then pass "--status reports 
 if printf '%s' "$status_out" | grep -qiE "essence"; then pass "--status reports essences"; else bad "--status omits essences"; fi
 if printf '%s' "$status_out" | grep -qiE "^ *Relationships:|^ *Threads:"; then bad "--status still shows archived thread/relationship metrics"; else pass "--status drops archived metrics"; fi
 
+# 5) The --all drain loops must have a no-progress safeguard so a note that never
+#    leaves the queried state (e.g. a persistently-failing LLM extraction) cannot
+#    spin the loop forever.
+if grep -qiE "No progress" "$SCRIPT" && grep -qE "\bbreak\b" "$SCRIPT"; then
+  pass "--all drain has a no-progress safeguard"
+else
+  bad "--all drain loop has no termination safeguard (could spin forever)"
+fi
+
 exit $fail

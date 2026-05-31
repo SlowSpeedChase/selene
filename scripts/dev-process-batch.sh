@@ -83,6 +83,23 @@ run_step() {
   echo ""
 }
 
+# Repeatedly run a per-batch workflow until the queried backlog reaches zero.
+# Guarded against infinite loops: if a pass makes no progress (a note never
+# leaves the counted state — e.g. extraction keeps failing on it), stop rather
+# than spin forever.  drain <count-sql> <workflow-path> <label>
+drain() {
+  local count_sql="$1" workflow_path="$2" label="$3" before after
+  while [ "$(safe_count "$count_sql")" -gt 0 ]; do
+    before=$(safe_count "$count_sql")
+    run_step "$label" "$workflow_path"
+    after=$(safe_count "$count_sql")
+    if [ "$after" -ge "$before" ]; then
+      echo -e "${RED}No progress: ${after} item(s) still remaining after a pass — stopping to avoid an infinite loop.${NC}" >&2
+      break
+    fi
+  done
+}
+
 # Status-only mode
 if [ "${1:-}" = "--status" ]; then
   show_status
@@ -96,14 +113,11 @@ echo ""
 show_status
 
 if [ "$MODE" = "--all" ]; then
-  # Drain the LLM backlog (process-llm handles ~10 notes per invocation).
-  while [ "$(safe_count "SELECT COUNT(*) FROM raw_notes WHERE status = 'pending';")" -gt 0 ]; do
-    run_step "LLM concept extraction (draining)" "src/workflows/process-llm.ts"
-  done
-  # Backfill essences until none remain (also ~10 per invocation).
-  while [ "$(safe_count "SELECT COUNT(*) FROM processed_notes WHERE essence IS NULL;")" -gt 0 ]; do
-    run_step "Essence distillation (draining)" "src/workflows/distill-essences.ts"
-  done
+  # Drain the LLM backlog, then backfill essences (each ~10 notes per invocation).
+  drain "SELECT COUNT(*) FROM raw_notes WHERE status = 'pending';" \
+        "src/workflows/process-llm.ts" "LLM concept extraction (draining)"
+  drain "SELECT COUNT(*) FROM processed_notes WHERE essence IS NULL;" \
+        "src/workflows/distill-essences.ts" "Essence distillation (draining)"
 else
   run_step "Step 1: LLM concept extraction" "src/workflows/process-llm.ts"
   run_step "Step 2: Essence distillation" "src/workflows/distill-essences.ts"
