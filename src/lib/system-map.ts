@@ -36,3 +36,19 @@ export function parseMapComment(source: string): MapMeta {
   }
   return meta;
 }
+
+export interface WorkflowRow {
+  name: string;
+  schedule: string;
+  purpose: string;
+  reads: string;
+  writes: string;
+}
+export function renderWorkflowTable(rows: WorkflowRow[]): string {
+  const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+  const header = '| Workflow | Schedule | Reads | Writes | Purpose |\n|---|---|---|---|---|';
+  const body = sorted
+    .map((r) => `| [${r.name}](../src/workflows/${r.name}.ts) | ${r.schedule} | ${r.reads} | ${r.writes} | ${r.purpose} |`)
+    .join('\n');
+  return `${header}\n${body}`;
+}

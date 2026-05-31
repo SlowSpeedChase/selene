@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { parseSchedule, parseMapComment } from './system-map';
+import { parseSchedule, parseMapComment, renderWorkflowTable, WorkflowRow } from './system-map';
 
 describe('parseSchedule', () => {
   it('humanizes StartInterval seconds', () => {
@@ -37,5 +37,18 @@ describe('parseMapComment', () => {
   });
   it('returns empty fields when no @map comment present', () => {
     expect(parseMapComment('import x from "y";')).toEqual({});
+  });
+});
+
+describe('renderWorkflowTable', () => {
+  it('renders a sorted markdown table with links', () => {
+    const rows: WorkflowRow[] = [
+      { name: 'process-llm', schedule: 'every 5 min', purpose: 'Extract concepts', reads: 'raw_notes', writes: 'processed_notes' },
+      { name: 'ingest', schedule: 'webhook', purpose: 'Capture notes', reads: '—', writes: 'raw_notes' },
+    ];
+    const md = renderWorkflowTable(rows);
+    expect(md.indexOf('ingest')).toBeLessThan(md.indexOf('process-llm'));
+    expect(md).toContain('[ingest](../src/workflows/ingest.ts)');
+    expect(md).toContain('| Workflow | Schedule | Reads | Writes | Purpose |');
   });
 });
