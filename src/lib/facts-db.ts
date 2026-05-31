@@ -63,7 +63,8 @@ export function ensureNoteStateTable(db: DB): void {
       exported_at DATETIME,
       exported_to_obsidian INTEGER,
       obsidian_export_hash TEXT,
-      status_folio TEXT
+      status_folio TEXT,
+      inbox_status TEXT
     );
   `);
 }
@@ -96,6 +97,7 @@ export function ensureRawNotesView(db: DB): void {
              cn.word_count, cn.character_count, cn.tags, cn.created_at, cn.imported_at,
              cn.source_uuid, cn.calendar_event, cn.capture_type, cn.source_note_id, cn.test_run,
              COALESCE(ns.status, 'pending') AS status,
+             COALESCE(ns.inbox_status, 'pending') AS inbox_status,
              ns.processed_at, ns.exported_at,
              ns.exported_to_obsidian, ns.obsidian_export_hash, ns.status_folio
       FROM facts.captured_notes cn

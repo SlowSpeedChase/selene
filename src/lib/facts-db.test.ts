@@ -80,6 +80,29 @@ describe('two-file wiring', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('exposes inbox_status through the view, defaulting to pending', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'factstore-ib-'));
+    const factsPath = join(dir, 'facts.db');
+    ensureFactsDbInitialized(factsPath);
+    const main = new Database(join(dir, 'selene.db'));
+    attachFacts(main, factsPath);
+    ensureNoteStateTable(main);
+    ensureRawNotesView(main);
+
+    main.prepare(`INSERT INTO facts.captured_notes (title,content,content_hash,created_at)
+                  VALUES ('t','c','hib', datetime('now'))`).run();
+    const fresh = main.prepare(`SELECT id, inbox_status FROM raw_notes WHERE content_hash='hib'`)
+      .get() as { id: number; inbox_status: string };
+    expect(fresh.inbox_status).toBe('pending');     // no note_state row -> default
+
+    main.prepare(`INSERT INTO note_state (raw_note_id, inbox_status) VALUES (?, 'archived')`).run(fresh.id);
+    const after = main.prepare(`SELECT inbox_status FROM raw_notes WHERE id=?`).get(fresh.id) as { inbox_status: string };
+    expect(after.inbox_status).toBe('archived');    // note_state overrides default
+
+    main.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('ensureRawNotesView is a no-op when a physical raw_notes TABLE exists (un-migrated DB)', () => {
     const main = new Database(':memory:');
     main.exec(`CREATE TABLE raw_notes (id INTEGER PRIMARY KEY, title TEXT)`);
