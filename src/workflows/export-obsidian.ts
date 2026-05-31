@@ -18,11 +18,10 @@ try {
 try {
   db.exec('ALTER TABLE processed_notes ADD COLUMN essence_at TEXT');
 } catch { /* column already exists */ }
-try {
-  // Authoritative "is the vault file current?" signal — replaces the write-once
-  // exported_to_obsidian gate so post-export enrichment (parent:: edges, essences) re-exports.
-  db.exec('ALTER TABLE raw_notes ADD COLUMN obsidian_export_hash TEXT');
-} catch { /* column already exists */ }
+// Fact-store split: `obsidian_export_hash` now lives in `note_state` (created by
+// ensureNoteStateTable); `raw_notes` is a read-only VIEW, so the old unconditional
+// `ALTER TABLE raw_notes ADD COLUMN obsidian_export_hash` was removed. Reads/writes go
+// through the view + setNoteState (see obsidian-render.ts).
 
 // --- Types ---
 

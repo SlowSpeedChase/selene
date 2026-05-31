@@ -5,6 +5,7 @@ module.exports = {
   // Only run test files that use proper Jest describe/it format.
   // Existing tests use a custom runTests() + assert pattern and are excluded.
   testMatch: [
+    '**/scripts/migrate-to-fact-store.test.ts',
     '**/src/lib/category-clusters.test.ts',
     '**/src/lib/config.test.ts',
     '**/src/lib/constellation.test.ts',
