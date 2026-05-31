@@ -257,8 +257,13 @@ recovery). Branch `fix/dev-process-batch`:
    `no such column: pn.essence` until export had run once. Moved column ownership to the producer:
    `distill-essences.ensureEssenceColumns()` (idempotent, at module load). In-memory unit test added.
 
-**A5 acceptance results** (fresh reset → 90 notes processed via the fixed script, 0 errors):
-- Fresh-DB pipeline runs end-to-end (distill + synthesize succeed *before* export — bug fixed). ✅
+**A5 acceptance results** — validated in two complementary runs on the dev DB (Ollama `mistral:7b`):
+
+*Run 1 — corpus behavior (fresh reset → 90 notes processed via direct `npx ts-node` workflow calls,
+0 errors).* This run also empirically proved the fresh-DB migration fix: after process-llm the
+`essence` column still didn't exist, yet distill then ran clean and synthesize succeeded (previously
+a hard `no such column: pn.essence`).
+- Fresh-DB pipeline runs end-to-end (distill + synthesize succeed *before* export). ✅
 - Category coverage **8/8** (criterion ≥6/8). ✅
 - Coherent threads cluster: Lighthouse 12/12 → Projects & Tech, Half-marathon 10/10 → Health & Body
   (Spanish realistically scatters across 3 categories). ✅
@@ -267,6 +272,12 @@ recovery). Branch `fix/dev-process-batch`:
   exactly as designed. ✅
 - Near-duplicate pair processed; length extremes present; essences 90/90; deterministic. ✅
 - Multi-membership shape: 85 notes ×1 cluster, 4 ×2, monster ×5 (avg 1.09) — realistic. ✅
+
+*Run 2 — the fixed script's `--all` path end-to-end (fresh reset → 43-note designed core via
+`./scripts/dev-process-batch.sh --all`).* The first attempt surfaced a third bug — the `--all`
+distill drain gated on a count of the not-yet-created `essence` column (safe_count → 0 → skip), so
+distill never ran and synthesize failed. Fixed drain() to run-at-least-once (do-while + no-progress
+guard); re-run drained to **pending 0, essences 43/43, 8 clusters**, and terminated cleanly. ✅
 
 **Operator-only remaining check:** eyeball the dev vault (`~/selene-data-dev/vault/`, 106 notes
 written) for "reads like a legible knowledge base" — the subjective showcase read the design
