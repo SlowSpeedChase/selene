@@ -89,8 +89,12 @@ export interface RawNote {
 }
 
 // Helper: Get pending notes for processing
-export function getPendingNotes(limit = 10): RawNote[] {
-  return db
+// Fact-store split: the SQL is unchanged, but through the `raw_notes` view `status` is
+// COALESCE(ns.status,'pending') — so a captured note with no note_state row is automatically
+// 'pending' (derivation-absence). `conn` is a DI param (mirroring insertNote/markProcessed)
+// so tests can drive an explicit two-file connection.
+export function getPendingNotes(limit = 10, conn: DatabaseType = db): RawNote[] {
+  return conn
     .prepare('SELECT * FROM raw_notes WHERE status = ? ORDER BY created_at ASC LIMIT ?')
     .all('pending', limit) as RawNote[];
 }
