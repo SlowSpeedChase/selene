@@ -63,6 +63,19 @@ function tableExists(db: DatabaseType, name: string): boolean {
   return tableType(db, name) !== undefined;
 }
 
+/**
+ * Does a table exist in the ATTACHED `facts` database? Reads `facts.sqlite_master` (the main
+ * `sqlite_master` only sees `main`). Used by the incomplete-migration guard, which must treat a
+ * missing `facts.captured_notes` as count 0 rather than letting an unqualified COUNT throw a raw
+ * SQLite error that wouldn't carry our diagnostic message.
+ */
+function factsTableExists(db: DatabaseType, name: string): boolean {
+  const row = db.prepare(`SELECT 1 AS x FROM facts.sqlite_master WHERE name = ?`).get(name) as
+    | { x: number }
+    | undefined;
+  return row !== undefined;
+}
+
 function columnsOf(db: DatabaseType, table: string): Set<string> {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
   return new Set(rows.map((r) => r.name));
@@ -83,10 +96,36 @@ export function migrateToFactStore(
 ): { notes: number; reviewRows: number; alreadyMigrated: boolean } {
   const db = new Database(dbPath);
   try {
-    // (2) Idempotency guard. The durable on-disk marker is the legacy-backup table; we also
-    // treat "raw_notes is already a VIEW" or "raw_notes absent" as already-done.
+    // (2) Idempotency guard. The durable on-disk marker is the legacy-backup table.
+    //
+    // (2a) backup EXISTS → a prior run already did the RENAME. But a crash could have committed
+    // the RENAME without the facts inserts, leaving facts.captured_notes short/empty. Don't
+    // blindly report success: compare the backup's row count to facts.captured_notes. Equal →
+    // genuinely migrated (return alreadyMigrated). Different → INCOMPLETE migration: throw, do
+    // NOT re-migrate (raw_notes is already gone) and do NOT silently no-op — the backup table is
+    // the only copy of the data. We must attach facts to read its count; a missing
+    // facts.captured_notes counts as 0 (factsTableExists guards the unqualified COUNT from
+    // throwing a raw error that wouldn't carry our message).
+    if (tableExists(db, 'raw_notes_legacy_backup')) {
+      attachFacts(db, factsPath);
+      const backupRows = count(db, `SELECT COUNT(*) AS n FROM raw_notes_legacy_backup`);
+      const factRows = factsTableExists(db, 'captured_notes')
+        ? count(db, `SELECT COUNT(*) AS n FROM facts.captured_notes`)
+        : 0;
+      if (backupRows !== factRows) {
+        throw new Error(
+          `Incomplete prior migration detected: raw_notes_legacy_backup has ${backupRows} rows ` +
+            `but facts.captured_notes has ${factRows}. Manual recovery needed (the backup table ` +
+            `holds your data).`
+        );
+      }
+      return { notes: 0, reviewRows: 0, alreadyMigrated: true };
+    }
+
+    // (2b) No backup, but raw_notes is already a VIEW or absent → already in the two-file shape
+    // (nothing to back up) → already-done, as before.
     const rawType = tableType(db, 'raw_notes');
-    if (rawType === 'view' || tableExists(db, 'raw_notes_legacy_backup') || rawType === undefined) {
+    if (rawType === 'view' || rawType === undefined) {
       return { notes: 0, reviewRows: 0, alreadyMigrated: true };
     }
 
@@ -94,6 +133,17 @@ export function migrateToFactStore(
     // ensure note_state in main. ATTACH happens BEFORE the transaction so the txn spans both.
     ensureFactsDbInitialized(factsPath);
     attachFacts(db, factsPath);
+
+    // (3a) Cross-file atomic commit requires rollback-journal mode (WAL has no multi-DB
+    // super-journal). This txn modifies BOTH selene.db and facts.db; under WAL a crash mid-commit
+    // could leave them inconsistent. This is a one-shot offline migration touching the
+    // source-of-truth, so prefer durability over speed. Set both files to DELETE journal mode
+    // here — after attach, BEFORE the transaction (journal_mode can't change mid-transaction).
+    // No explicit restore needed: the app reopens both files WAL on its next normal connection
+    // via applyConnectionPragmas (db-config.ts sets journal_mode = WAL on every connection).
+    db.pragma('journal_mode = DELETE');
+    db.pragma('facts.journal_mode = DELETE');
+
     ensureNoteStateTable(db);
 
     const hasProcessedNotes = tableExists(db, 'processed_notes');

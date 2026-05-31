@@ -35,6 +35,7 @@ process.env.SELENE_FACTS_DB_PATH = join(singletonDir, 'facts.db');
 import { insertNote } from '../src/lib/db';
 import {
   attachFacts,
+  ensureFactsDbInitialized,
   ensureNoteStateTable,
   ensureRawNotesView,
 } from '../src/lib/facts-db';
@@ -267,6 +268,65 @@ describe('migrateToFactStore — single file → two files (id-preserving, trans
     const n = (facts.prepare(`SELECT COUNT(*) AS n FROM captured_notes`).get() as { n: number }).n;
     expect(n).toBe(3); // not duplicated
     facts.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('CRASH-ATOMIC: after a successful migration both files re-open and read back equal counts (DELETE journal mode did not break the path)', () => {
+    const { dir, dbPath, factsPath } = buildLegacyDb();
+    const result = migrateToFactStore(dbPath, factsPath);
+    expect(result.alreadyMigrated).toBe(false);
+    expect(result.notes).toBe(3);
+
+    // Re-open BOTH files fresh and confirm the backup ↔ facts counts agree (3 == 3).
+    const main = new Database(dbPath);
+    const backupCount = (main.prepare(`SELECT COUNT(*) AS n FROM raw_notes_legacy_backup`).get() as { n: number }).n;
+    main.close();
+    const facts = new Database(factsPath);
+    const factCount = (facts.prepare(`SELECT COUNT(*) AS n FROM captured_notes`).get() as { n: number }).n;
+    facts.close();
+    expect(backupCount).toBe(3);
+    expect(factCount).toBe(3);
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('INCOMPLETE-STATE: backup table exists but facts.captured_notes is EMPTY → THROWS "Incomplete prior migration" (not a silent no-op)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'selene-migrate-partial-'));
+    const dbPath = join(dir, 'selene.db');
+    const factsPath = join(dir, 'facts.db');
+
+    // Simulate a crash that committed the RENAME but not the facts inserts: a populated
+    // raw_notes_legacy_backup (3 rows) in main, and a facts.db whose captured_notes is EMPTY.
+    const main = new Database(dbPath);
+    main.exec(`
+      CREATE TABLE raw_notes_legacy_backup (
+        id INTEGER PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        created_at DATETIME NOT NULL
+      );
+    `);
+    const ins = main.prepare(
+      `INSERT INTO raw_notes_legacy_backup (id, title, content, content_hash, created_at) VALUES (?,?,?,?,?)`
+    );
+    ins.run(10, 'Root', 'root body', 'h10', '2026-01-01T00:00:00Z');
+    ins.run(20, 'Annotation', 'note about root', 'h20', '2026-01-02T00:00:00Z');
+    ins.run(30, 'Archived', 'old', 'h30', '2026-01-03T00:00:00Z');
+    main.close();
+    // facts.db exists with the schema but captured_notes is empty (inserts never ran).
+    ensureFactsDbInitialized(factsPath);
+
+    expect(() => migrateToFactStore(dbPath, factsPath)).toThrow(/Incomplete prior migration/);
+    // And it must NOT report success in any form.
+    let threw = false;
+    try {
+      migrateToFactStore(dbPath, factsPath);
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+
     rmSync(dir, { recursive: true, force: true });
   });
 });
