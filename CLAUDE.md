@@ -337,7 +337,7 @@ selene/
 |   +-- workflows/          # Background processing scripts (live list: docs/SYSTEM-MAP.md)
 |   +-- types/              # TypeScript type definitions
 +-- launchd/                 # macOS launch agent plists (live list: docs/SYSTEM-MAP.md)
-+-- scripts/                 # Project utilities (6 active)
++-- scripts/                 # Project utilities (gen-system-map, install-launchd, cleanup-tests, ...)
 |   +-- CLAUDE.md           # Script documentation
 |   +-- install-launchd.sh  # Install launchd agents
 |   +-- cleanup-tests.sh    # Remove test data

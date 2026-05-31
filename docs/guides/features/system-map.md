@@ -1,6 +1,6 @@
 # System Map
 
-**What this does for you:** gives you one always-correct page that shows every workflow Selene runs — what it does, when it runs, and what it reads and writes — so you can understand the whole system at a glance without reading code, and trust that it's never silently out of date.
+**What this does for you:** gives you one page that shows every workflow Selene runs — what it does, when it runs, and what it reads and writes — so you can understand the whole system at a glance without reading code. The page is regenerated from the code with one command, and a session-end check warns you when it has fallen behind.
 
 ## Using it
 
@@ -27,7 +27,7 @@ The workflow table is **generated**, not hand-written. The generator `scripts/ge
 
 Because the facts come from the code itself, the table can't drift the way a hand-copied list does. The parsing/rendering logic lives in `src/lib/system-map.ts` (unit-tested in `src/lib/system-map.test.ts`).
 
-**Drift guard:** the session-end hook (`.claude/hooks/session-end-reminders.sh`) runs `gen-system-map.ts --check` whenever a workflow or plist changed during a session. If the committed map no longer matches the code, it warns "docs/SYSTEM-MAP.md is OUT OF DATE" so the map gets regenerated before the change ships.
+**Drift guard:** the session-end hook (`.claude/hooks/session-end-reminders.sh`) runs `gen-system-map.ts --check` whenever a workflow or plist shows up as *uncommitted* changes during a session. If the map no longer matches the code, it warns "docs/SYSTEM-MAP.md is OUT OF DATE" so you regenerate before the change ships. This is a best-effort reminder, not an enforced gate — it keys on the working tree, so a workflow edited and committed within the same session won't trigger it. When in doubt, just run `--check` yourself (below).
 
 ## Configure & customize
 
