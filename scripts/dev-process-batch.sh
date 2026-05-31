@@ -1,15 +1,22 @@
 #!/bin/bash
 #
-# dev-process-batch.sh - Process a batch of dev notes through the full pipeline
+# dev-process-batch.sh - Drive dev notes through the CURRENT processing pipeline.
 #
-# Runs each workflow step once against the dev database with configurable batch sizes.
-# Designed to be run repeatedly (daily/hourly) to gradually process all notes.
+# Post-2026-03-21 simplification, the active pipeline is:
+#   process-llm  ->  distill-essences  ->  synthesize-topics  ->  export-obsidian
+# (the pre-simplification vector/association/relationship/thread steps were
+#  archived; this script used to call them and silently did nothing useful.)
+#
+# process-llm and distill-essences each handle a small internal batch (~10 notes)
+# per invocation, so a single pass nibbles the backlog. Use --all to drain it.
 #
 # Usage:
-#   ./scripts/dev-process-batch.sh              # Default: 15 notes per step
-#   ./scripts/dev-process-batch.sh 10           # Custom batch size
-#   ./scripts/dev-process-batch.sh --status     # Show processing status only
+#   ./scripts/dev-process-batch.sh            # one pass of each step
+#   ./scripts/dev-process-batch.sh --all      # loop LLM + essences until drained, then synth + export
+#   ./scripts/dev-process-batch.sh --status   # show processing status only
 #
+# Requires SELENE_ENV=development (set here for the workflow calls). Touches only
+# ~/selene-data-dev/ — never production.
 
 set -e
 
@@ -20,13 +27,12 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-BATCH_SIZE="${1:-15}"
 DEV_DB="$HOME/selene-data-dev/selene.db"
 
 # Verify dev environment
 if [ ! -f "$DEV_DB" ]; then
   echo -e "${RED}Error: Dev database not found at $DEV_DB${NC}"
-  echo "Run: ./scripts/create-dev-db.sh first"
+  echo "Run: ./scripts/reset-dev-data.sh first"
   exit 1
 fi
 
@@ -36,73 +42,83 @@ if [ "$ENV" != "development" ]; then
   exit 1
 fi
 
+# Count helper that tolerates not-yet-created tables/columns. The synthesis tables
+# (topic_clusters, note_connections, ...) and processed_notes.essence are migrated
+# in lazily the first time their workflow runs, so a fresh DB legitimately lacks
+# them — report 0 rather than crashing.
+safe_count() {
+  sqlite3 "$DEV_DB" "$1" 2>/dev/null || echo 0
+}
+
 show_status() {
   echo -e "${BLUE}=== Dev Database Processing Status ===${NC}"
   echo ""
 
-  RAW=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM raw_notes;")
-  PROCESSED=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM processed_notes;")
-  PENDING=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM raw_notes WHERE status = 'pending';")
-  RELATIONSHIPS=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM note_relationships;")
-  ASSOCIATIONS=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM note_associations;")
-  THREADS=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM threads;")
-  THREAD_NOTES=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM thread_notes;")
-  EXPORTED=$(sqlite3 "$DEV_DB" "SELECT COUNT(*) FROM raw_notes WHERE exported_to_obsidian = 1;")
+  RAW=$(safe_count "SELECT COUNT(*) FROM raw_notes;")
+  PROCESSED=$(safe_count "SELECT COUNT(*) FROM processed_notes;")
+  PENDING=$(safe_count "SELECT COUNT(*) FROM raw_notes WHERE status = 'pending';")
+  ESSENCES=$(safe_count "SELECT COUNT(*) FROM processed_notes WHERE essence IS NOT NULL AND essence != '';")
+  CLUSTERS=$(safe_count "SELECT COUNT(*) FROM topic_clusters;")
+  CLUSTER_LINKS=$(safe_count "SELECT COUNT(*) FROM topic_note_links;")
+  CONNECTIONS=$(safe_count "SELECT COUNT(*) FROM note_connections;")
+  EXPORTED=$(safe_count "SELECT COUNT(*) FROM raw_notes WHERE exported_to_obsidian = 1;")
 
   echo -e "  Raw notes:        ${GREEN}${RAW}${NC}"
   echo -e "  LLM processed:    ${GREEN}${PROCESSED}${NC} / ${RAW}"
   echo -e "  Pending LLM:      ${YELLOW}${PENDING}${NC}"
-  echo -e "  Relationships:    ${GREEN}${RELATIONSHIPS}${NC}"
-  echo -e "  Associations:     ${GREEN}${ASSOCIATIONS}${NC}"
-  echo -e "  Threads:          ${GREEN}${THREADS}${NC}"
-  echo -e "  Thread notes:     ${GREEN}${THREAD_NOTES}${NC}"
+  echo -e "  Essences:         ${GREEN}${ESSENCES}${NC} / ${PROCESSED}"
+  echo -e "  Topic clusters:   ${GREEN}${CLUSTERS}${NC}"
+  echo -e "  Cluster links:    ${GREEN}${CLUSTER_LINKS}${NC}"
+  echo -e "  Connections:      ${GREEN}${CONNECTIONS}${NC}"
   echo -e "  Obsidian export:  ${GREEN}${EXPORTED}${NC} / ${RAW}"
   echo ""
 }
 
+# Run one workflow step; never let a single bad note abort the whole pass.
+run_step() {
+  local label="$1" workflow_path="$2"
+  echo -e "${YELLOW}${label}...${NC}"
+  SELENE_ENV=development npx ts-node "$workflow_path" 2>&1 \
+    | grep -E "(complete|error|Found|No |nothing to do|Exported|Synthesize)" || true
+  echo ""
+}
+
 # Status-only mode
-if [ "$1" = "--status" ]; then
+if [ "${1:-}" = "--status" ]; then
   show_status
   exit 0
 fi
 
-echo -e "${BLUE}=== Dev Batch Processing (batch size: ${BATCH_SIZE}) ===${NC}"
-echo ""
+MODE="${1:-once}"
 
+echo -e "${BLUE}=== Dev Batch Processing (mode: ${MODE}) ===${NC}"
+echo ""
 show_status
 
-# Step 1: Index vectors (embed unindexed notes into LanceDB)
-echo -e "${YELLOW}Step 1: Index vectors (limit ${BATCH_SIZE})...${NC}"
-SELENE_ENV=development npx ts-node src/workflows/index-vectors.ts "$BATCH_SIZE" 2>&1 | grep -E "(complete|error|No notes)" || true
-echo ""
+if [ "$MODE" = "--all" ]; then
+  # Drain the LLM backlog (process-llm handles ~10 notes per invocation).
+  while [ "$(safe_count "SELECT COUNT(*) FROM raw_notes WHERE status = 'pending';")" -gt 0 ]; do
+    run_step "LLM concept extraction (draining)" "src/workflows/process-llm.ts"
+  done
+  # Backfill essences until none remain (also ~10 per invocation).
+  while [ "$(safe_count "SELECT COUNT(*) FROM processed_notes WHERE essence IS NULL;")" -gt 0 ]; do
+    run_step "Essence distillation (draining)" "src/workflows/distill-essences.ts"
+  done
+else
+  run_step "Step 1: LLM concept extraction" "src/workflows/process-llm.ts"
+  run_step "Step 2: Essence distillation" "src/workflows/distill-essences.ts"
+fi
 
-# Step 2: Compute associations (pairwise similarity via LanceDB)
-echo -e "${YELLOW}Step 2: Compute associations (limit ${BATCH_SIZE})...${NC}"
-SELENE_ENV=development npx ts-node src/workflows/compute-associations.ts "$BATCH_SIZE" 2>&1 | grep -E "(complete|error|All indexed)" || true
-echo ""
-
-# Step 3: Compute relationships (temporal, thread, project)
-echo -e "${YELLOW}Step 3: Compute relationships...${NC}"
-SELENE_ENV=development npx ts-node src/workflows/compute-relationships.ts 2>&1 | grep -E "(complete|error)" || true
-echo ""
-
-# Step 4: Detect threads
-echo -e "${YELLOW}Step 4: Detect threads...${NC}"
-SELENE_ENV=development npx ts-node src/workflows/detect-threads.ts 2>&1 | grep -E "(complete|error|Created|Assigned)" || true
-echo ""
-
-# Step 5: Reconsolidate threads
-echo -e "${YELLOW}Step 5: Reconsolidate threads...${NC}"
-SELENE_ENV=development npx ts-node src/workflows/reconsolidate-threads.ts 2>&1 | grep -E "(complete|error|Updated)" || true
-echo ""
-
-# Step 6: Export to Obsidian
-echo -e "${YELLOW}Step 6: Export to Obsidian vault...${NC}"
-SELENE_ENV=development npx ts-node src/workflows/export-obsidian.ts 2>&1 | grep -E "(complete|error|Exported)" || true
-echo ""
+# Clustering + export reflect the full corpus, so run them once after the batch.
+run_step "Step 3: Synthesize topics (clustering)" "src/workflows/synthesize-topics.ts"
+run_step "Step 4: Export to Obsidian vault" "src/workflows/export-obsidian.ts"
 
 echo -e "${BLUE}=== After Processing ===${NC}"
 echo ""
 show_status
 
-echo -e "${GREEN}Done!${NC} Run again to process the next batch."
+if [ "$MODE" = "--all" ]; then
+  echo -e "${GREEN}Done!${NC} Full corpus processed."
+else
+  echo -e "${GREEN}Done!${NC} Run again (or use --all) to process the next batch."
+fi
