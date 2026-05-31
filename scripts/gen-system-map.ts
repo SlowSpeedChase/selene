@@ -32,7 +32,8 @@ function buildRows(): WorkflowRow[] {
 
 function main(): void {
   const check = process.argv.includes('--check');
-  const table = renderWorkflowTable(buildRows());
+  const rows = buildRows();
+  const table = renderWorkflowTable(rows);
   const current = fs.readFileSync(MAP_DOC, 'utf8');
   const next = injectGenerated(current, table);
   if (check) {
@@ -44,7 +45,7 @@ function main(): void {
     return;
   }
   fs.writeFileSync(MAP_DOC, next);
-  console.log(`SYSTEM-MAP.md updated (${buildRows().length} workflows).`);
+  console.log(`SYSTEM-MAP.md updated (${rows.length} workflows).`);
 }
 
 main();

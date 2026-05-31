@@ -1,5 +1,6 @@
 /** Parse a launchd plist's schedule into a human label, or null if none. */
 export function parseSchedule(plistXml: string): string | null {
+  // If both keys are present (not expected in our plists), StartInterval wins.
   const interval = plistXml.match(/<key>StartInterval<\/key>\s*<integer>(\d+)<\/integer>/);
   if (interval) {
     const secs = parseInt(interval[1], 10);
@@ -45,10 +46,12 @@ export interface WorkflowRow {
   writes: string;
 }
 export function renderWorkflowTable(rows: WorkflowRow[]): string {
+  // Escape `|` so a cell value containing a pipe can't break the markdown table.
+  const cell = (v: string) => v.replace(/\|/g, '\\|');
   const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
   const header = '| Workflow | Schedule | Reads | Writes | Purpose |\n|---|---|---|---|---|';
   const body = sorted
-    .map((r) => `| [${r.name}](../src/workflows/${r.name}.ts) | ${r.schedule} | ${r.reads} | ${r.writes} | ${r.purpose} |`)
+    .map((r) => `| [${r.name}](../src/workflows/${r.name}.ts) | ${cell(r.schedule)} | ${cell(r.reads)} | ${cell(r.writes)} | ${cell(r.purpose)} |`)
     .join('\n');
   return `${header}\n${body}`;
 }

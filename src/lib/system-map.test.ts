@@ -19,6 +19,10 @@ describe('parseSchedule', () => {
   it('returns null when no schedule key is present', () => {
     expect(parseSchedule(`<key>RunAtLoad</key><true/>`)).toBeNull();
   });
+  it('prefers StartInterval when both schedule keys are present', () => {
+    const plist = `<key>StartInterval</key><integer>300</integer><key>StartCalendarInterval</key><dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('every 5 min');
+  });
 });
 
 describe('parseMapComment', () => {
@@ -50,6 +54,13 @@ describe('renderWorkflowTable', () => {
     expect(md.indexOf('ingest')).toBeLessThan(md.indexOf('process-llm'));
     expect(md).toContain('[ingest](../src/workflows/ingest.ts)');
     expect(md).toContain('| Workflow | Schedule | Reads | Writes | Purpose |');
+  });
+  it('escapes pipe characters in cell values', () => {
+    const rows: WorkflowRow[] = [
+      { name: 'x', schedule: 'hourly', purpose: 'reads a | writes b', reads: '—', writes: '—' },
+    ];
+    const md = renderWorkflowTable(rows);
+    expect(md).toContain('reads a \\| writes b');
   });
 });
 
