@@ -111,25 +111,31 @@ export function findByContentHash(hash: string): RawNote | undefined {
 }
 
 // Helper: Insert new note
-export function insertNote(note: {
-  title: string;
-  content: string;
-  contentHash: string;
-  tags: string[];
-  createdAt: string;
-  testRun?: string;
-  captureType?: string;
-  sourceUuid?: string;
-  sourceNoteId?: number;
-}): number {
+export function insertNote(
+  note: {
+    title: string;
+    content: string;
+    contentHash: string;
+    tags: string[];
+    createdAt: string;
+    testRun?: string;
+    captureType?: string;
+    sourceUuid?: string;
+    sourceNoteId?: number;
+  },
+  conn: DatabaseType = db
+): number {
   const wordCount = note.content.split(/\s+/).filter(Boolean).length;
   const characterCount = note.content.length;
 
-  const result = db
+  // Fact-store split: a captured note is a FACT — write it to facts.captured_notes (the
+  // real table), NOT the read-only raw_notes view. We set NO `status`; the note has no
+  // note_state row, and the view's COALESCE(ns.status,'pending') reads it back as 'pending'.
+  const result = conn
     .prepare(
-      `INSERT INTO raw_notes
-       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type, source_uuid, source_note_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`
+      `INSERT INTO facts.captured_notes
+       (title, content, content_hash, tags, word_count, character_count, created_at, test_run, capture_type, source_uuid, source_note_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       note.title,
