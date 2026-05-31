@@ -16,6 +16,14 @@ describe('parseSchedule', () => {
     const plist = `<key>StartCalendarInterval</key><dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>`;
     expect(parseSchedule(plist)).toBe('daily 06:00');
   });
+  it('treats a Minute-only StartCalendarInterval (no Hour) as hourly', () => {
+    const plist = `<key>StartCalendarInterval</key><dict><key>Minute</key><integer>0</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('hourly');
+  });
+  it('renders a Minute-only interval at a non-zero minute as hourly at :MM', () => {
+    const plist = `<key>StartCalendarInterval</key><dict><key>Minute</key><integer>30</integer></dict>`;
+    expect(parseSchedule(plist)).toBe('hourly at :30');
+  });
   it('returns null when no schedule key is present', () => {
     expect(parseSchedule(`<key>RunAtLoad</key><true/>`)).toBeNull();
   });

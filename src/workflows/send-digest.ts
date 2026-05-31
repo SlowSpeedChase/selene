@@ -1,3 +1,6 @@
+// @map purpose: Deliver the daily digest (plus synthesis sections) to the "Selene Daily" Apple Note and TRMNL
+// @map reads: digest .txt file, topic_clusters
+// @map writes: Apple Notes, TRMNL
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';

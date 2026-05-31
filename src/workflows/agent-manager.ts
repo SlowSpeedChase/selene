@@ -1,3 +1,6 @@
+// @map purpose: Run background agents, deliver their pending reports, and escalate stale approvals
+// @map reads: agent_jobs, agent_reports
+// @map writes: agent_reports (delivery state), Apple Notes, Obsidian vault
 import { createWorkflowLogger } from '../lib/logger';
 import {
   runAgentMigrations,

@@ -1,3 +1,6 @@
+// @map purpose: Transcribe Apple Voice Memos with Whisper and ingest each as a note
+// @map reads: Apple Voice Memos library, voice_transcriptions
+// @map writes: raw_notes (via ingest), voice_transcriptions, voice-memo archive
 import { existsSync, mkdirSync, renameSync, statSync } from 'fs';
 import { basename, dirname, extname, join } from 'path';
 import { createWorkflowLogger } from '../lib';

@@ -1,3 +1,6 @@
+// @map purpose: Group processed notes into the 8 category clusters and LLM-synthesize each topic + evolution
+// @map reads: raw_notes, processed_notes
+// @map writes: topic_clusters, topic_note_links, synthesis_meta
 import { randomUUID } from 'crypto';
 import { db, generate, isAvailable, createWorkflowLogger } from '../lib';
 import { testRunFilter } from '../lib/test-run';

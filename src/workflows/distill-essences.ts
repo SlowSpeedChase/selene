@@ -1,3 +1,6 @@
+// @map purpose: Backfill/retry LLM essences for processed notes that still lack one
+// @map reads: processed_notes, raw_notes
+// @map writes: processed_notes
 import { createWorkflowLogger, db, generate, isAvailable } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { buildEssencePrompt } from '../lib/prompts';

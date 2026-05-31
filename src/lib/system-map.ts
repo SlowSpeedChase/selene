@@ -14,7 +14,13 @@ export function parseSchedule(plistXml: string): string | null {
   if (cal) {
     const hour = cal[1].match(/<key>Hour<\/key>\s*<integer>(\d+)<\/integer>/);
     const min = cal[1].match(/<key>Minute<\/key>\s*<integer>(\d+)<\/integer>/);
-    const hh = (hour ? hour[1] : '0').padStart(2, '0');
+    // launchd treats an absent StartCalendarInterval field as a wildcard (cron-style).
+    // No Hour key => fires every hour at the given minute, i.e. hourly — NOT midnight.
+    if (!hour) {
+      const mm = (min ? min[1] : '0').padStart(2, '0');
+      return mm === '00' ? 'hourly' : `hourly at :${mm}`;
+    }
+    const hh = hour[1].padStart(2, '0');
     const mm = (min ? min[1] : '0').padStart(2, '0');
     return `daily ${hh}:${mm}`;
   }

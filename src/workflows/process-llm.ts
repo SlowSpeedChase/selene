@@ -1,3 +1,6 @@
+// @map purpose: LLM-extract concepts/themes/category from pending notes, plus essence, embedding & connections
+// @map reads: raw_notes
+// @map writes: processed_notes, note_embeddings, note_connections
 import {
   createWorkflowLogger,
   getPendingNotes,
