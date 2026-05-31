@@ -12,6 +12,19 @@
 
 ---
 
+## Amendments discovered during execution (after Task 3)
+
+These override the original task text below where they conflict:
+
+1. **The `raw_notes` view MUST be `CREATE TEMP VIEW`, not a persistent view.** SQLite forbids a *persistent* view in `main` from referencing an ATTACHed database (verified empirically + SQLite docs/forum). Consequence: the view is **per-connection** — every connection that reads `raw_notes` must `attachFacts(db)` **and** `ensureRawNotesView(db)` at open time. The guard checks `sqlite_master` for a physical table (temp views live in `sqlite_temp_master`, so they don't confuse it).
+2. **Centralize connection creation → new sub-task (do in Task 9, before Task 8 flips any DB).** Add `openSeleneConnection(path?)` in `db.ts` that does `new Database` → `applyConnectionPragmas` → `ensureFactsDbInitialized` → `attachFacts` → `ensureNoteStateTable` → `ensureRawNotesView`. Repoint the **3 non-singleton readers** of `raw_notes`: `src/workflows/folio-feedback.ts:76`, `scripts/selene-inspect.ts:29` (READONLY — verify a TEMP VIEW can be created on a readonly connection; temp objects don't write the main file, so it should work — confirm when wiring), `scripts/seed-dev-data.ts:82`. (`voice-memos-reader.ts` opens a non-Selene Apple DB; `migrate-folio.ts` is legacy — ignore both.)
+3. **`note_state` includes `inbox_status TEXT`; the view exposes `COALESCE(ns.inbox_status,'pending')`.** It's a *live* reader (`worksheets.ts:21`), not legacy. (Done in Task 3 fix `b0593c9`.)
+4. **Proven droppable (zero live readers — audited):** `status_apple`, `processed_at_apple`, `suggested_type`, `suggested_project_id`, `tasks_extracted`, `tasks_extracted_at`. Task 8 does NOT carry these into the two-file layout.
+5. **Task 8 ALTER rule:** idempotent `ALTER TABLE raw_notes ADD COLUMN X` blocks in `db.ts` (e.g. `:611` source_note_id, `:635` inbox_status) are *safe only because the view exposes those columns* — `PRAGMA table_info(raw_notes-view)` includes them, so the guard skips the ALTER. Any future column-add for a column the view does NOT expose must retarget `captured_notes` (a fact) or `note_state` (bookkeeping). Task 8 must convert these blocks accordingly.
+6. **The existing test suite does NOT exercise the view path** (every fixture creates a physical `raw_notes` table, so the guard no-ops). Tasks 8 AND 10 MUST add **view-mode reader coverage**: a fixture that builds the two-file/TEMP-VIEW layout and runs the representative real read queries — `pkm-queries`, `synthesis-digest`, `daily-summary`, `folio-feedback`, `worksheets` — against it. Do not let the dev e2e be the first thing that exercises the view for real readers.
+
+---
+
 ## Pre-flight (read before Task 1)
 
 - **Branch:** work on `feat/fact-store` (already created; the design doc is committed there). If using a worktree: `git worktree add .worktrees/fact-store feat/fact-store`.
@@ -112,9 +125,11 @@ it('raw_notes view joins facts + note_state and defaults status to pending', () 
 
 **Step 2 — Run, expect FAIL.**
 
-**Step 3 — Implement** in `db.ts`:
-- On connection: `db.pragma('journal_mode = WAL'); db.pragma('busy_timeout = 5000');` then `db.prepare("ATTACH DATABASE ? AS facts").run(config.factsDbPath)` and set the same WAL/busy_timeout on the attached file (`db.pragma('facts.journal_mode = WAL')`, etc. — or open+pragma facts first via a short-lived connection during init).
-- `initFactsSchema(db)` (against the attached `facts.*`), then create in **main** (`selene.db`):
+**Step 3 — Implement** in `db.ts`. **Order matters — `initFactsSchema` creates UNQUALIFIED tables (they go to the connection's `main`), so it must run on `facts.db` while `facts.db` IS main, i.e. a standalone connection — NOT after ATTACH (which would create the tables in `selene.db`).**
+
+1. **Ensure facts.db exists with its schema (standalone):** `const f = new Database(config.factsDbPath); f.pragma('journal_mode = WAL'); initFactsSchema(f); f.close();`
+2. **On the main `selene.db` connection:** `db.pragma('journal_mode = WAL'); db.pragma('busy_timeout = 5000');` (busy_timeout is per-connection — it covers the attached db too; no need to set it on `facts.`). Then `db.prepare("ATTACH DATABASE ? AS facts").run(config.factsDbPath)`. Best-effort `db.pragma('facts.journal_mode = WAL')`.
+3. Create in **main** (`selene.db`):
 ```sql
 CREATE TABLE IF NOT EXISTS note_state (
   raw_note_id INTEGER PRIMARY KEY,
@@ -133,6 +148,12 @@ CREATE VIEW raw_notes AS
   LEFT JOIN note_state ns ON ns.raw_note_id = cn.id;
 ```
 > **Standardize the attach alias as `facts`** everywhere — the view DDL hard-codes it.
+>
+> **Guard the view against the pre-migration physical table.** Today `raw_notes` is a TABLE; post-migration it is a VIEW. Wrap view creation in `ensureRawNotesView(db)` that checks `sqlite_master`:
+> - `raw_notes` exists as a **table** → do nothing (un-migrated DB; Task 8's migration converts it). Do not throw.
+> - `raw_notes` exists as a **view** or is absent → `DROP VIEW IF EXISTS raw_notes; CREATE VIEW ...` (idempotent refresh).
+>
+> Add a test for the guard: on a main DB that already has a physical `raw_notes` table, `ensureRawNotesView` is a no-op (the table survives, no throw); on a fresh DB it creates the view.
 
 **Step 4 — Run, expect PASS.**
 
