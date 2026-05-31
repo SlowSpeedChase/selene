@@ -163,5 +163,6 @@ Phase 1 (the split):
 
 ## Links
 
-- **Branch:** (added when implementation starts)
+- **Branch:** `feat/fact-store`
+- **Plan:** [2026-05-31-fact-store-plan.md](2026-05-31-fact-store-plan.md) (Phase 1 — the split)
 - **Related:** `2026-05-30-idempotent-obsidian-reexport-design.md` (idempotent export composes with rebuild), `2026-05-28-prod-dev-split-design.md` (two-env layout), `2026-05-29-dev-prod-boundary-hardening-design.md` (boundary the vault-path bug belongs to)
