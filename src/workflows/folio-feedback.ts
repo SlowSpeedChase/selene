@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
 import { createWorkflowLogger } from '../lib';
+import { setNoteState } from '../lib/note-state';
 
 const log = createWorkflowLogger('folio-feedback');
 
@@ -131,7 +132,10 @@ export function runFolioFeedback(dbPath?: string): void {
         writeFileSync(dest, content, 'utf-8');
         log.info({ noteId: note.id, dest }, 'Wrote feedback file');
 
-        db.prepare("UPDATE raw_notes SET status_folio = 'written' WHERE id = ?").run(note.id);
+        // Fact-store split: status_folio is derived bookkeeping → note_state, not the
+        // read-only raw_notes view. (This connection reads the pre-Task-8 physical raw_notes
+        // table; note_state is a persistent table in selene.db main, visible without attach.)
+        setNoteState(db, note.id, { status_folio: 'written' });
       } catch (err) {
         console.error(`[folio-feedback] Failed to write feedback for note ${note.id}:`, err);
       }

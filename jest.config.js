@@ -14,6 +14,7 @@ module.exports = {
     '**/src/lib/db-config.test.ts',
     '**/src/lib/facts-db.test.ts',
     '**/src/lib/inspect.test.ts',
+    '**/src/lib/note-state.test.ts',
     '**/src/lib/obsidian-render.test.ts',
     '**/src/lib/obsidian-render.db.test.ts',
     '**/src/lib/pkm-db.test.ts',

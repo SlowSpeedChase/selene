@@ -8,6 +8,7 @@ import {
   ensureNoteStateTable,
   ensureRawNotesView,
 } from './facts-db';
+import { setNoteState } from './note-state';
 import type { CalendarEvent } from '../types';
 
 // Initialize database connection
@@ -95,12 +96,11 @@ export function getPendingNotes(limit = 10): RawNote[] {
 }
 
 // Helper: Mark note as processed
-export function markProcessed(id: number): void {
-  db.prepare('UPDATE raw_notes SET status = ?, processed_at = ? WHERE id = ?').run(
-    'processed',
-    new Date().toISOString(),
-    id
-  );
+// Fact-store split: `status`/`processed_at` are derived bookkeeping → write the disposable
+// note_state row (NOT the read-only raw_notes view). The view's COALESCE(ns.status,...) reads
+// it back. setNoteState's partial UPSERT leaves any other note_state columns intact.
+export function markProcessed(id: number, conn: DatabaseType = db): void {
+  setNoteState(conn, id, { status: 'processed', processed_at: new Date().toISOString() });
 }
 
 // Helper: Check for duplicate by content hash
@@ -155,8 +155,15 @@ export function insertNote(
 }
 
 // Helper: Update calendar event metadata on a note
-export function updateCalendarEvent(noteId: number, calendarEvent: CalendarEvent): void {
-  db.prepare('UPDATE raw_notes SET calendar_event = ? WHERE id = ?')
+// Fact-store split: `calendar_event` is part of the immutable note FACT → write the real
+// facts.captured_notes table (NOT the read-only raw_notes view). The note id comes from
+// insertNote's captured_notes rowid, so it addresses the same row.
+export function updateCalendarEvent(
+  noteId: number,
+  calendarEvent: CalendarEvent,
+  conn: DatabaseType = db
+): void {
+  conn.prepare('UPDATE facts.captured_notes SET calendar_event = ? WHERE id = ?')
     .run(JSON.stringify(calendarEvent), noteId);
 }
 
