@@ -52,6 +52,53 @@ This restores the previous `dist/`, restarts the prod agents in place (`launchct
 
 **Prod plists are generated, not committed.** `install-prod.sh` renders `com.selene.prod.*` plists from the canonical `launchd/com.selene.*.plist` files by per-key substitution (compiled `node` entrypoint instead of the ts-node wrapper, `SELENE_ENV=production`, paths remapped into `~/selene-prod`). This keeps a single source of truth so the prod plists can't drift from the dev ones. The deploy-watcher plist is separate infra and is never pruned by this process.
 
+## The one-time fact-store cutover
+
+> **Separate from the prod/dev split above.** This is a **one-time DB migration**, not a code release. It moves production's database from a single `selene.db` to the two-file **fact-store** layout (`facts.db` = the precious append-only captured notes + your review state; `selene.db` = the regenerable derived layer). It is run **once, by hand, at a quiet moment**, then you never run it again. Status: built & validated on `feat/fact-store`, **not yet run against prod**.
+
+**Why it can't just be a merge.** The fact-store code reads `raw_notes` as a per-connection view over `facts.captured_notes`. If you merged the fact-store branch and let the deploy-watcher auto-ship it (code-only) onto an **un-migrated** prod DB, prod wouldn't crash — it would silently *split*: new captures would land in `facts.captured_notes` while reads still hit the old physical `raw_notes` table. So the DB must be migrated **in lockstep** with the code, by a supervised script — never by the auto-deploy path.
+
+A startup guard (`src/lib/ensure-migrated.ts`, wired into `db.ts`) enforces this: dev/test/fresh-clone DBs **auto-migrate** themselves, but a **production** DB that is somehow un-migrated **fails loud and refuses to serve** rather than running in the split state. That guard is the safety net; the cutover below is the real path.
+
+### Running the cutover
+
+Run from `~/selene`, checked out to the fact-store sha (or `main`, once it's merged) so the migration code and the deployed `dist/` are the **same version**. Rehearse first, then go live:
+
+```bash
+# 1. REHEARSE — full orchestration in --dry-run against a /tmp copy of the dev DB.
+#    Stubs every launchctl/deploy/notify side effect; runs the REAL DB surgery on the copy.
+#    Exercises happy path, already-migrated re-run, and both auto-rollback paths.
+bash scripts/verify-cutover.sh        # expect "VERIFY-CUTOVER: ALL PASSED"
+
+# 2. GO LIVE — pick a quiet moment (brief downtime, see below).
+./scripts/cutover-prod.sh             # defaults the deploy ref to origin/main
+# or pin the exact build:  ./scripts/cutover-prod.sh --ref <fact-store-sha>
+```
+
+`cutover-prod.sh` is the single supervised command. It prints a `[PASS]`/`[FAIL]` line for every step and, on success, fires a **"Selene cutover complete"** notification.
+
+### What it does (and how it protects the DB)
+
+The script runs this ordered sequence, **aborting cleanly with nothing changed** on any pre-flight problem, and **auto-rolling-back** on any gate or deploy failure after surgery begins:
+
+1. **Build-gate** — `npm run build && npm run build:check`. A broken build aborts before anything is touched.
+2. **Pre-flight** — DB exists; DB is actually un-migrated (if already migrated, exits `0` "already migrated — nothing to do"); enough disk for a full backup (~2× the DB); captures baseline `raw_notes`/`processed_notes` counts. Any failure aborts with prod untouched.
+3. **Pause the deploy-watcher** (`bootout`) so it can't auto-deploy mid-cutover.
+4. **Stop the `com.selene.prod.*` agents** — *prod downtime begins.* The DB is now quiesced.
+5. **Verified backup** — copies `selene.db` to `~/selene-data/backups/pre-cutover-<sha>-<ts>.db` and **re-opens it read-only to confirm its row count matches the live DB** before proceeding. An unverified backup is not a rollback target. (Keeps the newest 5; Time Machine is the secondary net.)
+6. **Migrate** — `migrate-to-fact-store.ts`: id-preserving, transactional, crash-atomic (rollback-journal mode for the cross-file commit), FK-safe, idempotent.
+7. **Gate 1 (content-free)** — structure + counts + a self-deleting capture→pending probe: `facts.db` present, `raw_notes_legacy_backup` holds the original rows, `raw_notes` is no longer a physical table, counts preserved, FK check clean. **Any failure → auto-rollback.**
+8. **Deploy** — `deploy-prod.sh --ref <sha>` ships the compiled `dist/`.
+9. **Restart the prod agents** — new code on the migrated DB; *downtime ends.*
+10. **Gate 2 (live)** — `/health` 200 (with a ~30s readiness-wait so a slow cold start doesn't trip it), `facts.db` present, content-free coverage sane. **Any failure → auto-rollback.**
+11. **Resume the deploy-watcher** and fire **"Selene cutover complete"**.
+
+**Auto-rollback** (on a Gate 1 / Gate 2 / deploy failure) restores prod to **byte-for-byte single-file**: stop agents → restore the verified backup over `selene.db` → remove `facts.db` → (only if a deploy had already happened) roll the code back via `rollback-prod.sh` → restart agents → resume watcher → **"Selene cutover ROLLED BACK"**. The restore tail is best-effort by construction (`set +e`), so it always runs to completion even if a step within it errors.
+
+**Brief downtime is inherent.** Old code can't read a migrated DB and new code can't safely read an un-migrated one, so the agents are stopped across the swap — minutes, not hours. Webhook captures arriving in that window are dropped (server off), which is why you pick a quiet moment.
+
+**Claude never runs this against prod.** The prod-data guard blocks Claude's tools from `~/selene-data`; Claude authors and `/tmp`-validates the script, the operator runs it. Every gate is content-free (counts/structure + a self-deleting probe), so no note text is ever read.
+
 ## Configure & customize
 
 **Poll interval** — `launchd/com.selene.prod.deploy-watcher.plist`, `StartInterval` = `300` (seconds, i.e. every 5 minutes). Change that integer and reload the agent to poll more/less often.
@@ -89,12 +136,17 @@ This restores the previous `dist/`, restarts the prod agents in place (`launchct
 | **I got a "deploy WARN" notification** | The build passed and `dist/` shipped, but a later step (prod `npm install`, agent load, or `/health`) failed. Prod may be incoherent and is still recorded on the old sha. Check `deploy.log`, and consider `./scripts/rollback-prod.sh`. |
 | **Force a redeploy** (watcher says "up to date" but I want to re-ship) | Run the deployer directly — it deploys the ref unconditionally (the sha-equality gate is only in the watcher): `./scripts/deploy-prod.sh --ref origin/main` |
 | **A release built fine but behaves badly at runtime** | Roll back: `./scripts/rollback-prod.sh` (newest archived release) or `./scripts/rollback-prod.sh <sha>`. |
+| **Prod crashlooping with "DB not migrated" after a fact-store deploy** | The fact-store code reached prod on an un-migrated DB (the `ensure-migrated` guard refusing to serve, by design). Don't patch around it — run the supervised cutover: `./scripts/cutover-prod.sh`. |
+| **`cutover-prod.sh` says "already migrated — nothing to do"** | The DB is already on the two-file layout; the cutover is a safe no-op. Nothing to do. |
+| **Cutover hit a gate and rolled back** | Expected safety behavior — prod is restored to single-file on the last-good code (you'll have gotten **"Selene cutover ROLLED BACK"**). Check the `[FAIL]` line in the script output and `~/selene-data/backups/` for the verified pre-cutover backup, fix the cause, re-run. |
 
 ## Related
 
-- Design doc: [`docs/plans/2026-05-28-prod-dev-split-design.md`](../../plans/2026-05-28-prod-dev-split-design.md)
-- Scripts: `scripts/deploy-watch.sh`, `scripts/deploy-prod.sh`, `scripts/install-prod.sh`, `scripts/rollback-prod.sh`, `scripts/lib/notify.sh`
+- Design doc (prod/dev split): [`docs/plans/2026-05-28-prod-dev-split-design.md`](../../plans/2026-05-28-prod-dev-split-design.md)
+- Design docs (fact-store cutover): [`docs/plans/2026-05-31-fact-store-cutover-design.md`](../../plans/2026-05-31-fact-store-cutover-design.md) · [`…-fact-store-design.md`](../../plans/2026-05-31-fact-store-design.md)
+- Release scripts: `scripts/deploy-watch.sh`, `scripts/deploy-prod.sh`, `scripts/install-prod.sh`, `scripts/rollback-prod.sh`, `scripts/lib/notify.sh`
+- Cutover scripts: `scripts/cutover-prod.sh` (orchestrator), `scripts/migrate-to-fact-store.ts` (migration), `scripts/verify-cutover.sh` (/tmp validation), `src/lib/ensure-migrated.ts` (startup guard)
 - Watcher agent: `launchd/com.selene.prod.deploy-watcher.plist`
 
 ---
-*Last updated: 2026-05-28*
+*Last updated: 2026-06-01*

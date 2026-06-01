@@ -2,11 +2,11 @@
 #
 # cutover-prod.sh — the ONE-TIME prod cutover to the two-file fact-store layout.
 #
-# THIS FILE (Task 3) implements only the DB-surgery CORE: preflight → backup_and_verify → migrate
-# → gate1 (content-free verification) → rollback_db (on failure). The watcher-stop / agent-stop /
-# deploy / Gate-2 orchestration that wraps this core is the NEXT task — see the TODO stubs at the
-# bottom. The `main` here intentionally runs ONLY the DB-critical sequence so the core can be
-# driven/tested in isolation by scripts/cutover-core-check.sh.
+# Full orchestration (main, bottom of file): build-gate → preflight → pause_watcher → stop_agents →
+# backup_and_verify → migrate → gate1 (content-free) → deploy → restart_agents → gate2 → resume_watcher,
+# with AUTO-ROLLBACK (rollback_all) on any gate/deploy failure. The DB-surgery core (backup → migrate →
+# gate1 → rollback_db) is also driveable in isolation by scripts/cutover-core-check.sh, and the whole
+# orchestration is validated end-to-end (--dry-run, /tmp copy) by scripts/verify-cutover.sh.
 #
 # PATH-PARAMETERIZED so it can run against a /tmp COPY (the check harness does exactly that):
 #   SELENE_DB_PATH        (default ~/selene-data/selene.db)
