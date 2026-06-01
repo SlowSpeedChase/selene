@@ -55,11 +55,15 @@ afterAll(() => {
  * DELIBERATELY omits `exported_at` (a note_state DDL column) so the intersection logic is
  * exercised — it must be skipped, not break the SELECT.
  */
-function buildLegacyDb(opts: { orphanProcessed?: boolean } = {}): { dir: string; dbPath: string; factsPath: string } {
+function buildLegacyDb(opts: { orphanProcessed?: boolean; danglingSelfRef?: boolean } = {}): { dir: string; dbPath: string; factsPath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'selene-migrate-'));
   const dbPath = join(dir, 'selene.db');
   const factsPath = join(dir, 'facts.db');
   const db = new Database(dbPath);
+  // FK enforcement OFF during seeding — this is how real prod cruft arises: notes deleted via an
+  // FK-bypassing path (e.g. cleanup-tests.sh's raw `sqlite3 DELETE`, CLI default FK off) leave
+  // processed_notes orphans and dangling source_note_id self-refs behind. We reproduce that state.
+  db.pragma('foreign_keys = OFF');
 
   // PHYSICAL raw_notes: all 15 fact columns + 6 of the 7 bookkeeping columns (no exported_at).
   db.exec(`
@@ -77,7 +81,7 @@ function buildLegacyDb(opts: { orphanProcessed?: boolean } = {}): { dir: string;
       source_uuid      TEXT,
       calendar_event   TEXT,
       capture_type     TEXT,
-      source_note_id   INTEGER,
+      source_note_id   INTEGER REFERENCES raw_notes(id),
       test_run         TEXT,
       -- bookkeeping (will move to note_state):
       status               TEXT,
@@ -100,6 +104,11 @@ function buildLegacyDb(opts: { orphanProcessed?: boolean } = {}): { dir: string;
   ins.run({ id: 20, title: 'Annotation', content: 'note about root', content_hash: 'h20', capture_type: 'eink', created_at: '2026-01-02T00:00:00Z', source_note_id: 10, test_run: null, status: 'processed', exported_to_obsidian: 1, obsidian_export_hash: 'export-hash-20' });
   // id=30: archived + a test_run marker
   ins.run({ id: 30, title: 'Archived', content: 'old', content_hash: 'h30', capture_type: 'drafts', created_at: '2026-01-03T00:00:00Z', source_note_id: null, test_run: 'x', status: 'archived', exported_to_obsidian: 0, obsidian_export_hash: null });
+  // id=40 (optional): an annotation whose source note (777) was deleted long ago — a PRE-EXISTING
+  // dangling source_note_id self-ref. Real prod has these (annotation feature + later deletions).
+  if (opts.danglingSelfRef) {
+    ins.run({ id: 40, title: 'Orphan annotation', content: 'annotates a deleted note', content_hash: 'h40', capture_type: 'eink', created_at: '2026-01-04T00:00:00Z', source_note_id: 777, test_run: null, status: 'pending', exported_to_obsidian: 0, obsidian_export_hash: null });
+  }
 
   // processed_notes referencing raw_note_id 20 and 30 (+ optional orphan for the negative test)
   db.exec(`CREATE TABLE processed_notes (raw_note_id INTEGER, concepts TEXT, primary_theme TEXT)`);
@@ -218,21 +227,37 @@ describe('migrateToFactStore — single file → two files (id-preserving, trans
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('NEGATIVE: an orphan processed_notes row makes the migration THROW and ROLLBACK (nothing moved, raw_notes still physical)', () => {
+  it('TOLERATES a PRE-EXISTING orphan processed_notes row (faithful migration; real prod has historical deletions)', () => {
+    // A processed_notes row whose raw_note_id (999) has no surviving raw_note is SOURCE cruft, not a
+    // migration fault — the migration copies every real note id-faithfully and provably can't create
+    // it. So the migration must SUCCEED and preserve the orphan, not reject the whole cutover.
     const { dir, dbPath, factsPath } = buildLegacyDb({ orphanProcessed: true });
-    expect(() => migrateToFactStore(dbPath, factsPath)).toThrow();
+    const result = migrateToFactStore(dbPath, factsPath);
+    expect(result.notes).toBe(3); // the 3 real notes moved
 
-    // Rollback proof: captured_notes empty, raw_notes still a physical table, no backup.
     const facts = new Database(factsPath);
-    const factCount = (facts.prepare(`SELECT COUNT(*) AS n FROM captured_notes`).get() as { n: number }).n;
-    expect(factCount).toBe(0);
+    expect((facts.prepare(`SELECT COUNT(*) AS n FROM captured_notes`).get() as { n: number }).n).toBe(3);
     facts.close();
 
     const db = new Database(dbPath);
-    const physical = db.prepare(`SELECT type FROM sqlite_master WHERE name='raw_notes'`).get() as { type: string } | undefined;
-    expect(physical?.type).toBe('table'); // RENAME was inside the txn → rolled back
+    // The orphan row is PRESERVED in processed_notes (faithful — nothing silently dropped).
+    expect((db.prepare(`SELECT COUNT(*) AS n FROM processed_notes WHERE raw_note_id = 999`).get() as { n: number }).n).toBe(1);
+    // Migration committed: raw_notes is now the legacy backup, not a live physical table.
     const backup = db.prepare(`SELECT type FROM sqlite_master WHERE name='raw_notes_legacy_backup'`).get() as { type: string } | undefined;
-    expect(backup).toBeUndefined();
+    expect(backup?.type).toBe('table');
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('TOLERATES a PRE-EXISTING dangling source_note_id self-ref (annotation of a since-deleted note)', () => {
+    const { dir, dbPath, factsPath } = buildLegacyDb({ danglingSelfRef: true });
+    const result = migrateToFactStore(dbPath, factsPath);
+    expect(result.notes).toBe(4); // 3 + the dangling-ref note
+
+    const db = openTwoFile(dbPath, factsPath);
+    // The dangling note migrated, source_note_id preserved verbatim (777, still pointing nowhere).
+    const row = db.prepare(`SELECT source_note_id FROM facts.captured_notes WHERE id = 40`).get() as { source_note_id: number };
+    expect(row.source_note_id).toBe(777);
     db.close();
     rmSync(dir, { recursive: true, force: true });
   });

@@ -308,6 +308,26 @@ export function migrateToFactStore(
     const rawCols = columnsOf(db, 'raw_notes');
     const presentBookkeeping = BOOKKEEPING_COLUMNS.filter((c) => rawCols.has(c));
 
+    // PRE-EXISTING referential cruft (orphaned processed_notes, dangling source_note_id self-refs)
+    // is SOURCE data — real prod accumulates it through historical deletions. A FAITHFUL migration
+    // copies every note id-preservingly, so it can neither create nor remove these; the relationship
+    // is INVARIANT. Capture the counts now (raw_notes still intact, pre-txn) and assert post == pre
+    // below — which TOLERATES existing cruft while still catching a migration that drops/remaps ids.
+    const preProcOrphans = hasProcessedNotes
+      ? count(db, `SELECT COUNT(*) AS n FROM processed_notes WHERE raw_note_id NOT IN (SELECT id FROM raw_notes)`)
+      : 0;
+    const preDanglingSelfRefs = rawCols.has('source_note_id')
+      ? count(
+          db,
+          `SELECT COUNT(*) AS n FROM raw_notes WHERE source_note_id IS NOT NULL AND source_note_id NOT IN (SELECT id FROM raw_notes)`
+        )
+      : 0;
+    // Whole-DB FK violations present in the SOURCE (against the original schema, pre-strip/rename).
+    // The migration only REMOVES the raw_notes FK from live tables and faithfully copies data, so it
+    // can never INCREASE violations — every post-migration violation is either one of these
+    // pre-existing ones (a dormant/self FK now pointing at raw_notes_legacy_backup) or a real bug.
+    const preFkViolations = (db.pragma('foreign_key_check') as unknown[]).length;
+
     const txn = db.transaction(() => {
       // (4a) Copy the 15 facts, id EXPLICIT — preserves ids so derived references stay valid.
       const factCols = FACT_COLUMNS.join(', ');
@@ -360,8 +380,17 @@ export function migrateToFactStore(
           db,
           `SELECT COUNT(*) AS n FROM processed_notes WHERE raw_note_id NOT IN (SELECT id FROM facts.captured_notes)`
         );
-        if (procOrphans !== 0) {
-          throw new Error(`migration assert failed: ${procOrphans} processed_notes orphan(s)`);
+        // post != pre means the migration CHANGED the note id-set (dropped/remapped a raw_note),
+        // turning a previously-valid processed_notes row into an orphan — a real bug → rollback.
+        // post == pre (incl. pre-existing orphans) is a faithful migration → tolerate.
+        if (procOrphans !== preProcOrphans) {
+          throw new Error(
+            `migration assert failed: processed_notes orphans changed ${preProcOrphans} → ${procOrphans} (migration altered the note id-set)`
+          );
+        }
+        if (procOrphans > 0) {
+          // eslint-disable-next-line no-console
+          console.log(`note: preserved ${procOrphans} pre-existing orphaned processed_notes row(s) (raw_note_id with no surviving note)`);
         }
       }
       const stateOrphans = count(
@@ -377,8 +406,16 @@ export function migrateToFactStore(
          WHERE source_note_id IS NOT NULL
            AND source_note_id NOT IN (SELECT id FROM facts.captured_notes)`
       );
-      if (danglingSelfRefs !== 0) {
-        throw new Error(`migration assert failed: ${danglingSelfRefs} dangling source_note_id self-ref(s)`);
+      // Same invariant as processed_notes orphans: a self-ref to a since-deleted note is pre-existing
+      // SOURCE cruft the migration preserves verbatim. Only a CHANGE (post != pre) signals a bug.
+      if (danglingSelfRefs !== preDanglingSelfRefs) {
+        throw new Error(
+          `migration assert failed: dangling source_note_id self-refs changed ${preDanglingSelfRefs} → ${danglingSelfRefs} (migration altered the note id-set)`
+        );
+      }
+      if (danglingSelfRefs > 0) {
+        // eslint-disable-next-line no-console
+        console.log(`note: preserved ${danglingSelfRefs} pre-existing dangling source_note_id self-ref(s) (annotation of a since-deleted note)`);
       }
 
       // (4g) Whole-DB FK integrity assert. `PRAGMA foreign_key_check` returns one row per broken
@@ -392,13 +429,21 @@ export function migrateToFactStore(
         parent: string;
         fkid: number;
       }>;
-      if (fkViolations.length > 0) {
+      // post > pre means the migration INTRODUCED a violation (a bug) → rollback. post <= pre means
+      // every remaining violation was already in the source (pre-existing cruft now pointing at
+      // raw_notes_legacy_backup) — faithful, so tolerate. The live-tables-are-FK-free guarantee is
+      // separately enforced by rebuildWithoutRawNotesFk's own checks, not by this assert.
+      if (fkViolations.length > preFkViolations) {
         const detail = fkViolations
           .map((v) => `${v.table} rowid=${v.rowid} -> ${v.parent} (fkid=${v.fkid})`)
           .join('; ');
         throw new Error(
-          `migration assert failed: foreign_key_check returned ${fkViolations.length} violation(s): ${detail}`
+          `migration assert failed: foreign_key_check violations grew ${preFkViolations} → ${fkViolations.length} (migration introduced a broken reference): ${detail}`
         );
+      }
+      if (fkViolations.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log(`note: ${fkViolations.length} pre-existing FK violation(s) preserved against raw_notes_legacy_backup (dormant/self refs to since-deleted notes)`);
       }
 
       return { notes: movedNotes, reviewRows };
