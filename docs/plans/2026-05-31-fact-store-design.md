@@ -125,6 +125,23 @@ Why this is safe (verified against the code):
 
 ---
 
+## Status (2026-05-31): Phase 1 implemented & validated on `feat/fact-store` — NOT merged
+
+Phase 1 (the split) is built and validated end-to-end on `feat/fact-store` (22 commits, 187 unit tests + a full real-Ollama e2e all green). Implemented: two-file `facts.db`/`selene.db`, the per-connection `raw_notes` TEMP-VIEW compat layer, all 6 writers redirected (captures→`facts.captured_notes`, bookkeeping→`note_state`), "pending"=derivation-absence, `review_state` moved to the precious `facts.db`, `openSeleneConnection` for non-singleton readers, and an id-preserving / transactional / crash-atomic / idempotent / FK-safe migration (`scripts/migrate-to-fact-store.ts`). The e2e (`scripts/verify-fact-store.sh`) proved a fresh note flows capture→pending→processed→clustered→exported on the real pipeline, with 0 SQLITE_BUSY across 106k concurrent ops, fully isolated to `/tmp`.
+
+### ⚠️ Prod cutover (the gate before merge — NOT yet done)
+
+**Merging to `main` auto-deploys to prod, but the deploy-watcher does NOT run the migration.** The new code, started against the un-migrated prod DB, leaves `raw_notes` a physical table (view-guard no-ops) while captures write to `facts.captured_notes` — the incoherent intermediate state. A plain merge would break prod. The cutover must be a deliberate sequence: **stop `com.selene.prod.*` agents → run `scripts/migrate-to-fact-store.ts` on the real prod DB → deploy the new `dist/` → verify (`selene-inspect`) → restart** — or add an **auto-migrate-on-startup guard** to `db.ts` so the deployed code self-heals an un-migrated DB before serving. Designing + rehearsing this runbook is the next unit of work.
+
+### Known follow-ups discovered during Phase 1
+
+- **Orthogonal dev→prod vault-path bug still open** (`export-obsidian` resolves `config.vaultPath` = prod iCloud vault even in dev, because `.env`'s `SELENE_VAULT_PATH` overrides the commented dev override). Worth fixing before any prod export runs under the new layout.
+- **6 dormant tables** (`processed_notes_apple`, `note_associations`, `thread_notes`, `thread_history`, `note_relationships`, `sentiment_history`) keep an inert `raw_notes`-FK→`raw_notes_legacy_backup` after migration — harmless (no live writer) but would bite if those archived features are revived.
+- **`dev-process-batch.sh` status display** reads `raw_notes` via the `sqlite3` CLI, which can't see the per-connection TEMP view, so it cosmetically prints "Raw notes: 0" post-split (actual data is fine; the workflows use better-sqlite3 + the view).
+- **Phase 2** (`rebuild` command + full-regenerate validation) and **Phase 3** (the `category_overrides` correction *feature*) remain as separate plans.
+
+---
+
 ## Ready for Implementation Checklist
 
 Phase 1 (the split):
