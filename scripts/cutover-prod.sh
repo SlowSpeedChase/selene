@@ -12,7 +12,9 @@
 #   SELENE_DB_PATH        (default ~/selene-data/selene.db)
 #   SELENE_FACTS_DB_PATH  (default ~/selene-data/facts.db)
 #   BACKUP_DIR            (default ~/selene-data/backups)
-#   SIMULATE_GATE1_FAIL   (set to 1 to force gate1 to fail — rollback test)
+#   SIMULATE_GATE1_FAIL   (set to 1 to force gate1 to fail — pre-deploy rollback test)
+#   SIMULATE_GATE2_FAIL   (set to 1 to force gate2 to fail — post-deploy rollback test)
+#   SIMULATE_CODE_ROLLBACK_FAIL (set to 1 to force the code-rollback non-zero — restore-tail-still-runs test)
 #
 # Each step echoes a clear [PASS]/[FAIL] line. Sourced functions share a few shell GLOBALS
 # (PRE_RAW, PRE_PROC, BACKUP) across calls — do NOT make them `local`.
@@ -23,12 +25,16 @@ set -euo pipefail
 DB="${SELENE_DB_PATH:-$HOME/selene-data/selene.db}"
 FACTS="${SELENE_FACTS_DB_PATH:-$HOME/selene-data/facts.db}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/selene-data/backups}"
-SIMULATE_GATE1_FAIL="${SIMULATE_GATE1_FAIL:-}"   # set to 1 to force gate1 to fail (rollback test)
+SIMULATE_GATE1_FAIL="${SIMULATE_GATE1_FAIL:-}"   # set to 1 to force gate1 to fail (pre-deploy rollback test)
+SIMULATE_GATE2_FAIL="${SIMULATE_GATE2_FAIL:-}"   # set to 1 to force gate2 to fail (post-deploy rollback test)
+SIMULATE_CODE_ROLLBACK_FAIL="${SIMULATE_CODE_ROLLBACK_FAIL:-}"   # set to 1 to force the code-rollback non-zero (restore-tail-still-runs test)
 
 # --- orchestration config / args (Tasks 4+5) ---
 DRY_RUN="${DRY_RUN:-}"                       # set (or --dry-run) to stub launchctl/deploy/notify
 PROD_TARGET="${PROD_TARGET:-$HOME/selene-prod}"   # prod deploy dir (holds .deployed-sha); deploy-prod.sh's $TARGET
 TARGET_SHA="${TARGET_SHA:-}"                 # ref to deploy (arg / --ref); defaults to origin/main below
+DEPLOYED=""                                  # flipped to 1 in main() the instant deploy is attempted;
+                                             # rollback_all reads it to decide whether to code-rollback
 
 # OLD_SHA = the code prod is currently on, for the rollback path. Read the prod target's
 # .deployed-sha exactly as deploy-prod.sh does ($TARGET/.deployed-sha); "none" if absent.
@@ -382,6 +388,13 @@ deploy() {
 # into REAL prod. gate1 already ran the capture->pending probe pre-deploy. Here we only
 # read: /health + a content-free selene-inspect coverage sanity (rawNotes>0, facts.db present).
 gate2() {
+  # Test hook: force the POST-deploy failure path so the harness can exercise the code-rollback
+  # branch of rollback_all (DEPLOYED is set by now). Checked BEFORE the dry-run early-return so it
+  # works under --dry-run validation. Mirrors SIMULATE_GATE1_FAIL.
+  if [ -n "$SIMULATE_GATE2_FAIL" ]; then
+    fail "gate2 (simulated): forced failure for rollback test"
+    return 1
+  fi
   if [ -n "$DRY_RUN" ]; then
     echo "  [dry-run] gate2: would curl /health + probe + inspect"
     return 0
@@ -418,25 +431,60 @@ gate2() {
   [ "$ok" = "1" ] && return 0 || return 1
 }
 
+# code_rollback — roll the deployed dist/ back to OLD_SHA. Returns NON-ZERO on failure (prints a
+# visible WARN first). rollback_all runs under `set +e`, so a non-zero here cannot abort the restore
+# tail; the caller's `|| true` is honest belt-and-suspenders on top of that.
+code_rollback() {
+  if [ -n "${SIMULATE_CODE_ROLLBACK_FAIL:-}" ]; then
+    fail "code-rollback failed — restoring agents anyway (simulated)"; return 1
+  fi
+  # OLD_SHA "none" sentinel = no prior deploy recorded → pass no sha so rollback-prod.sh picks the
+  # newest archived release rather than a bogus releases/none dir.
+  local rc=0
+  if [ -n "${OLD_SHA:-}" ] && [ "$OLD_SHA" != "none" ]; then
+    run_or_echo "$REPO_ROOT/scripts/rollback-prod.sh" "$OLD_SHA" || rc=$?
+  else
+    run_or_echo "$REPO_ROOT/scripts/rollback-prod.sh" || rc=$?
+  fi
+  if [ "$rc" -ne 0 ]; then fail "code-rollback failed — restoring agents anyway"; return 1; fi
+  return 0
+}
+
 # rollback_all — GATE-failure path. Tears prod back to the pre-cutover state:
 # stop agents -> restore the single-file DB -> roll the code back to OLD_SHA ->
 # restart agents -> resume the watcher -> notify. In dry-run, the launchctl/deploy/
 # notify steps print; rollback_db runs FOR REAL (it's the DB-surgery core).
 rollback_all() {
+  # CRITICAL: disable errexit for the WHOLE teardown/restore path. Every step here is best-effort —
+  # the restore TAIL (restart_agents → resume_watcher → notify) must ALWAYS run, even if an earlier
+  # step (rollback_db, code_rollback) returns non-zero, or prod is left half-restored with the watcher
+  # paused and agents down. `set +e` guarantees this BY CONSTRUCTION — it does not depend on this
+  # function's call-site context (whether it's the right operand of a `|| { ... }` guard) or on bash's
+  # version-specific errexit-in-||-list rules, which are subtle and unreliable (bash 3.2 vs 5.x differ).
+  # The individual `|| true` markers below are then honest belt-and-suspenders, not the load-bearing
+  # mechanism.
+  #
+  # `set +e` is a GLOBAL option (not function-scoped; `local -` needs bash≥4.4, this runs on macOS
+  # bash 3.2), so capture the caller's errexit and restore it before returning — don't leak errexit-off.
+  local _errexit_was_on=; case $- in *e*) _errexit_was_on=1 ;; esac
+  set +e
   echo "!! ROLLBACK"
   stop_agents
   rollback_db || true
-  # Roll the CODE back to OLD_SHA. If OLD_SHA is the "none" sentinel (no prior deploy recorded),
-  # pass no sha so rollback-prod.sh selects the newest archived release instead of looking up a
-  # bogus releases/none dir. Either way the rollback-prod.sh line is emitted (dry-run-visible).
-  if [ -n "${OLD_SHA:-}" ] && [ "$OLD_SHA" != "none" ]; then
-    run_or_echo "$REPO_ROOT/scripts/rollback-prod.sh" "$OLD_SHA"
+  # Roll the CODE back ONLY if we got far enough to deploy (DEPLOYED set just before `deploy` in
+  # main). At a pre-deploy failure (migrate/gate1) the old code is still the running release, so a
+  # code-rollback is both pointless and WRONG: on a FIRST-EVER cutover there is no archived release,
+  # so rollback-prod.sh would hard-fail (or roll back to a bogus release). Gate on DEPLOYED to skip it.
+  if [ -n "${DEPLOYED:-}" ]; then
+    code_rollback || true
   else
-    run_or_echo "$REPO_ROOT/scripts/rollback-prod.sh"
+    info "no deploy happened (pre-deploy failure) — skipping code-rollback; running code is unchanged"
   fi
   restart_agents
   resume_watcher
   run_or_echo selene_notify "Selene cutover ROLLED BACK" "restored single-file + code ${OLD_SHA:-none}"
+  # Restore the caller's errexit (every current call site `exit 1`s right after, but don't depend on it).
+  [ -n "$_errexit_was_on" ] && set -e || true
 }
 
 # ---------------------------------------------------------------------------
@@ -494,6 +542,10 @@ main() {
   # A failed deploy AFTER a successful migrate leaves prod incoherent (two-file DB + old
   # single-file-expecting code) — exactly what rollback_all unwinds. So route deploy failure to
   # rollback too. (restart_agents stays bare: its launchctl calls are `|| true`, warn-not-die.)
+  # DEPLOYED is the gate rollback_all reads to decide whether a code-rollback is warranted: set it
+  # the instant we commit to deploying. A deploy that fails PART-way still flipped dist/, so the
+  # code DID change — code-rollback is correct from here on, hence DEPLOYED set BEFORE the call.
+  DEPLOYED=1
   deploy || { rollback_all; exit 1; }
   restart_agents
   gate2 || { rollback_all; exit 1; }
