@@ -731,9 +731,13 @@ SELENE_ENV=development npx ts-node scripts/seed-dev-data.ts --count 300
 
 ### reset-dev-data.sh
 
-Wipes the entire `~/selene-data-dev/` directory, re-runs `create-dev-db.sh`, then
-seeds via `seed-dev-data.ts`. Idempotent (`set -euo pipefail`); refuses to run if
-`SELENE_ENV=production`.
+Wipes the entire `~/selene-data-dev/` directory, re-runs `create-dev-db.sh`, **migrates the fresh
+DB to the two-file fact-store layout** (`migrate-to-fact-store.ts` — an empty-source no-op move that
+stands up `facts.db` + `note_state` and renames `raw_notes`→`raw_notes_legacy_backup`), then seeds
+via `seed-dev-data.ts` into `facts.captured_notes`. The migrate step is required: without it,
+create-dev-db's physical `raw_notes` + the seed's writes to `facts.captured_notes` leave a
+HALF-migrated DB that the next `ensureMigrated` auto-migrate chokes on. Idempotent (`set -euo
+pipefail`); refuses to run if `SELENE_ENV=production`.
 
 ```bash
 ./scripts/reset-dev-data.sh        # 500 notes (default)
