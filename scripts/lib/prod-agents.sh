@@ -82,11 +82,10 @@ stop_derivation_agents() {
 # owns it) and the server (never stopped → avoid double-bootstrap). Mirrors
 # restart_agents but with the extra server exclusion.
 restart_derivation_agents() {
-  local plist base
+  local plist
   for plist in "$HOME/Library/LaunchAgents/com.selene.prod."*.plist; do
     [ -e "$plist" ] || continue
-    base="$(basename "$plist")"
-    case "$base" in
+    case "$plist" in
       *deploy-watcher.plist) continue ;;
       *server.plist) continue ;;
     esac
