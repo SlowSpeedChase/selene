@@ -26,7 +26,7 @@ export function initFactsSchema(db: DB): void {
       character_count  INTEGER,
       tags             TEXT,
       created_at       DATETIME NOT NULL,
-      imported_at      DATETIME,
+      imported_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
       source_uuid      TEXT,
       calendar_event   TEXT,
       capture_type     TEXT,

@@ -6,6 +6,7 @@ module.exports = {
   // Existing tests use a custom runTests() + assert pattern and are excluded.
   testMatch: [
     '**/scripts/migrate-to-fact-store.test.ts',
+    '**/scripts/backfill-categories.test.ts',
     '**/src/lib/category-clusters.test.ts',
     '**/src/lib/config.test.ts',
     '**/src/lib/constellation.test.ts',
@@ -14,6 +15,7 @@ module.exports = {
     '**/src/lib/db-capture.test.ts',
     '**/src/lib/db-config.test.ts',
     '**/src/lib/db-guard.test.ts',
+    '**/src/lib/db-legacy-columns.test.ts',
     '**/src/lib/db-pending.test.ts',
     '**/src/lib/ensure-migrated.test.ts',
     '**/src/lib/facts-db.test.ts',

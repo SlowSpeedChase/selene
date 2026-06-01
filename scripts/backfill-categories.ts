@@ -4,11 +4,30 @@
 // cross_ref_categories. Idempotent: rows that already have a category are skipped.
 // Run (dev/copy): SELENE_ENV=development npx ts-node scripts/backfill-categories.ts
 import { db, generate, isAvailable, createWorkflowLogger } from '../src/lib';
+import type { Database as DatabaseType } from 'better-sqlite3';
 import { EXTRACT_PROMPT } from '../src/lib/prompts';
 import { extractCategoryFields } from '../src/lib/category-clusters';
+import { setNoteState } from '../src/lib/note-state';
 import { testRunFilter } from '../src/lib/test-run';
 
 const log = createWorkflowLogger('backfill-categories');
+
+/**
+ * Force the Obsidian MOCs to rebuild on the next export by clearing exported_to_obsidian for every
+ * processed note. Post fact-store split, `raw_notes` is a read-only view and `exported_to_obsidian`
+ * lives in `note_state` — so we read the target ids THROUGH the view (a read is fine) and write the
+ * flag via setNoteState, never `UPDATE raw_notes` (which would throw "cannot modify ... a view").
+ * Returns the number of processed notes reset.
+ */
+export function resetExportFlagsForProcessed(conn: DatabaseType = db): number {
+  const targets = conn
+    .prepare(`SELECT id FROM raw_notes WHERE status = 'processed' ${testRunFilter()}`)
+    .all() as Array<{ id: number }>;
+  for (const { id } of targets) {
+    setNoteState(conn, id, { exported_to_obsidian: 0 });
+  }
+  return targets.length;
+}
 
 async function backfillCategories(): Promise<{ updated: number; failed: number }> {
   if (!(await isAvailable())) {
@@ -54,10 +73,8 @@ async function backfillCategories(): Promise<{ updated: number; failed: number }
   // Obsidian MOCs to rebuild with the new categories on the next export run. The
   // design unifies both the iPad and Obsidian surfaces on categories.
   if (updated > 0) {
-    const reset = db.prepare(
-      `UPDATE raw_notes SET exported_to_obsidian = 0 WHERE status = 'processed' ${testRunFilter()}`
-    ).run();
-    log.info({ resetCount: reset.changes }, 'Reset export flags for MOC rebuild');
+    const resetCount = resetExportFlagsForProcessed(db);
+    log.info({ resetCount }, 'Reset export flags for MOC rebuild');
   }
 
   log.info({ updated, failed }, 'Backfill complete');

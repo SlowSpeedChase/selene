@@ -108,6 +108,35 @@ describe('insertNote → facts.captured_notes (fact-store capture redirect)', ()
     expect(stateCount.n).toBe(0);
   });
 
+  it('stamps imported_at automatically on capture (restores the old raw_notes DEFAULT CURRENT_TIMESTAMP)', () => {
+    // insertNote does NOT pass imported_at — the column must default-stamp it, exactly as the
+    // pre-split raw_notes.imported_at DATETIME DEFAULT CURRENT_TIMESTAMP did. Otherwise every new
+    // capture reads back NULL while the RawNote type declares imported_at a non-null string.
+    const id = insertNote(
+      {
+        title: 'Stamped',
+        content: 'body',
+        contentHash: 'hash-imported-at',
+        tags: [],
+        createdAt: '2026-05-31T13:00:00.000Z',
+      },
+      two.db
+    );
+
+    const row = two.db
+      .prepare('SELECT imported_at FROM facts.captured_notes WHERE id = ?')
+      .get(id) as { imported_at: string | null };
+    expect(row.imported_at).not.toBeNull();
+    // SQLite CURRENT_TIMESTAMP format: 'YYYY-MM-DD HH:MM:SS'
+    expect(row.imported_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+
+    // and it reads back through the view too
+    const viewRow = two.db
+      .prepare('SELECT imported_at FROM raw_notes WHERE id = ?')
+      .get(id) as { imported_at: string | null };
+    expect(viewRow.imported_at).not.toBeNull();
+  });
+
   it('preserves defaults: a note with no testRun/sourceUuid/sourceNoteId stores NULLs and defaults capture_type to drafts', () => {
     const id = insertNote(
       {

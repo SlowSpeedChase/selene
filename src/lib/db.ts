@@ -649,24 +649,32 @@ db.exec(`
   );
 `);
 
-// Ensure raw_notes.source_note_id exists (annotation linking — added 2026-05-28).
-// Idempotent column-add so a fresh clone / rebuilt DB gets it without a manual ALTER.
-const rawNotesColumns = db
-  .prepare(`PRAGMA table_info(raw_notes)`)
-  .all() as Array<{ name: string }>;
-if (!rawNotesColumns.some((c) => c.name === 'source_note_id')) {
-  db.exec(`ALTER TABLE raw_notes ADD COLUMN source_note_id INTEGER REFERENCES raw_notes(id)`);
-  logger.info('Migrated raw_notes: added source_note_id column');
+/**
+ * Idempotent column-add for the LEGACY single-file shape, where raw_notes is a PHYSICAL table:
+ * ensure source_note_id (annotation linking, 2026-05-28) + inbox_status (worksheet triage state)
+ * exist so a fresh clone / rebuilt DB gets them without a manual ALTER.
+ *
+ * Post fact-store split, raw_notes is a per-connection VIEW that already exposes both columns, and
+ * `ALTER TABLE <view>` THROWS — which at module load would crash the whole process. So this no-ops
+ * whenever raw_notes is not a real table (it lives in sqlite_master with type='table' only when
+ * physical; a TEMP view is in sqlite_temp_master, so this probe returns nothing for the view).
+ */
+export function ensureLegacyRawNotesColumns(conn: DatabaseType): void {
+  const isPhysicalTable = conn
+    .prepare(`SELECT 1 FROM sqlite_master WHERE name = 'raw_notes' AND type = 'table'`)
+    .get();
+  if (!isPhysicalTable) return;
+  const cols = conn.prepare(`PRAGMA table_info(raw_notes)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === 'source_note_id')) {
+    conn.exec(`ALTER TABLE raw_notes ADD COLUMN source_note_id INTEGER REFERENCES raw_notes(id)`);
+    logger.info('Migrated raw_notes: added source_note_id column');
+  }
+  if (!cols.some((c) => c.name === 'inbox_status')) {
+    conn.exec(`ALTER TABLE raw_notes ADD COLUMN inbox_status TEXT DEFAULT 'pending'`);
+    logger.info('Migrated raw_notes: added inbox_status column');
+  }
 }
-
-// Ensure raw_notes.inbox_status exists (worksheet daily-review triage state).
-// Distinct from `status` (LLM processing pipeline): inbox_status is the
-// user-facing triage state read by the worksheet /today endpoint.
-// Idempotent column-add so a fresh clone / rebuilt DB gets it without a manual ALTER.
-if (!rawNotesColumns.some((c) => c.name === 'inbox_status')) {
-  db.exec(`ALTER TABLE raw_notes ADD COLUMN inbox_status TEXT DEFAULT 'pending'`);
-  logger.info('Migrated raw_notes: added inbox_status column');
-}
+ensureLegacyRawNotesColumns(db);
 
 // Helper: Register a device token (upsert)
 export function registerDevice(token: string, platform = 'ios'): void {
