@@ -145,5 +145,6 @@ Every check is counts + structure + a self-cleaning `test_run`-marked probe — 
 
 ## Links
 - **Branch:** `feat/fact-store` (cutover lands here, alongside Phase 1)
+- **Plan:** [2026-05-31-fact-store-cutover-plan.md](2026-05-31-fact-store-cutover-plan.md) (6 TDD tasks: guard → wire → cutover core → orchestration → /tmp validation → guide)
 - **Companion:** [2026-05-31-fact-store-design.md](2026-05-31-fact-store-design.md) · [2026-05-31-fact-store-plan.md](2026-05-31-fact-store-plan.md)
 - **Reuses:** `scripts/deploy-prod.sh`, `scripts/rollback-prod.sh`, `scripts/migrate-to-fact-store.ts`, `scripts/selene-inspect.ts`
