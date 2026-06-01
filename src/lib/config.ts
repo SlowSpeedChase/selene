@@ -67,17 +67,40 @@ function getVectorsPath(): string {
   return join(homedir(), 'selene-data/vectors.lance');
 }
 
+/**
+ * Resolve the Obsidian vault path per environment. Pure (all inputs explicit) so it's unit-testable.
+ *
+ * THE dev→prod leak guard: in development the vault is ALWAYS the dev sandbox — never an externally
+ * configured path — EXCEPT an explicit `/tmp` scratch (how the test/cutover harnesses redirect it).
+ * This stops the prod `.env`'s `SELENE_VAULT_PATH` (the real iCloud vault) from leaking into a dev run
+ * and polluting production from dev. Production honors the operator-configured `SELENE_VAULT_PATH`
+ * (set via the prod launchd plist); test honors an explicit override, else the test sandbox.
+ */
+export function resolveVaultPath(opts: {
+  env: string;
+  envVaultPath?: string;
+  devDataRoot: string;
+  projectRoot: string;
+}): string {
+  const { env, envVaultPath, devDataRoot: devRoot, projectRoot: proj } = opts;
+  if (env === 'test') {
+    return envVaultPath || join(proj, 'data-test/vault');
+  }
+  if (env === 'development') {
+    if (envVaultPath && envVaultPath.startsWith('/tmp/')) return envVaultPath; // test/cutover scratch
+    return join(devRoot, 'vault');
+  }
+  if (envVaultPath) return envVaultPath;
+  return join(proj, 'vault');
+}
+
 function getVaultPath(): string {
-  if (process.env.SELENE_VAULT_PATH) {
-    return process.env.SELENE_VAULT_PATH;
-  }
-  if (isTestEnv) {
-    return join(projectRoot, 'data-test/vault');
-  }
-  if (isDevEnv) {
-    return join(devDataRoot, 'vault');
-  }
-  return join(projectRoot, 'vault');
+  return resolveVaultPath({
+    env: seleneEnv,
+    envVaultPath: process.env.SELENE_VAULT_PATH,
+    devDataRoot,
+    projectRoot,
+  });
 }
 
 function getDigestsPath(): string {
