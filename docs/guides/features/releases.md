@@ -62,20 +62,34 @@ A startup guard (`src/lib/ensure-migrated.ts`, wired into `db.ts`) enforces this
 
 ### Running the cutover
 
-Run from `~/selene`, checked out to the fact-store sha (or `main`, once it's merged) so the migration code and the deployed `dist/` are the **same version**. Rehearse first, then go live:
+Run from `~/selene`. The order is **prove the migration on a copy of real prod → merge to `main` → cut over** — and that order is load-bearing (see the warning below).
 
 ```bash
-# 1. REHEARSE — full orchestration in --dry-run against a /tmp copy of the dev DB.
+# 1. REHEARSE the orchestration — full --dry-run against a /tmp copy of the DEV DB.
 #    Stubs every launchctl/deploy/notify side effect; runs the REAL DB surgery on the copy.
-#    Exercises happy path, already-migrated re-run, and both auto-rollback paths.
+#    Exercises happy path, already-migrated re-run, and all auto-rollback paths.
 bash scripts/verify-cutover.sh        # expect "VERIFY-CUTOVER: ALL PASSED"
 
-# 2. GO LIVE — pick a quiet moment (brief downtime, see below).
-./scripts/cutover-prod.sh             # defaults the deploy ref to origin/main
-# or pin the exact build:  ./scripts/cutover-prod.sh --ref <fact-store-sha>
+# 2. VALIDATE THE MIGRATION ON A COPY OF REAL PROD — content-free, zero-risk, and MANDATORY.
+#    Real prod data carries referential cruft the dev DB doesn't (orphaned processed_notes,
+#    dangling source_note_id refs from historical deletions). This proves migrate() is green on
+#    YOUR actual data BEFORE you merge — so a post-merge failure (which would cause an outage,
+#    see warning) can't happen. The output is counts + "preserved N …" logs only — no note text.
+sqlite3 ~/selene-data/selene.db ".backup /tmp/prodcopy.db"
+SELENE_DB_PATH=/tmp/prodcopy.db SELENE_FACTS_DB_PATH=/tmp/prodcopy-facts.db \
+  npx ts-node scripts/migrate-to-fact-store.ts     # expect "migrated <N> note(s) → …"
+rm -f /tmp/prodcopy.db /tmp/prodcopy-facts.db      # clean up the copy
+#    If this FAILS, STOP — fix the migration and re-validate. Do NOT merge until it's green.
+
+# 3. MERGE feat/fact-store → main and push  (only after step 2 is green).
+
+# 4. GO LIVE — immediately after the merge, at a quiet moment (brief downtime, see below):
+./scripts/cutover-prod.sh --ref origin/main
 ```
 
 `cutover-prod.sh` is the single supervised command. It prints a `[PASS]`/`[FAIL]` line for every step and, on success, fires a **"Selene cutover complete"** notification.
+
+> **⚠️ Why merge-first, and why step 2 is mandatory.** `cutover-prod.sh` deploys the code at `--ref` and, at the end, resumes the deploy-watcher — which only stays quiet if `.deployed-sha == origin/main`. That requires `origin/main` to already contain the fact-store code, so **`--ref origin/main` is correct only *after* the merge** (before it, you'd deploy the old single-file code onto the migrated DB). And the merge raises the stakes of a migrate failure: if the cutover fails *after* you've merged, its rollback resumes the watcher while `origin/main` now holds fact-store but `.deployed-sha` is still old → the watcher deploys fact-store onto the rolled-back, **un-migrated** DB → the `ensure-migrated` guard refuses to serve → **prod is down** until a successful cutover. Step 2 removes that risk by proving migrate() green on a copy of your real data *before* the merge. Do **not** pre-pause the watcher manually (the cutover's own `pause_watcher` would then abort).
 
 ### What it does (and how it protects the DB)
 
@@ -136,7 +150,7 @@ The script runs this ordered sequence, **aborting cleanly with nothing changed**
 | **I got a "deploy WARN" notification** | The build passed and `dist/` shipped, but a later step (prod `npm install`, agent load, or `/health`) failed. Prod may be incoherent and is still recorded on the old sha. Check `deploy.log`, and consider `./scripts/rollback-prod.sh`. |
 | **Force a redeploy** (watcher says "up to date" but I want to re-ship) | Run the deployer directly — it deploys the ref unconditionally (the sha-equality gate is only in the watcher): `./scripts/deploy-prod.sh --ref origin/main` |
 | **A release built fine but behaves badly at runtime** | Roll back: `./scripts/rollback-prod.sh` (newest archived release) or `./scripts/rollback-prod.sh <sha>`. |
-| **Prod crashlooping with "DB not migrated" after a fact-store deploy** | The fact-store code reached prod on an un-migrated DB (the `ensure-migrated` guard refusing to serve, by design). Don't patch around it — run the supervised cutover: `./scripts/cutover-prod.sh`. |
+| **Prod crashlooping with "DB not migrated" after a fact-store deploy** | The fact-store code reached prod on an un-migrated DB (the `ensure-migrated` guard refusing to serve, by design — e.g. a cutover that rolled back *after* the merge). Don't patch around it — run the supervised cutover: `./scripts/cutover-prod.sh --ref origin/main`. |
 | **`cutover-prod.sh` says "already migrated — nothing to do"** | The DB is already on the two-file layout; the cutover is a safe no-op. Nothing to do. |
 | **Cutover hit a gate and rolled back** | Expected safety behavior — prod is restored to single-file on the last-good code (you'll have gotten **"Selene cutover ROLLED BACK"**). Check the `[FAIL]` line in the script output and `~/selene-data/backups/` for the verified pre-cutover backup, fix the cause, re-run. |
 
