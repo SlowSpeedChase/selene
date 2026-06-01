@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { listDerivedTables, snapshot } from './rebuild-core';
+import { listDerivedTables, snapshot, backupPath, wipe } from './rebuild-core';
 type DB = InstanceType<typeof Database>;
 
 it('lists only main-schema user tables, excluding sqlite_* and views', () => {
@@ -31,4 +31,21 @@ it('counts captured + each derived metric', () => {
     captured: 3, processed: 2, essences: 1, embeddings: 1,
     clusters: 1, clusterLinks: 1, exported: 3,
   });
+});
+
+it('backupPath names a timestamped file under the backup dir', () => {
+  expect(backupPath('/b', '20260601-120000')).toBe('/b/pre-rebuild-20260601-120000.db');
+});
+
+it('wipe empties every main-schema table but leaves attached facts untouched', () => {
+  const db: DB = new Database(':memory:');
+  db.exec(`ATTACH ':memory:' AS facts;
+    CREATE TABLE facts.captured_notes (id INTEGER PRIMARY KEY);
+    INSERT INTO facts.captured_notes VALUES (1),(2);
+    CREATE TABLE processed_notes (raw_note_id INTEGER);
+    INSERT INTO processed_notes VALUES (1),(2),(3);`);
+  wipe(db);
+  expect(listDerivedTables(db)).toContain('processed_notes');
+  expect((db.prepare('SELECT COUNT(*) n FROM processed_notes').get() as { n: number }).n).toBe(0);
+  expect((db.prepare('SELECT COUNT(*) n FROM facts.captured_notes').get() as { n: number }).n).toBe(2);
 });
