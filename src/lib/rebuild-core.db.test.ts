@@ -41,6 +41,25 @@ it('counts captured + each derived metric', () => {
   expect(snap.exported).toBeLessThan(snap.captured);
 });
 
+it('snapshot tolerates a never-derived schema (missing essence column / derived tables = 0)', () => {
+  // A PRE-snapshot of a DB that has never been through the pipeline: processed_notes
+  // exists but has NO essence column (distill-essences.ensureEssenceColumns adds it
+  // lazily), and the embeddings/clusters tables are entirely absent. The raw_notes
+  // view is present (it's a per-connection temp view, not a derived table).
+  const db: DB = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE raw_notes_t (id INTEGER PRIMARY KEY);
+    CREATE VIEW raw_notes AS SELECT id, 0 AS exported_to_obsidian FROM raw_notes_t;
+    CREATE TABLE processed_notes (raw_note_id INTEGER);  -- NOTE: no essence column, no other derived tables
+  `);
+  db.exec(`INSERT INTO raw_notes_t VALUES (1),(2)`);
+  db.exec(`INSERT INTO processed_notes VALUES (1),(2)`);
+  expect(snapshot(db)).toEqual({
+    captured: 2, processed: 2, essences: 0, embeddings: 0,
+    clusters: 0, clusterLinks: 0, exported: 0,
+  });
+});
+
 it('backupPath names a timestamped file under the backup dir', () => {
   expect(backupPath('/b', '20260601-120000')).toBe('/b/pre-rebuild-20260601-120000.db');
 });
