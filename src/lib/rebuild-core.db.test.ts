@@ -4,33 +4,41 @@ type DB = InstanceType<typeof Database>;
 
 it('lists only main-schema user tables, excluding sqlite_* and views', () => {
   const db: DB = new Database(':memory:');
+  // AUTOINCREMENT forces SQLite to create the internal sqlite_sequence table,
+  // which must be excluded by the NOT LIKE 'sqlite_%' clause.
   db.exec(`
-    CREATE TABLE processed_notes (id INTEGER PRIMARY KEY);
+    CREATE TABLE processed_notes (id INTEGER PRIMARY KEY AUTOINCREMENT);
     CREATE TABLE note_embeddings (raw_note_id INTEGER);
     CREATE VIEW v AS SELECT 1;
   `);
-  expect(listDerivedTables(db).sort()).toEqual(['note_embeddings', 'processed_notes']);
+  const tables = listDerivedTables(db);
+  expect(tables.sort()).toEqual(['note_embeddings', 'processed_notes']);
+  expect(tables).not.toContain('sqlite_sequence');
 });
 
 it('counts captured + each derived metric', () => {
   const db: DB = new Database(':memory:');
   db.exec(`
-    CREATE TABLE raw_notes_t (id INTEGER PRIMARY KEY);
-    CREATE VIEW raw_notes AS SELECT id, 1 AS exported_to_obsidian FROM raw_notes_t;
+    CREATE TABLE raw_notes_t (id INTEGER PRIMARY KEY, exported INTEGER);
+    CREATE VIEW raw_notes AS SELECT id, exported AS exported_to_obsidian FROM raw_notes_t;
     CREATE TABLE processed_notes (raw_note_id INTEGER, essence TEXT);
     CREATE TABLE note_embeddings (raw_note_id INTEGER);
     CREATE TABLE topic_clusters (id TEXT PRIMARY KEY);
     CREATE TABLE topic_note_links (topic_id TEXT, note_id INTEGER);
   `);
-  db.exec(`INSERT INTO raw_notes_t VALUES (1),(2),(3)`);
+  // 3 captured, but only 2 exported — a mixed flag so a dropped WHERE clause is caught.
+  db.exec(`INSERT INTO raw_notes_t VALUES (1,1),(2,1),(3,0)`);
   db.exec(`INSERT INTO processed_notes VALUES (1,'e'),(2,NULL)`);
   db.exec(`INSERT INTO note_embeddings VALUES (1)`);
   db.exec(`INSERT INTO topic_clusters VALUES ('c1')`);
   db.exec(`INSERT INTO topic_note_links VALUES ('c1',1)`);
-  expect(snapshot(db)).toEqual({
+  const snap = snapshot(db);
+  expect(snap).toEqual({
     captured: 3, processed: 2, essences: 1, embeddings: 1,
-    clusters: 1, clusterLinks: 1, exported: 3,
+    clusters: 1, clusterLinks: 1, exported: 2,
   });
+  // The WHERE exported_to_obsidian = 1 clause is load-bearing: not every row is exported.
+  expect(snap.exported).toBeLessThan(snap.captured);
 });
 
 it('backupPath names a timestamped file under the backup dir', () => {
