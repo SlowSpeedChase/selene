@@ -345,61 +345,13 @@ run_or_echo() {
   fi
 }
 
-# Discover the running prod agents EXACTLY as deploy-prod.sh does (label col 3,
-# com.selene.prod.* minus the deploy-watcher). Empty when nothing is loaded.
-prod_agents() {
-  launchctl list | awk '{print $3}' | grep '^com.selene.prod' | grep -v 'deploy-watcher' || true
-}
+# Shared prod launchd agent-control helpers (prod_agents / pause_watcher / resume_watcher /
+# stop_agents / restart_agents + the derivation-only variants). EXTRACTED from this file so
+# rebuild-prod.sh can reuse them. Sourced here — AFTER run_or_echo + REPO_ROOT are defined
+# (its documented contract), BEFORE first use (pause_watcher/stop_agents in main()).
+# shellcheck source=lib/prod-agents.sh
+source "$REPO_ROOT/scripts/lib/prod-agents.sh"
 
-# launchd juggling is BEST-EFFORT (matches deploy-prod.sh's warn-not-die philosophy). Each
-# launchctl is `|| true` so a stray non-zero NEVER aborts under `set -e`. This matters most for
-# rollback_all(): it runs as the command after `gate* || { rollback_all; ... }` — the ONE position
-# `set -e` does NOT exempt — so a non-zero `launchctl` in stop_agents could otherwise skip the
-# irreplaceable rollback_db DB-restore. `|| true` protects both main() and rollback_all().
-# pause_watcher — bootout the deploy-watcher so it can't auto-deploy mid-cutover. IDEMPOTENT: if the
-# watcher is already unloaded (e.g. the operator pre-paused it to avert a bad auto-deploy), the goal
-# state is already met — that's a success, not an abort. We only bootout when it's actually loaded,
-# so a genuine bootout failure (while loaded) still surfaces as a safe early abort (nothing torn down).
-pause_watcher() {
-  local label="com.selene.prod.deploy-watcher"
-  if launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; then
-    run_or_echo launchctl bootout "gui/$(id -u)/$label"
-  else
-    echo "  watcher already not loaded — nothing to pause"
-  fi
-}
-resume_watcher() {
-  run_or_echo launchctl bootstrap "gui/$(id -u)" "$REPO_ROOT/launchd/com.selene.prod.deploy-watcher.plist" || true
-}
-stop_agents() {
-  local a
-  for a in $(prod_agents); do
-    run_or_echo launchctl bootout "gui/$(id -u)/$a" || true
-  done
-}
-# restart_agents — bring the prod server + workflow agents back UP after stop_agents.
-# Why BOOTSTRAP (not kickstart, which deploy-prod.sh uses): stop_agents() does a full
-# `launchctl bootout`, so the agents are GONE from the domain. `kickstart -k` only
-# restarts an ALREADY-LOADED service, so post-bootout it is a no-op → prod stays DOWN.
-# The inverse of `bootout` is `bootstrap`. We therefore re-LOAD each agent, mirroring
-# install-prod.sh's Pass 2 (bootstrap "gui/$(id -u)" <installed prod plist>).
-#
-# We must iterate the installed prod plist FILES, NOT prod_agents()/`launchctl list`:
-# after the real bootout the agents are unloaded, so `launchctl list` shows nothing to
-# loop over. The deployed prod plists live in install-prod.sh's OUT_DIR
-# ($HOME/Library/LaunchAgents, the COMPILED-dist variants) — bootstrapping the canonical
-# launchd/ sources would load dev (ts-node) code under prod labels.
-#
-# EXCLUDE the deploy-watcher: resume_watcher() owns it (from the repo plist). Bootstrapping
-# an already-loaded service errors, so re-loading it here would double-bootstrap it.
-restart_agents() {
-  local plist
-  for plist in "$HOME/Library/LaunchAgents/com.selene.prod."*.plist; do
-    [ -e "$plist" ] || continue                       # nullglob-safe (no installed plists)
-    case "$plist" in *deploy-watcher.plist) continue ;; esac   # resume_watcher owns the watcher
-    run_or_echo launchctl bootstrap "gui/$(id -u)" "$plist" || true
-  done
-}
 deploy() {
   run_or_echo "$REPO_ROOT/scripts/deploy-prod.sh" --ref "${TARGET_SHA:-origin/main}"
 }
