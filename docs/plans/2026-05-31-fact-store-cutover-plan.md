@@ -262,7 +262,7 @@ Confirm the real dev DB + iCloud vault are never written. `tsc` clean; full `npx
 - Guide written. **Claude never ran any of it against prod.**
 
 ## Risks / watch-items
-- **Import path for `migrateToFactStore`** from `src/lib` may trip tsc `rootDir`/`include`. If so, relocate the migration core to `src/lib/` and have the script re-export — decide in Task 1, keep it a pure import (never `./db`).
+- **Import path for `migrateToFactStore` — CONFIRMED required relocate.** `tsconfig.json` has `rootDir: "./src"` + `include: ["src/**/*"]`, so a `src/` file CANNOT import from `scripts/` (won't compile). Task 1 step 0 therefore MOVES the migration core (`migrateToFactStore`, `stripRawNotesFk`, schema/column constants) into `src/lib/migrate-to-fact-store.ts`; `scripts/migrate-to-fact-store.ts` becomes a thin CLI wrapper (`import { migrateToFactStore } from '../src/lib/migrate-to-fact-store'` + `main()`); the existing migration test repoints its import to `src/lib/`. Then `ensure-migrated.ts` imports from `./migrate-to-fact-store` (same dir). Keep it a pure import (never `./db`).
 - **`ensureMigrated` must run before the long-lived `db` connection** — opening the connection first risks a lock during the migration's `journal_mode=DELETE`.
 - **`--dry-run` must NOT stub the DB surgery** (backup/migrate/Gate1/rollback run for real against the copy) — only launchctl/deploy are stubbed, or the validation proves nothing.
 - The cutover touches prod agents + the real DB; it is operator-run only. Claude authors + `/tmp`-tests it exclusively.
