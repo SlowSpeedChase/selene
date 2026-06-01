@@ -25,6 +25,28 @@ FACTS="${SELENE_FACTS_DB_PATH:-$HOME/selene-data/facts.db}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/selene-data/backups}"
 SIMULATE_GATE1_FAIL="${SIMULATE_GATE1_FAIL:-}"   # set to 1 to force gate1 to fail (rollback test)
 
+# --- orchestration config / args (Tasks 4+5) ---
+DRY_RUN="${DRY_RUN:-}"                       # set (or --dry-run) to stub launchctl/deploy/notify
+PROD_TARGET="${PROD_TARGET:-$HOME/selene-prod}"   # prod deploy dir (holds .deployed-sha); deploy-prod.sh's $TARGET
+TARGET_SHA="${TARGET_SHA:-}"                 # ref to deploy (arg / --ref); defaults to origin/main below
+
+# OLD_SHA = the code prod is currently on, for the rollback path. Read the prod target's
+# .deployed-sha exactly as deploy-prod.sh does ($TARGET/.deployed-sha); "none" if absent.
+OLD_SHA="$(cat "$PROD_TARGET/.deployed-sha" 2>/dev/null || echo none)"
+
+# Parse orchestration args BEFORE any side effects. A bare positional or `--ref <sha>` sets
+# TARGET_SHA; `--dry-run` flips DRY_RUN on. (The DB-surgery core reads its paths from env, not args.)
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)  DRY_RUN=1; shift ;;
+    --ref)      TARGET_SHA="$2"; shift 2 ;;
+    -h|--help)  echo "Usage: cutover-prod.sh [--dry-run] [--ref <sha>|<sha>]"; exit 0 ;;
+    -*)         echo "Unknown argument: $1" >&2; exit 2 ;;
+    *)          TARGET_SHA="$1"; shift ;;
+  esac
+done
+TARGET_SHA="${TARGET_SHA:-origin/main}"
+
 # Resolve the repo root so ts-node scripts are found regardless of CWD.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -73,8 +95,10 @@ preflight() {
   raw_type="$(sqlite_object_type "$DB" raw_notes)"
   if [ "$raw_type" != "table" ]; then
     pass "preflight: raw_notes is not a physical table (type='${raw_type:-absent}') — already migrated, nothing to do"
-    echo "already migrated"
-    exit 0
+    # Fix #1: return a DISTINCT code (2) for already-migrated instead of `exit 0`. When this file
+    # is SOURCED (the harnesses), `exit 0` would kill the harness's whole shell — a footgun. main()
+    # maps rc==2 -> clean "already migrated" exit; harnesses just see a non-zero return and move on.
+    return 2
   fi
   pass "preflight: raw_notes is a physical table — un-migrated, proceeding"
 
@@ -274,27 +298,187 @@ rollback_db() {
 }
 
 # ===========================================================================
-# TODO (NEXT TASK — orchestration; NOT implemented here):
-#   stop_deploy_watcher()  — pause com.selene.prod deploy-watcher so it can't redeploy mid-cutover
-#   stop_prod_agents()     — bootout the running com.selene.prod.* agents before DB surgery
-#   deploy_two_file_build()— build/deploy the dist/ that knows the two-file layout
-#   gate2()                — post-deploy live-health verification (server up, agents green)
-#   resume_or_rollback()   — on gate2 fail: rollback_db + redeploy previous release; else resume watcher
-#   main()                 — full ordered cutover wrapping the DB core below
-# This file (Task 3) implements ONLY the DB-surgery core above.
+# ORCHESTRATION (Tasks 4+5) — wraps the DB-surgery core above with the watcher /
+# agent / deploy / Gate-2 / auto-rollback sequence.
+#
+# `--dry-run` stubs ONLY the launchctl + deploy + notify side effects (prints
+# intentions). The DB surgery (backup/migrate/gate1/rollback) ALWAYS runs FOR
+# REAL against whatever DB is configured — so the /tmp validation actually
+# proves the migration + rollback, not a no-op.
 # ===========================================================================
 
-# When executed directly (not sourced), run ONLY the DB-critical core sequence so it can be
-# exercised standalone. The check harness sources this file and calls functions individually.
-if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
-  preflight
-  backup_and_verify
-  migrate
-  if gate1; then
-    pass "cutover DB-core: SUCCESS"
+# notify helper (selene_notify): same source deploy-prod.sh / rollback-prod.sh use.
+# Sourcing notify.sh must not mutate this shell's options. Thin fallback if absent.
+if [ -f "$REPO_ROOT/scripts/lib/notify.sh" ]; then
+  # shellcheck source=lib/notify.sh
+  source "$REPO_ROOT/scripts/lib/notify.sh"
+else
+  selene_notify() { echo "[notify] ${1:-Selene}: ${2:-}"; }
+fi
+
+run_or_echo() {
+  if [ -n "$DRY_RUN" ]; then
+    echo "  [dry-run] $*"
   else
-    fail "cutover DB-core: gate1 failed — rolling back DB"
-    rollback_db
+    "$@"
+  fi
+}
+
+# Discover the running prod agents EXACTLY as deploy-prod.sh does (label col 3,
+# com.selene.prod.* minus the deploy-watcher). Empty when nothing is loaded.
+prod_agents() {
+  launchctl list | awk '{print $3}' | grep '^com.selene.prod' | grep -v 'deploy-watcher' || true
+}
+
+# launchd juggling is BEST-EFFORT (matches deploy-prod.sh's warn-not-die philosophy). Each
+# launchctl is `|| true` so a stray non-zero NEVER aborts under `set -e`. This matters most for
+# rollback_all(): it runs as the command after `gate* || { rollback_all; ... }` — the ONE position
+# `set -e` does NOT exempt — so a non-zero `launchctl` in stop_agents could otherwise skip the
+# irreplaceable rollback_db DB-restore. `|| true` protects both main() and rollback_all().
+# (pause_watcher is intentionally NOT guarded: failing it before anything is torn down is a safe
+# early abort.)
+pause_watcher() {
+  run_or_echo launchctl bootout "gui/$(id -u)/com.selene.prod.deploy-watcher"
+}
+resume_watcher() {
+  run_or_echo launchctl bootstrap "gui/$(id -u)" "$REPO_ROOT/launchd/com.selene.prod.deploy-watcher.plist" || true
+}
+stop_agents() {
+  local a
+  for a in $(prod_agents); do
+    run_or_echo launchctl bootout "gui/$(id -u)/$a" || true
+  done
+}
+restart_agents() {
+  local a
+  for a in $(prod_agents); do
+    run_or_echo launchctl kickstart -k "gui/$(id -u)/$a" || true
+  done
+}
+deploy() {
+  run_or_echo "$REPO_ROOT/scripts/deploy-prod.sh" --ref "${TARGET_SHA:-origin/main}"
+}
+
+# gate2 — POST-deploy live-health verification (the new dist/ server is up and reads
+# the two-file layout). NOTE: this must NOT reuse cutover-probe.ts — that probe
+# self-refuses unless both DB paths are under /tmp, and morally it would write a note
+# into REAL prod. gate1 already ran the capture->pending probe pre-deploy. Here we only
+# read: /health + a content-free selene-inspect coverage sanity (rawNotes>0, facts.db present).
+gate2() {
+  if [ -n "$DRY_RUN" ]; then
+    echo "  [dry-run] gate2: would curl /health + probe + inspect"
+    return 0
+  fi
+  local ok=1
+  if curl -fsS http://localhost:5678/health >/dev/null; then
+    pass "gate2: /health OK"
+  else
+    fail "gate2: /health did not respond OK"; ok=0
+  fi
+  # facts.db must exist post-cutover.
+  if [ -f "$FACTS" ]; then
+    pass "gate2: facts.db present at $FACTS"
+  else
+    fail "gate2: facts.db missing at $FACTS"; ok=0
+  fi
+  # Content-free read-only coverage sanity: rawNotes (via the view) must be > 0.
+  local g2_raw
+  g2_raw="$( inspect_field coverage rawNotes )"
+  if [ -n "$g2_raw" ] && [ "$g2_raw" -gt 0 ] 2>/dev/null; then
+    pass "gate2: rawNotes(view)=$g2_raw (>0, server reads the two-file layout)"
+  else
+    fail "gate2: rawNotes(view)='$g2_raw' (expected >0 via the migrated view)"; ok=0
+  fi
+  [ "$ok" = "1" ] && return 0 || return 1
+}
+
+# rollback_all — GATE-failure path. Tears prod back to the pre-cutover state:
+# stop agents -> restore the single-file DB -> roll the code back to OLD_SHA ->
+# restart agents -> resume the watcher -> notify. In dry-run, the launchctl/deploy/
+# notify steps print; rollback_db runs FOR REAL (it's the DB-surgery core).
+rollback_all() {
+  echo "!! ROLLBACK"
+  stop_agents
+  rollback_db || true
+  # Roll the CODE back to OLD_SHA. If OLD_SHA is the "none" sentinel (no prior deploy recorded),
+  # pass no sha so rollback-prod.sh selects the newest archived release instead of looking up a
+  # bogus releases/none dir. Either way the rollback-prod.sh line is emitted (dry-run-visible).
+  if [ -n "${OLD_SHA:-}" ] && [ "$OLD_SHA" != "none" ]; then
+    run_or_echo "$REPO_ROOT/scripts/rollback-prod.sh" "$OLD_SHA"
+  else
+    run_or_echo "$REPO_ROOT/scripts/rollback-prod.sh"
+  fi
+  restart_agents
+  resume_watcher
+  run_or_echo selene_notify "Selene cutover ROLLED BACK" "restored single-file + code ${OLD_SHA:-none}"
+}
+
+# ---------------------------------------------------------------------------
+# main — the full ordered cutover. Runs ONLY when this file is EXECUTED (the
+# check/verify harnesses SOURCE it and call functions individually, so the
+# BASH_SOURCE guard at the very bottom keeps main from firing under `source`).
+# ---------------------------------------------------------------------------
+main() {
+  # 0a build-gate: a broken build must abort BEFORE anything is torn down. Run it
+  # first, before pause_watcher/stop_agents. In dry-run, print-and-skip (keeps the
+  # /tmp validation fast); live, the build must actually pass.
+  if [ -n "$DRY_RUN" ]; then
+    echo "  [dry-run] build-gate: would run 'npm run build && npm run build:check'"
+  else
+    info "build-gate: npm run build && npm run build:check"
+    if ! ( cd "$REPO_ROOT" && npm run build && npm run build:check ); then
+      fail "build-gate failed — aborting cutover (nothing torn down)"
+      exit 1
+    fi
+    pass "build-gate: dist/ built + verified"
+  fi
+
+  # Fix #1: preflight returns 2 for the already-migrated case. Under `set -e` a bare
+  # `preflight` that returns non-zero aborts before `rc=$?`; capture via `|| rc=$?`.
+  local rc=0
+  preflight || rc=$?
+  if [ "$rc" -eq 2 ]; then
+    echo "already migrated — nothing to do"
+    exit 0
+  elif [ "$rc" -ne 0 ]; then
     exit 1
   fi
+
+  # Fix #2 (visibility): this script MUTATES the real DB — make the operator SEE which
+  # DB/facts paths it will operate on (prod, not a stale dev path) before any surgery.
+  echo "Cutover will operate on: DB=$DB FACTS=$FACTS (backup->$BACKUP_DIR)"
+
+  pause_watcher
+  stop_agents
+
+  # Pre-migrate abort: if backup fails, NOTHING was changed — just bring prod back up.
+  if ! backup_and_verify; then
+    fail "backup_and_verify failed — aborting BEFORE migrate (nothing changed)"
+    resume_watcher
+    restart_agents
+    exit 1
+  fi
+
+  # From here the DB may be mutated, so every gate failure routes to full rollback.
+  # Bare calls would trip `set -e` and abort with the watcher paused / agents down and
+  # NO rollback — so guard each with `|| { rollback_all; exit 1; }`.
+  migrate || { rollback_all; exit 1; }
+  gate1   || { rollback_all; exit 1; }
+
+  # A failed deploy AFTER a successful migrate leaves prod incoherent (two-file DB + old
+  # single-file-expecting code) — exactly what rollback_all unwinds. So route deploy failure to
+  # rollback too. (restart_agents stays bare: its launchctl calls are `|| true`, warn-not-die.)
+  deploy || { rollback_all; exit 1; }
+  restart_agents
+  gate2 || { rollback_all; exit 1; }
+
+  resume_watcher
+  run_or_echo selene_notify "Selene cutover complete" "fact-store live on ${TARGET_SHA}"
+  echo "✅ CUTOVER COMPLETE"
+}
+
+# Only run main when this file is EXECUTED, not when SOURCED (the harnesses source it
+# to drive functions one-by-one; sourcing must never fire the full cutover).
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
 fi
