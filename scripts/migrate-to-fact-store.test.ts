@@ -39,7 +39,7 @@ import {
   ensureNoteStateTable,
   ensureRawNotesView,
 } from '../src/lib/facts-db';
-import { migrateToFactStore } from './migrate-to-fact-store';
+import { migrateToFactStore, stripRawNotesFk } from './migrate-to-fact-store';
 
 afterAll(() => {
   for (const k of ENV_KEYS) {
@@ -406,6 +406,269 @@ describe('migrateToFactStore — single file → two files (id-preserving, trans
     }
     expect(threw).toBe(true);
 
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+// =============================================================================
+// stripRawNotesFk — pure DDL surgery, unit-tested against the REAL forms.
+//
+// The migration RENAMEs raw_notes → raw_notes_legacy_backup; SQLite (>=3.25,
+// legacy_alter_table OFF) AUTO-REWRITES every child FK that referenced raw_notes to
+// point at the FROZEN backup. So the live derived tables (processed_notes,
+// note_embeddings) must be rebuilt WITHOUT their raw_notes FK before the rename. This
+// pure helper does the DDL transform; assert it strips ONLY the raw_notes FK and keeps
+// every other column/constraint/index intent intact.
+// =============================================================================
+describe('stripRawNotesFk — removes ONLY the raw_notes FK, both DDL forms', () => {
+  it('TABLE-LEVEL, no ON DELETE (real processed_notes shape): drops the FK + its trailing comma, keeps the CHECK', () => {
+    const sql = `CREATE TABLE processed_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raw_note_id INTEGER NOT NULL,
+    things_integration_status TEXT
+        CHECK(things_integration_status IN ('pending', 'tasks_created', 'no_tasks', 'error'))
+        DEFAULT 'pending', category TEXT, essence TEXT,
+    FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id)
+)`;
+    const out = stripRawNotesFk(sql);
+    // raw_notes is gone entirely.
+    expect(out).not.toMatch(/raw_notes\s*\(/i);
+    expect(out.toLowerCase()).not.toContain('foreign key');
+    // The unrelated CHECK / columns survive verbatim.
+    expect(out).toContain("CHECK(things_integration_status IN ('pending', 'tasks_created', 'no_tasks', 'error'))");
+    expect(out).toContain('category TEXT');
+    expect(out).toContain('essence TEXT');
+    expect(out).toContain('raw_note_id INTEGER NOT NULL');
+    // No dangling comma left immediately before the closing paren.
+    expect(out).not.toMatch(/,\s*\)\s*$/);
+    // Result is still valid DDL: SQLite accepts it.
+    const db = new Database(':memory:');
+    expect(() => db.exec(out)).not.toThrow();
+    db.close();
+  });
+
+  it('TABLE-LEVEL with ON DELETE CASCADE (real note_embeddings shape): drops FK incl. ON DELETE, keeps UNIQUE column', () => {
+    const sql = `CREATE TABLE note_embeddings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raw_note_id INTEGER NOT NULL UNIQUE,
+    embedding BLOB NOT NULL,
+    model_version TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id) ON DELETE CASCADE
+)`;
+    const out = stripRawNotesFk(sql);
+    expect(out).not.toMatch(/raw_notes\s*\(/i);
+    expect(out.toLowerCase()).not.toContain('foreign key');
+    expect(out.toLowerCase()).not.toContain('on delete');
+    // The inline UNIQUE on raw_note_id (a column constraint, NOT the FK) is preserved.
+    expect(out).toContain('raw_note_id INTEGER NOT NULL UNIQUE');
+    expect(out).toContain('embedding BLOB NOT NULL');
+    expect(out).not.toMatch(/,\s*\)\s*$/);
+    const db = new Database(':memory:');
+    expect(() => db.exec(out)).not.toThrow();
+    db.close();
+  });
+
+  it('INLINE column form: keeps the column type, drops the REFERENCES clause (and ON DELETE)', () => {
+    const sql = `CREATE TABLE t (
+    id INTEGER PRIMARY KEY,
+    raw_note_id INTEGER REFERENCES raw_notes(id) ON DELETE CASCADE,
+    note TEXT
+)`;
+    const out = stripRawNotesFk(sql);
+    expect(out).not.toMatch(/raw_notes\s*\(/i);
+    expect(out.toLowerCase()).not.toContain('references');
+    expect(out.toLowerCase()).not.toContain('on delete');
+    // The column itself stays, just without the REFERENCES tail.
+    expect(out).toMatch(/raw_note_id\s+INTEGER/i);
+    expect(out).toContain('note TEXT');
+    const db = new Database(':memory:');
+    expect(() => db.exec(out)).not.toThrow();
+    db.close();
+  });
+
+  it('preserves a foreign key to a NON-raw_notes table (must not over-strip)', () => {
+    const sql = `CREATE TABLE thing (
+    id INTEGER PRIMARY KEY,
+    raw_note_id INTEGER NOT NULL,
+    thread_id INTEGER NOT NULL,
+    FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
+    FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id)
+)`;
+    const out = stripRawNotesFk(sql);
+    // raw_notes FK gone…
+    expect(out).not.toMatch(/raw_notes\s*\(/i);
+    // …but the threads FK kept intact.
+    expect(out).toContain('FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE');
+    const db = new Database(':memory:');
+    db.exec(`CREATE TABLE threads (id INTEGER PRIMARY KEY)`);
+    expect(() => db.exec(out)).not.toThrow();
+    db.close();
+  });
+
+  it('is a no-op on DDL that has no raw_notes FK', () => {
+    const sql = `CREATE TABLE plain (id INTEGER PRIMARY KEY, x TEXT)`;
+    expect(stripRawNotesFk(sql)).toBe(sql);
+  });
+});
+
+// =============================================================================
+// THE COVERAGE-GAP TEST that would have caught the ship-blocker: after migrating,
+// inserting a derived row (processed_notes / note_embeddings) for a FRESH captured_notes
+// id — one NOT in the frozen raw_notes_legacy_backup — must SUCCEED with foreign_keys=ON.
+// Pre-fix the rewritten FK→backup throws SQLITE_CONSTRAINT_FOREIGNKEY; post-fix it passes.
+// The seeded legacy DB carries the REAL FK so the strip is genuinely exercised.
+// =============================================================================
+describe('post-migration fresh derived insert (FK-strip regression)', () => {
+  /**
+   * Build a legacy single-file DB whose processed_notes + note_embeddings carry the SAME
+   * raw_notes FK as production (so the migration's strip must remove it). Seeds raw_notes
+   * with ids 10,20 and a processed_notes/note_embeddings row referencing 20.
+   */
+  function buildLegacyWithFkDerived(): { dir: string; dbPath: string; factsPath: string } {
+    const dir = mkdtempSync(join(tmpdir(), 'selene-migrate-fk-'));
+    const dbPath = join(dir, 'selene.db');
+    const factsPath = join(dir, 'facts.db');
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE raw_notes (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        title            TEXT NOT NULL,
+        content          TEXT NOT NULL,
+        content_hash     TEXT NOT NULL,
+        source_type      TEXT,
+        word_count       INTEGER,
+        character_count  INTEGER,
+        tags             TEXT,
+        created_at       DATETIME NOT NULL,
+        imported_at      DATETIME,
+        source_uuid      TEXT,
+        calendar_event   TEXT,
+        capture_type     TEXT,
+        source_note_id   INTEGER,
+        test_run         TEXT,
+        status               TEXT,
+        processed_at         DATETIME,
+        exported_at          DATETIME,
+        exported_to_obsidian INTEGER,
+        obsidian_export_hash TEXT,
+        status_folio         TEXT,
+        inbox_status         TEXT
+      );
+    `);
+    const ins = db.prepare(
+      `INSERT INTO raw_notes (id, title, content, content_hash, created_at, status) VALUES (?,?,?,?,?,?)`
+    );
+    ins.run(10, 'Root', 'root body', 'h10', '2026-01-01T00:00:00Z', 'pending');
+    ins.run(20, 'Proc', 'processed body', 'h20', '2026-01-02T00:00:00Z', 'processed');
+
+    // processed_notes — REAL production shape (table-level FK, no ON DELETE, CHECK + indexes).
+    db.exec(`
+      CREATE TABLE processed_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        raw_note_id INTEGER NOT NULL,
+        concepts TEXT,
+        primary_theme TEXT,
+        processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        things_integration_status TEXT
+            CHECK(things_integration_status IN ('pending', 'tasks_created', 'no_tasks', 'error'))
+            DEFAULT 'pending',
+        category TEXT, essence TEXT, essence_at TEXT,
+        FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id)
+      );
+      CREATE INDEX idx_processed_notes_raw_id ON processed_notes(raw_note_id);
+    `);
+    db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(20, 'work');
+
+    // note_embeddings — REAL production shape (table-level FK ON DELETE CASCADE, UNIQUE col, index).
+    db.exec(`
+      CREATE TABLE note_embeddings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        raw_note_id INTEGER NOT NULL UNIQUE,
+        embedding BLOB NOT NULL,
+        model_version TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id) ON DELETE CASCADE
+      );
+      CREATE INDEX idx_embeddings_note ON note_embeddings(raw_note_id);
+    `);
+    db.prepare(`INSERT INTO note_embeddings (raw_note_id, embedding, model_version) VALUES (?, ?, ?)`)
+      .run(20, Buffer.from([1, 2, 3]), 'nomic-embed-text');
+
+    db.close();
+    return { dir, dbPath, factsPath };
+  }
+
+  it('processed_notes + note_embeddings rows for a FRESH (post-migration) note id insert cleanly with foreign_keys=ON', () => {
+    const { dir, dbPath, factsPath } = buildLegacyWithFkDerived();
+    const result = migrateToFactStore(dbPath, factsPath);
+    expect(result.alreadyMigrated).toBe(false);
+    expect(result.notes).toBe(2);
+
+    // Fresh two-file connection with foreign_keys=ON (better-sqlite3 default), attach + view.
+    const db = openTwoFile(dbPath, factsPath);
+    expect((db.pragma('foreign_keys', { simple: true }) as number)).toBe(1);
+
+    // A genuinely NEW note: insert it as a FACT (id NOT in raw_notes_legacy_backup).
+    const freshId = insertNote(
+      { title: 'Fresh', content: 'brand new', contentHash: 'h-fresh', tags: [], createdAt: '2026-03-01T00:00:00Z' },
+      db
+    );
+    expect(freshId).toBeGreaterThan(20);
+    // Sanity: that id is absent from the frozen backup.
+    const inBackup = (db.prepare(`SELECT COUNT(*) AS n FROM raw_notes_legacy_backup WHERE id = ?`).get(freshId) as { n: number }).n;
+    expect(inBackup).toBe(0);
+
+    // THE ASSERTIONS: both derived inserts for the fresh id must NOT throw a FK error.
+    expect(() =>
+      db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(freshId, 'fresh-theme')
+    ).not.toThrow();
+    expect(() =>
+      db
+        .prepare(`INSERT OR REPLACE INTO note_embeddings (raw_note_id, embedding, model_version) VALUES (?, ?, ?)`)
+        .run(freshId, Buffer.from([9, 9, 9]), 'nomic-embed-text')
+    ).not.toThrow();
+
+    // And they actually landed.
+    expect((db.prepare(`SELECT COUNT(*) AS n FROM processed_notes WHERE raw_note_id = ?`).get(freshId) as { n: number }).n).toBe(1);
+    expect((db.prepare(`SELECT COUNT(*) AS n FROM note_embeddings WHERE raw_note_id = ?`).get(freshId) as { n: number }).n).toBe(1);
+
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('the migrated derived tables retain their pre-migration columns, indexes, CHECK, and pre-existing rows', () => {
+    const { dir, dbPath, factsPath } = buildLegacyWithFkDerived();
+    migrateToFactStore(dbPath, factsPath);
+
+    const db = new Database(dbPath);
+    // Columns preserved (processed_notes).
+    const pcols = (db.prepare(`PRAGMA table_info(processed_notes)`).all() as { name: string }[]).map(r => r.name);
+    expect(pcols).toEqual(
+      expect.arrayContaining(['id', 'raw_note_id', 'concepts', 'primary_theme', 'processed_at', 'things_integration_status', 'category', 'essence', 'essence_at'])
+    );
+    // The index survives the rebuild.
+    const pidx = (db.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='processed_notes'`).all() as { name: string }[]).map(r => r.name);
+    expect(pidx).toContain('idx_processed_notes_raw_id');
+    // The CHECK constraint is still enforced (bad value rejected).
+    expect(() =>
+      db.prepare(`INSERT INTO processed_notes (raw_note_id, things_integration_status) VALUES (?, ?)`).run(20, 'BOGUS')
+    ).toThrow();
+    // Pre-existing row preserved.
+    expect((db.prepare(`SELECT COUNT(*) AS n FROM processed_notes WHERE raw_note_id = 20`).get() as { n: number }).n).toBe(1);
+
+    // note_embeddings: columns + UNIQUE + index preserved, original row intact.
+    const ecols = (db.prepare(`PRAGMA table_info(note_embeddings)`).all() as { name: string }[]).map(r => r.name);
+    expect(ecols).toEqual(expect.arrayContaining(['id', 'raw_note_id', 'embedding', 'model_version', 'created_at']));
+    const eidx = (db.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='note_embeddings'`).all() as { name: string }[]).map(r => r.name);
+    expect(eidx).toContain('idx_embeddings_note');
+    expect((db.prepare(`SELECT COUNT(*) AS n FROM note_embeddings WHERE raw_note_id = 20`).get() as { n: number }).n).toBe(1);
+    // Neither rebuilt table references raw_notes anymore.
+    const psql = (db.prepare(`SELECT sql FROM sqlite_master WHERE name='processed_notes'`).get() as { sql: string }).sql;
+    const esql = (db.prepare(`SELECT sql FROM sqlite_master WHERE name='note_embeddings'`).get() as { sql: string }).sql;
+    expect(psql.toLowerCase()).not.toContain('raw_notes');
+    expect(esql.toLowerCase()).not.toContain('raw_notes');
+    db.close();
     rmSync(dir, { recursive: true, force: true });
   });
 });

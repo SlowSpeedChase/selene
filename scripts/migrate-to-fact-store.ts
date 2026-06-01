@@ -52,6 +52,168 @@ const BOOKKEEPING_COLUMNS = [
   'status_folio', 'inbox_status',
 ] as const;
 
+/**
+ * The derived tables that (a) carry a `raw_note_id REFERENCES raw_notes(id)` FK AND (b) have a
+ * LIVE writer in the current pipeline, so post-migration NEW notes get rows inserted. After the
+ * `raw_notes` RENAME, SQLite (>=3.25, legacy_alter_table OFF) AUTO-REWRITES those FKs to point at
+ * the FROZEN `raw_notes_legacy_backup`; with foreign_keys ON, inserting a row for an id only in
+ * facts.captured_notes then throws SQLITE_CONSTRAINT_FOREIGNKEY. The split makes a SQL FK
+ * structurally impossible (the referenced ids live cross-file in facts.captured_notes), so these
+ * two tables must be rebuilt FK-free BEFORE the rename. The other 6 raw_notes-referencing tables
+ * (processed_notes_apple, note_associations, thread_notes, thread_history, note_relationships,
+ * sentiment_history) are DORMANT — no live writer — so their inert rewritten FK is never exercised;
+ * we deliberately leave them and LOG that (see logLeftDormantFkTables). `note_state` was built
+ * FK-free from the start (facts-db.ts).
+ */
+const LIVE_FK_DERIVED_TABLES = ['processed_notes', 'note_embeddings'] as const;
+
+/** The 6 raw_notes-referencing tables we intentionally LEAVE (dormant, no live writer). */
+const DORMANT_FK_DERIVED_TABLES = [
+  'processed_notes_apple', 'note_associations', 'thread_notes', 'thread_history',
+  'note_relationships', 'sentiment_history',
+] as const;
+
+/**
+ * Remove ONLY the `raw_notes` foreign key from a CREATE TABLE statement, leaving every other
+ * column, constraint (CHECK/UNIQUE/PK), and FK-to-other-tables intact. Pure + side-effect-free so
+ * it can be unit-tested against the real DDL forms. Handles BOTH shapes the schema uses:
+ *
+ *   table-level:  `, FOREIGN KEY (raw_note_id) REFERENCES raw_notes(id) [ON DELETE ...] [ON UPDATE ...]`
+ *                  → drop the whole clause AND its leading comma (so no dangling `,)` remains)
+ *   inline column:`raw_note_id INTEGER REFERENCES raw_notes(id) [ON DELETE ...]`
+ *                  → keep `raw_note_id INTEGER`, drop only the `REFERENCES raw_notes(...)` tail
+ *
+ * `[ON DELETE|UPDATE <action>]` actions can be one or two words (NO ACTION / SET NULL / SET DEFAULT
+ * / CASCADE / RESTRICT). We never touch a FOREIGN KEY whose target table is NOT raw_notes.
+ */
+export function stripRawNotesFk(createSql: string): string {
+  // Reusable fragments. `raw_notes\s*\(` anchors on the FK target's opening paren so we never
+  // accidentally match a substring like `raw_notes_legacy_backup` (which has no `(` after it).
+  const refClause =
+    String.raw`REFERENCES\s+raw_notes\s*\([^)]*\)` + // REFERENCES raw_notes(id)
+    String.raw`(?:\s+ON\s+DELETE\s+(?:NO\s+ACTION|SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT))?` +
+    String.raw`(?:\s+ON\s+UPDATE\s+(?:NO\s+ACTION|SET\s+NULL|SET\s+DEFAULT|CASCADE|RESTRICT))?`;
+
+  let out = createSql;
+
+  // (1) Table-level: a leading comma, the FOREIGN KEY(...) clause, then the ref clause. Drop the
+  // comma too. (?:CONSTRAINT name)? tolerates a named constraint.
+  const tableLevel = new RegExp(
+    String.raw`,\s*(?:CONSTRAINT\s+\S+\s+)?FOREIGN\s+KEY\s*\(\s*raw_note_id\s*\)\s*${refClause}`,
+    'gi'
+  );
+  out = out.replace(tableLevel, '');
+
+  // (2) Inline column form: a `REFERENCES raw_notes(...)` tail NOT introduced by FOREIGN KEY (those
+  // were handled above). Strip just the tail, keeping the column + its type. Leading whitespace
+  // before REFERENCES is consumed so `raw_note_id INTEGER REFERENCES …` → `raw_note_id INTEGER`.
+  const inline = new RegExp(String.raw`\s+${refClause}`, 'gi');
+  out = out.replace(inline, '');
+
+  return out;
+}
+
+/**
+ * Rebuild one derived table WITHOUT its raw_notes FK, preserving columns/types/PK and every other
+ * constraint. Runs INSIDE the migration transaction, BEFORE the raw_notes RENAME (while the child
+ * FK still cleanly references raw_notes). Idempotent-safe: only acts if the table exists.
+ *
+ * Strategy: read current `sql` from sqlite_master → strip the FK → CREATE `<t>__nofk` → copy all
+ * rows → DROP `<t>` → RENAME `<t>__nofk` → `<t>`. Indexes are dropped with the old table, so they
+ * are recreated from the captured CREATE INDEX statements. GUARDED: column names/types/pk and row
+ * count must match the pre-rebuild snapshot, and the new sql must carry NO `raw_notes` reference —
+ * any mismatch throws, rolling back the whole migration.
+ */
+function rebuildWithoutRawNotesFk(db: DatabaseType, table: string): void {
+  if (!tableExists(db, table)) return;
+
+  // Snapshot BEFORE: full column signature (cid order, name, type, pk) + row count, for the guard.
+  type ColInfo = { cid: number; name: string; type: string; notnull: number; dflt_value: unknown; pk: number };
+  const before = db.prepare(`PRAGMA table_info(${table})`).all() as ColInfo[];
+  const beforeSig = before.map((c) => `${c.name}:${c.type}:${c.pk}`).join('|');
+  const beforeCount = count(db, `SELECT COUNT(*) AS n FROM ${table}`);
+
+  const createRow = db
+    .prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name = ?`)
+    .get(table) as { sql: string } | undefined;
+  if (!createRow || !createRow.sql) {
+    throw new Error(`FK strip: could not read CREATE sql for ${table}`);
+  }
+
+  // Capture the table's own indexes (the CREATE INDEX statements) so we can recreate them; DROP
+  // TABLE removes them. Auto-indexes (sqlite_autoindex_*, from UNIQUE/PK) have a NULL sql and are
+  // recreated automatically by the constraint in the rebuilt CREATE — skip those.
+  const indexSqls = (
+    db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name = ? AND sql IS NOT NULL`)
+      .all(table) as { sql: string }[]
+  ).map((r) => r.sql);
+
+  const newSql = stripRawNotesFk(createRow.sql);
+  if (/raw_notes\s*\(/i.test(newSql)) {
+    throw new Error(`FK strip: ${table} still references raw_notes after strip`);
+  }
+  // The rebuilt CREATE must target the temp name. Replace only the FIRST occurrence of the table
+  // identifier right after CREATE TABLE (optionally IF NOT EXISTS / quoted), nothing else.
+  const tmpName = `${table}__nofk`;
+  const createHead = new RegExp(
+    String.raw`^(\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?)(?:"${table}"|\`${table}\`|\[${table}\]|${table})`,
+    'i'
+  );
+  if (!createHead.test(newSql)) {
+    throw new Error(`FK strip: unexpected CREATE TABLE head for ${table}`);
+  }
+  const tmpCreate = newSql.replace(createHead, `$1${tmpName}`);
+
+  db.exec(`DROP TABLE IF EXISTS ${tmpName}`);
+  db.exec(tmpCreate);
+  // Column-explicit copy (names from PRAGMA, never interpolated user data) — robust to column order.
+  const colList = before.map((c) => c.name).join(', ');
+  db.exec(`INSERT INTO ${tmpName} (${colList}) SELECT ${colList} FROM ${table}`);
+  db.exec(`DROP TABLE ${table}`);
+  db.exec(`ALTER TABLE ${tmpName} RENAME TO ${table}`);
+  // Recreate the table's explicit indexes (they referenced the old table by name; that name is now
+  // the rebuilt table, so the original CREATE INDEX text applies unchanged).
+  for (const isql of indexSqls) db.exec(isql);
+
+  // GUARD: signature + row count must match, and no raw_notes reference may remain.
+  const after = db.prepare(`PRAGMA table_info(${table})`).all() as ColInfo[];
+  const afterSig = after.map((c) => `${c.name}:${c.type}:${c.pk}`).join('|');
+  if (afterSig !== beforeSig) {
+    throw new Error(
+      `FK strip guard failed for ${table}: column signature changed.\n  before: ${beforeSig}\n  after:  ${afterSig}`
+    );
+  }
+  const afterCount = count(db, `SELECT COUNT(*) AS n FROM ${table}`);
+  if (afterCount !== beforeCount) {
+    throw new Error(`FK strip guard failed for ${table}: row count ${beforeCount} → ${afterCount}`);
+  }
+  const finalSql = (
+    db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name = ?`).get(table) as {
+      sql: string;
+    }
+  ).sql;
+  if (/raw_notes/i.test(finalSql)) {
+    throw new Error(`FK strip guard failed for ${table}: rebuilt DDL still mentions raw_notes`);
+  }
+}
+
+/**
+ * LOG (no silent scope) the dormant raw_notes-referencing tables we intentionally did NOT rebuild.
+ * Their FK gets inertly rewritten to raw_notes_legacy_backup by the rename, but since nothing
+ * writes them post-migration that FK is never exercised; foreign_key_check stays empty because all
+ * their EXISTING rows reference ids that ARE in the backup.
+ */
+function logLeftDormantFkTables(db: DatabaseType): void {
+  const present = DORMANT_FK_DERIVED_TABLES.filter((t) => tableExists(db, t));
+  if (present.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `left dormant (no live writer; inert FK→legacy_backup, never written): ${present.join(', ')}`
+    );
+  }
+}
+
 function tableType(db: DatabaseType, name: string): string | undefined {
   const row = db.prepare(`SELECT type FROM sqlite_master WHERE name = ?`).get(name) as
     | { type: string }
@@ -144,6 +306,14 @@ export function migrateToFactStore(
     db.pragma('journal_mode = DELETE');
     db.pragma('facts.journal_mode = DELETE');
 
+    // (3b) We rebuild the live derived tables (processed_notes, note_embeddings) inside the txn to
+    // strip their raw_notes FK. SQLite's DROP/CREATE table-rebuild trips foreign_key enforcement
+    // unless FKs are OFF — and `PRAGMA foreign_keys` is a NO-OP inside a transaction, so it MUST be
+    // toggled here, BEFORE db.transaction(...) runs. Restored in the `finally` below (the app's
+    // next connection re-enables it anyway via applyConnectionPragmas). foreign_key_check after the
+    // rename still validates integrity even with enforcement off.
+    db.pragma('foreign_keys = OFF');
+
     // note_state is disposable bookkeeping, fully repopulated from raw_notes below. A stale one
     // (e.g. left by an earlier run with an older schema, missing a column) must be replaced, not
     // merged — CREATE IF NOT EXISTS would keep the wrong shape.
@@ -183,6 +353,15 @@ export function migrateToFactStore(
         reviewRows = count(db, `SELECT COUNT(*) AS n FROM facts.review_state`);
       }
 
+      // (4c2) Strip the raw_notes FK from the LIVE derived tables BEFORE the rename. If we
+      // renamed first, SQLite would auto-rewrite their FK to point at raw_notes_legacy_backup
+      // (frozen id set), and every post-migration NEW note (only in facts.captured_notes) would
+      // fail the FK on insert — killing process-llm for all future captures. Each rebuild is
+      // guarded (column signature + row count + no-raw_notes-ref); any failure throws → rollback.
+      for (const t of LIVE_FK_DERIVED_TABLES) {
+        rebuildWithoutRawNotesFk(db, t);
+      }
+
       // (4d) Retire the physical table (kept as a backup, NOT dropped). The view is created
       // per-connection at runtime — not here.
       db.exec(`ALTER TABLE raw_notes RENAME TO raw_notes_legacy_backup`);
@@ -219,6 +398,26 @@ export function migrateToFactStore(
       );
       if (danglingSelfRefs !== 0) {
         throw new Error(`migration assert failed: ${danglingSelfRefs} dangling source_note_id self-ref(s)`);
+      }
+
+      // (4g) Whole-DB FK integrity assert. `PRAGMA foreign_key_check` returns one row per broken
+      // FK reference (table, rowid, referenced-table, fkid) and RUNS even with enforcement OFF.
+      // This proves two things at once: the rebuilt live tables no longer carry a raw_notes FK,
+      // AND the dormant tables' EXISTING rows still satisfy their (now legacy_backup-pointed) FKs
+      // — i.e. leaving them is genuinely safe. Any row here → throw → rollback the whole migration.
+      const fkViolations = db.pragma('foreign_key_check') as Array<{
+        table: string;
+        rowid: number;
+        parent: string;
+        fkid: number;
+      }>;
+      if (fkViolations.length > 0) {
+        const detail = fkViolations
+          .map((v) => `${v.table} rowid=${v.rowid} -> ${v.parent} (fkid=${v.fkid})`)
+          .join('; ');
+        throw new Error(
+          `migration assert failed: foreign_key_check returned ${fkViolations.length} violation(s): ${detail}`
+        );
       }
 
       return { notes: movedNotes, reviewRows };
