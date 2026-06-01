@@ -1,5 +1,9 @@
 import Database from 'better-sqlite3';
+import { tmpdir } from 'os';
+import { mkdtempSync, rmSync } from 'fs';
+import { join } from 'path';
 import { inspectSchema, inspectCounts, inspectCoverage } from './inspect';
+import { makeTwoFileTestDb } from './test-two-file-db';
 
 type DB = InstanceType<typeof Database>;
 
@@ -101,6 +105,73 @@ describe('inspectSchema', () => {
     // Column NAMES are fine; the sentinel is a row VALUE and must not appear.
     expect(JSON.stringify(r)).not.toContain(SENTINEL);
     db.close();
+  });
+});
+
+// ── Two-file (migrated) layout: raw_notes is a TEMP view over facts.captured_notes + note_state ──
+//
+// selene-inspect opens a migrated prod DB and must report the SAME rawNotes count / status
+// breakdown it did pre-split. Through the view, raw_notes is a TEMP view (NOT a physical table in
+// main.sqlite_master), so the inspector's relation-detection has to recognize it. status comes
+// from COALESCE(note_state.status, 'pending').
+describe('inspectCounts/inspectCoverage on a migrated two-file DB (raw_notes is the view)', () => {
+  let db: DB;
+  let dir: string;
+
+  beforeEach(() => {
+    ({ db, dir } = makeTwoFileTestDb());
+    // processed_notes is a derived table the coverage report joins.
+    db.exec(`CREATE TABLE processed_notes (id INTEGER PRIMARY KEY, raw_note_id INTEGER, category TEXT, essence TEXT);`);
+
+    const ins = db.prepare(
+      `INSERT INTO facts.captured_notes (title, content, content_hash, created_at, test_run)
+       VALUES (?, ?, ?, ?, ?)`
+    );
+    // note 1: processed (explicit note_state), test_run marker, missing category
+    const id1 = Number(ins.run('n1', SENTINEL, 'h1', '2026-05-01', 't1').lastInsertRowid);
+    db.prepare(`INSERT INTO note_state (raw_note_id, status) VALUES (?, 'processed')`).run(id1);
+    db.prepare(`INSERT INTO processed_notes (raw_note_id, category, essence) VALUES (?, NULL, ?)`).run(id1, SENTINEL2);
+    // note 2: processed (explicit note_state), missing essence
+    const id2 = Number(ins.run('n2', SENTINEL, 'h2', '2026-05-02', null).lastInsertRowid);
+    db.prepare(`INSERT INTO note_state (raw_note_id, status) VALUES (?, 'processed')`).run(id2);
+    db.prepare(`INSERT INTO processed_notes (raw_note_id, category, essence) VALUES (?, 'Projects', NULL)`).run(id2);
+    // note 3: NO note_state row -> status COALESCE -> 'pending'; unprocessed
+    Number(ins.run('n3', SENTINEL, 'h3', '2026-05-03', null).lastInsertRowid);
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('counts rawNotes from captured_notes (via the view) with the right status breakdown', () => {
+    const r = inspectCounts(db);
+    expect(r.tables.raw_notes).toBe(3);          // the 3 captured notes, surfaced through the view
+    expect(r.tables.processed_notes).toBe(2);
+    expect(r.testRunRows).toBe(1);               // note 1
+    expect(r.rawNotesByStatus.processed).toBe(2); // notes 1,2 (explicit note_state)
+    expect(r.rawNotesByStatus.pending).toBe(1);   // note 3 (COALESCE default)
+    expect(JSON.stringify(r)).not.toContain(SENTINEL);
+  });
+
+  it('reports coverage (unprocessed / missing fields) through the view', () => {
+    const r = inspectCoverage(db);
+    expect(r.rawNotes).toBe(3);
+    expect(r.processedNotes).toBe(2);
+    expect(r.unprocessed).toBe(1);     // note 3 has no processed_notes row
+    expect(r.missingCategory).toBe(1); // note 1
+    expect(r.missingEssence).toBe(1);  // note 2
+    expect(JSON.stringify(r)).not.toContain(SENTINEL);
+    expect(JSON.stringify(r)).not.toContain(SENTINEL2);
+  });
+
+  it('lists raw_notes (the TEMP view) in the schema relation listing', () => {
+    // inspectCounts/coverage already recognize the view via relationExists; the `schema` listing
+    // must too, or `selene-inspect schema` would omit raw_notes on a migrated DB while `counts`
+    // still reports a row count for it — an inconsistent picture for an operator.
+    const r = inspectSchema(db);
+    expect(r.tables).toContain('raw_notes');
+    expect(r.tables).toContain('processed_notes');
   });
 });
 

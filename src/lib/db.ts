@@ -2,7 +2,24 @@ import Database, { Database as DatabaseType } from 'better-sqlite3';
 import { config } from './config';
 import { logger } from './logger';
 import { applyConnectionPragmas } from './db-config';
+import {
+  ensureFactsDbInitialized,
+  attachFacts,
+  ensureNoteStateTable,
+  ensureRawNotesView,
+} from './facts-db';
+import { setNoteState } from './note-state';
+import { ensureMigrated } from './ensure-migrated';
 import type { CalendarEvent } from '../types';
+
+// Self-heal an un-migrated dev DB / fail loud on un-migrated prod, BEFORE opening the long-lived
+// connection (so the migration's journal_mode=DELETE has no competing handle). Skipped under jest:
+// tests import db.ts against the real dev DB, and config.env is 'development' under jest, so an
+// unguarded call here would auto-migrate the real dev DB. jest sets JEST_WORKER_ID (see
+// db-guard.test.ts, which pins that contract).
+if (!process.env.JEST_WORKER_ID) {
+  ensureMigrated(config.dbPath, config.factsDbPath, config.env);
+}
 
 // Initialize database connection
 export const db: DatabaseType = new Database(config.dbPath);
@@ -10,6 +27,16 @@ export const db: DatabaseType = new Database(config.dbPath);
 // WAL + busy_timeout: concurrent agents (process-llm every 5 min vs. the nightly
 // synthesize-topics rebuild) must wait for a lock, not throw SQLITE_BUSY.
 applyConnectionPragmas(db);
+
+// Fact-store split: ensure facts.db exists + has its schema (standalone connection so its
+// UNQUALIFIED tables land in facts.db's own main), ATTACH it here as `facts`, create the
+// derived `note_state` bookkeeping table in selene.db, and (re)build the backward-compatible
+// `raw_notes` TEMP view. Guarded: on an un-migrated DB where raw_notes is still a physical
+// table, ensureRawNotesView is a no-op (Task 8 converts it).
+ensureFactsDbInitialized(config.factsDbPath);
+attachFacts(db, config.factsDbPath);
+ensureNoteStateTable(db);
+ensureRawNotesView(db);
 
 logger.info({ dbPath: config.dbPath, env: config.env }, 'Database connected');
 
@@ -72,19 +99,22 @@ export interface RawNote {
 }
 
 // Helper: Get pending notes for processing
-export function getPendingNotes(limit = 10): RawNote[] {
-  return db
+// Fact-store split: the SQL is unchanged, but through the `raw_notes` view `status` is
+// COALESCE(ns.status,'pending') — so a captured note with no note_state row is automatically
+// 'pending' (derivation-absence). `conn` is a DI param (mirroring insertNote/markProcessed)
+// so tests can drive an explicit two-file connection.
+export function getPendingNotes(limit = 10, conn: DatabaseType = db): RawNote[] {
+  return conn
     .prepare('SELECT * FROM raw_notes WHERE status = ? ORDER BY created_at ASC LIMIT ?')
     .all('pending', limit) as RawNote[];
 }
 
 // Helper: Mark note as processed
-export function markProcessed(id: number): void {
-  db.prepare('UPDATE raw_notes SET status = ?, processed_at = ? WHERE id = ?').run(
-    'processed',
-    new Date().toISOString(),
-    id
-  );
+// Fact-store split: `status`/`processed_at` are derived bookkeeping → write the disposable
+// note_state row (NOT the read-only raw_notes view). The view's COALESCE(ns.status,...) reads
+// it back. setNoteState's partial UPSERT leaves any other note_state columns intact.
+export function markProcessed(id: number, conn: DatabaseType = db): void {
+  setNoteState(conn, id, { status: 'processed', processed_at: new Date().toISOString() });
 }
 
 // Helper: Check for duplicate by content hash
@@ -95,25 +125,31 @@ export function findByContentHash(hash: string): RawNote | undefined {
 }
 
 // Helper: Insert new note
-export function insertNote(note: {
-  title: string;
-  content: string;
-  contentHash: string;
-  tags: string[];
-  createdAt: string;
-  testRun?: string;
-  captureType?: string;
-  sourceUuid?: string;
-  sourceNoteId?: number;
-}): number {
+export function insertNote(
+  note: {
+    title: string;
+    content: string;
+    contentHash: string;
+    tags: string[];
+    createdAt: string;
+    testRun?: string;
+    captureType?: string;
+    sourceUuid?: string;
+    sourceNoteId?: number;
+  },
+  conn: DatabaseType = db
+): number {
   const wordCount = note.content.split(/\s+/).filter(Boolean).length;
   const characterCount = note.content.length;
 
-  const result = db
+  // Fact-store split: a captured note is a FACT — write it to facts.captured_notes (the
+  // real table), NOT the read-only raw_notes view. We set NO `status`; the note has no
+  // note_state row, and the view's COALESCE(ns.status,'pending') reads it back as 'pending'.
+  const result = conn
     .prepare(
-      `INSERT INTO raw_notes
-       (title, content, content_hash, tags, word_count, character_count, created_at, status, test_run, capture_type, source_uuid, source_note_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`
+      `INSERT INTO facts.captured_notes
+       (title, content, content_hash, tags, word_count, character_count, created_at, test_run, capture_type, source_uuid, source_note_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       note.title,
@@ -133,8 +169,15 @@ export function insertNote(note: {
 }
 
 // Helper: Update calendar event metadata on a note
-export function updateCalendarEvent(noteId: number, calendarEvent: CalendarEvent): void {
-  db.prepare('UPDATE raw_notes SET calendar_event = ? WHERE id = ?')
+// Fact-store split: `calendar_event` is part of the immutable note FACT → write the real
+// facts.captured_notes table (NOT the read-only raw_notes view). The note id comes from
+// insertNote's captured_notes rowid, so it addresses the same row.
+export function updateCalendarEvent(
+  noteId: number,
+  calendarEvent: CalendarEvent,
+  conn: DatabaseType = db
+): void {
+  conn.prepare('UPDATE facts.captured_notes SET calendar_event = ? WHERE id = ?')
     .run(JSON.stringify(calendarEvent), noteId);
 }
 
@@ -606,24 +649,32 @@ db.exec(`
   );
 `);
 
-// Ensure raw_notes.source_note_id exists (annotation linking — added 2026-05-28).
-// Idempotent column-add so a fresh clone / rebuilt DB gets it without a manual ALTER.
-const rawNotesColumns = db
-  .prepare(`PRAGMA table_info(raw_notes)`)
-  .all() as Array<{ name: string }>;
-if (!rawNotesColumns.some((c) => c.name === 'source_note_id')) {
-  db.exec(`ALTER TABLE raw_notes ADD COLUMN source_note_id INTEGER REFERENCES raw_notes(id)`);
-  logger.info('Migrated raw_notes: added source_note_id column');
+/**
+ * Idempotent column-add for the LEGACY single-file shape, where raw_notes is a PHYSICAL table:
+ * ensure source_note_id (annotation linking, 2026-05-28) + inbox_status (worksheet triage state)
+ * exist so a fresh clone / rebuilt DB gets them without a manual ALTER.
+ *
+ * Post fact-store split, raw_notes is a per-connection VIEW that already exposes both columns, and
+ * `ALTER TABLE <view>` THROWS — which at module load would crash the whole process. So this no-ops
+ * whenever raw_notes is not a real table (it lives in sqlite_master with type='table' only when
+ * physical; a TEMP view is in sqlite_temp_master, so this probe returns nothing for the view).
+ */
+export function ensureLegacyRawNotesColumns(conn: DatabaseType): void {
+  const isPhysicalTable = conn
+    .prepare(`SELECT 1 FROM sqlite_master WHERE name = 'raw_notes' AND type = 'table'`)
+    .get();
+  if (!isPhysicalTable) return;
+  const cols = conn.prepare(`PRAGMA table_info(raw_notes)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === 'source_note_id')) {
+    conn.exec(`ALTER TABLE raw_notes ADD COLUMN source_note_id INTEGER REFERENCES raw_notes(id)`);
+    logger.info('Migrated raw_notes: added source_note_id column');
+  }
+  if (!cols.some((c) => c.name === 'inbox_status')) {
+    conn.exec(`ALTER TABLE raw_notes ADD COLUMN inbox_status TEXT DEFAULT 'pending'`);
+    logger.info('Migrated raw_notes: added inbox_status column');
+  }
 }
-
-// Ensure raw_notes.inbox_status exists (worksheet daily-review triage state).
-// Distinct from `status` (LLM processing pipeline): inbox_status is the
-// user-facing triage state read by the worksheet /today endpoint.
-// Idempotent column-add so a fresh clone / rebuilt DB gets it without a manual ALTER.
-if (!rawNotesColumns.some((c) => c.name === 'inbox_status')) {
-  db.exec(`ALTER TABLE raw_notes ADD COLUMN inbox_status TEXT DEFAULT 'pending'`);
-  logger.info('Migrated raw_notes: added inbox_status column');
-}
+ensureLegacyRawNotesColumns(db);
 
 // Helper: Register a device token (upsert)
 export function registerDevice(token: string, platform = 'ios'): void {

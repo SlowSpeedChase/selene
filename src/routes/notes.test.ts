@@ -1,27 +1,16 @@
-import Database from 'better-sqlite3';
+import { makeTwoFileTestDb } from '../lib/test-two-file-db';
+import type { Database as DatabaseType } from 'better-sqlite3';
 import { buildNotesDb } from './notes';
 
 describe('notes route helpers', () => {
-  let db: InstanceType<typeof Database>;
+  let db: DatabaseType;
 
   beforeEach(() => {
-    db = new Database(':memory:');
+    // Fact-store split: `raw_notes` is a TEMP VIEW over facts.captured_notes + note_state, so
+    // insertAnnotation (now writing facts.captured_notes) and getNoteById (reading the view)
+    // share one two-file connection. The cluster/processed tables are layered onto it.
+    ({ db } = makeTwoFileTestDb());
     db.exec(`
-      CREATE TABLE raw_notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        content_hash TEXT UNIQUE NOT NULL,
-        source_type TEXT DEFAULT 'drafts',
-        word_count INTEGER DEFAULT 0,
-        character_count INTEGER DEFAULT 0,
-        tags TEXT,
-        created_at DATETIME NOT NULL,
-        imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'pending',
-        capture_type TEXT DEFAULT 'drafts',
-        source_note_id INTEGER
-      );
       CREATE TABLE topic_clusters (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -63,7 +52,7 @@ describe('notes route helpers', () => {
   });
 
   it('getNotesForCluster returns raw notes linked to a cluster', () => {
-    db.prepare(`INSERT INTO raw_notes (title, content, content_hash, created_at) VALUES (?,?,?,?)`).run(
+    db.prepare(`INSERT INTO facts.captured_notes (title, content, content_hash, created_at) VALUES (?,?,?,?)`).run(
       'Note A', 'Body A', 'hash-a', '2026-01-01'
     );
     db.prepare(`INSERT INTO topic_note_links VALUES (?,?,?)`).run('c1', 1, '2026-01-01');
@@ -74,7 +63,7 @@ describe('notes route helpers', () => {
   });
 
   it('getNoteById returns note with processed metadata', () => {
-    db.prepare(`INSERT INTO raw_notes (title, content, content_hash, created_at) VALUES (?,?,?,?)`).run(
+    db.prepare(`INSERT INTO facts.captured_notes (title, content, content_hash, created_at) VALUES (?,?,?,?)`).run(
       'My Note', 'Content here', 'hash-1', '2026-01-01'
     );
     db.prepare(`INSERT INTO processed_notes (raw_note_id, essence, concepts, primary_theme) VALUES (?,?,?,?)`).run(
@@ -89,7 +78,7 @@ describe('notes route helpers', () => {
   });
 
   it('insertAnnotation creates a new raw note linked to parent', () => {
-    db.prepare(`INSERT INTO raw_notes (title, content, content_hash, created_at) VALUES (?,?,?,?)`).run(
+    db.prepare(`INSERT INTO facts.captured_notes (title, content, content_hash, created_at) VALUES (?,?,?,?)`).run(
       'Parent', 'Parent content', 'hash-p', '2026-01-01'
     );
     const { insertAnnotation, getNoteById } = buildNotesDb(db);

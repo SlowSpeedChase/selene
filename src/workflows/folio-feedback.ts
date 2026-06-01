@@ -1,11 +1,13 @@
 // @map purpose: Write Kindle-Scribe annotations back as markdown feedback files in each Folio project repo
 // @map reads: raw_notes, processed_notes
-// @map writes: Folio project feedback files, raw_notes (status_folio)
-import Database from 'better-sqlite3';
+// @map writes: Folio project feedback files, note_state (status_folio)
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { dirname, join, resolve } from 'path';
 import { homedir } from 'os';
 import { createWorkflowLogger } from '../lib';
+import { config } from '../lib/config';
+import { setNoteState } from '../lib/note-state';
+import { openSeleneConnection } from '../lib/open-selene-connection';
 
 const log = createWorkflowLogger('folio-feedback');
 
@@ -73,7 +75,18 @@ export function runFolioFeedback(dbPath?: string): void {
     process.env.SELENE_DB_PATH ||
     join(homedir(), 'selene-data/selene.db');
 
-  const db = new Database(resolvedDbPath);
+  // Fact-store split: candidate notes are read through the `raw_notes` TEMP view
+  // (facts.captured_notes LEFT JOIN note_state), and setNoteState writes note_state — so this
+  // connection needs the full two-file wiring, not a bare `new Database`. When dbPath is the
+  // default/env path, config.factsDbPath is the matching facts file; when a CUSTOM dbPath is
+  // passed (tests), derive a sibling facts.db so the two files stay co-located.
+  const usingConfigPath =
+    !dbPath || resolvedDbPath === config.dbPath || resolvedDbPath === process.env.SELENE_DB_PATH;
+  const resolvedFactsPath = usingConfigPath
+    ? config.factsDbPath
+    : join(dirname(resolvedDbPath), 'facts.db');
+
+  const db = openSeleneConnection(resolvedDbPath, resolvedFactsPath);
   try {
     const notes = db.prepare(`
       SELECT rn.id, rn.title, rn.content, rn.created_at,
@@ -131,7 +144,11 @@ export function runFolioFeedback(dbPath?: string): void {
         writeFileSync(dest, content, 'utf-8');
         log.info({ noteId: note.id, dest }, 'Wrote feedback file');
 
-        db.prepare("UPDATE raw_notes SET status_folio = 'written' WHERE id = ?").run(note.id);
+        // Fact-store split: status_folio is derived bookkeeping → note_state, not the
+        // read-only raw_notes view. The candidate SELECT above reads the raw_notes view
+        // (facts.captured_notes LEFT JOIN note_state) over this two-file connection;
+        // note_state is a persistent table in selene.db main.
+        setNoteState(db, note.id, { status_folio: 'written' });
       } catch (err) {
         console.error(`[folio-feedback] Failed to write feedback for note ${note.id}:`, err);
       }

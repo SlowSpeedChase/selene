@@ -77,12 +77,15 @@ export function buildNotesDb(db: DatabaseType) {
   }): number {
     const contentHash = crypto.createHash('sha256').update(text).digest('hex');
     const now = new Date().toISOString();
+    // Fact-store split: an annotation is a captured FACT — write it to facts.captured_notes
+    // (the real table), NOT the read-only raw_notes view. No `status`: the view's
+    // COALESCE(...,'pending') reads it back as pending.
     const result = db
       .prepare(
-        `INSERT INTO raw_notes
+        `INSERT INTO facts.captured_notes
          (title, content, content_hash, word_count, character_count,
-          created_at, status, capture_type, source_note_id)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending', 'annotation', ?)`
+          created_at, capture_type, source_note_id)
+         VALUES (?, ?, ?, ?, ?, ?, 'annotation', ?)`
       )
       .run(
         `Annotation on note ${parentNoteId}`,

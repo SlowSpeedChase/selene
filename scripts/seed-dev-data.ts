@@ -21,9 +21,10 @@ import { createHash } from 'crypto';
 import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import Database from 'better-sqlite3';
+import type { Database as DatabaseType } from 'better-sqlite3';
 
 import { config } from '../src/lib/config';
+import { openSeleneConnection } from '../src/lib/open-selene-connection';
 
 const CAPTURE_TYPE = 'dev-fixture';
 const TEST_RUN = 'dev-seed';
@@ -75,11 +76,18 @@ function loadFixture(options: SeedOptions): FixtureNote[] {
 }
 
 /**
- * Open the dev database directly and refuse unless it is marked development.
+ * Open the dev database (FULLY two-file wired) and refuse unless it is marked development.
  * This is an independent guard — it does not rely on SELENE_ENV being set.
+ *
+ * Fact-store split: a captured note is a FACT, so fixtures are inserted into
+ * facts.captured_notes (not the read-only raw_notes view). We therefore open via
+ * openSeleneConnection (ATTACHes facts + builds the temp view), then run the dev-marker guard
+ * against selene.db's own `_selene_metadata` (it lives in main, not facts). The guard reads the
+ * SELENE.DB marker on purpose: that file is the per-environment anchor and is what create-dev-db.sh
+ * stamps.
  */
-function openGuardedDevDb(dbPath: string): Database.Database {
-  const database = new Database(dbPath);
+function openGuardedDevDb(dbPath: string, factsPath: string): DatabaseType {
+  const database = openSeleneConnection(dbPath, factsPath);
   let marker: { value: string } | undefined;
   try {
     marker = database
@@ -105,19 +113,31 @@ function openGuardedDevDb(dbPath: string): Database.Database {
 function main(): void {
   const options = parseArgs(process.argv.slice(2));
   const dbPath = config.dbPath;
+  const factsPath = config.factsDbPath;
 
   console.log(`Seeding dev database: ${dbPath}`);
-  const database = openGuardedDevDb(dbPath);
-  database.pragma('journal_mode = WAL');
+  console.log(`Facts database:       ${factsPath}`);
+  const database = openGuardedDevDb(dbPath, factsPath);
+  // openSeleneConnection already applied WAL + busy_timeout pragmas.
 
   const notes = loadFixture(options);
   console.log(`Loaded ${notes.length} fictional notes from fixture.`);
 
+  // Fact-store split: fixtures are immutable note FACTS → facts.captured_notes (NOT the read-only
+  // raw_notes view, NOT a `status` column). With no note_state row, each note reads back as
+  // status='pending' through the view's COALESCE default — exactly what dev-process-batch expects.
   const insert = database.prepare(
-    `INSERT OR IGNORE INTO raw_notes
+    `INSERT INTO facts.captured_notes
        (title, content, content_hash, tags, word_count, character_count,
-        created_at, status, test_run, capture_type)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+        created_at, test_run, capture_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  // facts.captured_notes' content_hash index is NON-unique (the migration keeps it that way so it
+  // can't fail on historical duplicate hashes), so `INSERT OR IGNORE` would no longer dedup — it'd
+  // happily insert duplicate fixtures on a re-seed. Preserve the old UNIQUE-content_hash idempotency
+  // with an explicit existence check inside the transaction.
+  const exists = database.prepare(
+    `SELECT 1 FROM facts.captured_notes WHERE content_hash = ? LIMIT 1`
   );
 
   let inserted = 0;
@@ -127,10 +147,14 @@ function main(): void {
       const contentHash = createHash('sha256')
         .update(note.title + note.content)
         .digest('hex');
+      if (exists.get(contentHash)) {
+        skipped += 1;
+        continue;
+      }
       const tags = note.content.match(/#\w+/g) || [];
       const wordCount = note.content.split(/\s+/).filter(Boolean).length;
       const characterCount = note.content.length;
-      const result = insert.run(
+      insert.run(
         note.title,
         note.content,
         contentHash,
@@ -141,11 +165,7 @@ function main(): void {
         TEST_RUN,
         CAPTURE_TYPE
       );
-      if (result.changes > 0) {
-        inserted += 1;
-      } else {
-        skipped += 1;
-      }
+      inserted += 1;
     }
   });
 

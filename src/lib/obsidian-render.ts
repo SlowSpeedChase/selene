@@ -1,10 +1,14 @@
 /**
  * Idempotent Obsidian note export — pure render + hash + a DI'd reconcile loop.
  *
- * Replaces the old write-once gate (`raw_notes.exported_to_obsidian = 0`) that let a note's
- * markdown be written exactly once, so post-export enrichment (cluster `parent::` edges, essence
- * or theme changes) never reached the vault. Here each run renders every processed note's FULL
- * markdown, hashes it, and writes only when the hash differs from `raw_notes.obsidian_export_hash`.
+ * Replaces the old write-once gate (`exported_to_obsidian = 0`) that let a note's markdown be
+ * written exactly once, so post-export enrichment (cluster `parent::` edges, essence or theme
+ * changes) never reached the vault. Here each run renders every processed note's FULL markdown,
+ * hashes it, and writes only when the hash differs from the stored `obsidian_export_hash`.
+ *
+ * Fact-store split: the export bookkeeping (`obsidian_export_hash`, `exported_to_obsidian`,
+ * `exported_at`) now lives in `note_state` (written via setNoteState); reads come back through
+ * the `raw_notes` view's LEFT JOIN, so the SELECT below is unchanged.
  *
  * Free of the db.ts singleton (the loop takes a Database arg) so it is unit-testable in-memory —
  * see obsidian-render.test.ts / obsidian-render.db.test.ts. Mirrors constellation.ts.
@@ -14,6 +18,7 @@ import { createHash } from 'crypto';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { buildParentFields, loadNoteClusters } from './constellation';
+import { setNoteState } from './note-state';
 
 export interface RenderableNote {
   id: number;
@@ -169,12 +174,6 @@ export function reconcileExportedNotes(
 
   const noteClusters = loadNoteClusters(database);
 
-  const updateStmt = database.prepare(
-    `UPDATE raw_notes
-     SET obsidian_export_hash = ?, exported_to_obsidian = 1, exported_at = ?
-     WHERE id = ?`
-  );
-
   let written = 0;
   let skipped = 0;
   let deferred = 0;
@@ -202,7 +201,14 @@ export function reconcileExportedNotes(
       }
 
       writeFileSync(filePath, markdown, 'utf-8');
-      updateStmt.run(hash, new Date().toISOString(), note.id);
+      // Fact-store split: export bookkeeping is derived → note_state (NOT the read-only raw_notes
+      // view). Same three columns as before; setNoteState's partial UPSERT leaves status etc.
+      // intact so the note keeps matching `WHERE rn.status = 'processed'` on the next run.
+      setNoteState(database, note.id, {
+        obsidian_export_hash: hash,
+        exported_to_obsidian: 1,
+        exported_at: new Date().toISOString(),
+      });
       written++;
     } catch {
       errors++;
