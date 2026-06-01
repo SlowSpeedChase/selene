@@ -60,4 +60,22 @@ describe('thresholdsFromEnv', () => {
       coverageMin: 0.8, driftTolerance: 0.2,
     });
   });
+
+  it('honors DRIFT_TOLERANCE override', () => {
+    expect(thresholdsFromEnv({ DRIFT_TOLERANCE: '0.5' })).toEqual({
+      coverageMin: 0.95, driftTolerance: 0.5,
+    });
+  });
+
+  it('falls back to the default when COVERAGE_MIN is non-numeric (no NaN fail-open)', () => {
+    expect(thresholdsFromEnv({ COVERAGE_MIN: '0.9x' })).toEqual({
+      coverageMin: 0.95, driftTolerance: 0.2,
+    });
+  });
+
+  it('falls back to the default when COVERAGE_MIN is an empty string', () => {
+    expect(thresholdsFromEnv({ COVERAGE_MIN: '' })).toEqual({
+      coverageMin: 0.95, driftTolerance: 0.2,
+    });
+  });
 });

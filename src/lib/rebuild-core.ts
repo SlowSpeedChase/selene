@@ -58,9 +58,13 @@ export function verdict(pre: Snapshot, post: Snapshot, t: Thresholds): Verdict {
 
 /** Thresholds from env, with the agreed defaults. */
 export function thresholdsFromEnv(env: NodeJS.ProcessEnv = process.env): Thresholds {
+  const num = (v: string | undefined, d: number): number => {
+    const n = Number(v);
+    return v !== undefined && v !== '' && Number.isFinite(n) ? n : d;
+  };
   return {
-    coverageMin: env.COVERAGE_MIN ? Number(env.COVERAGE_MIN) : 0.95,
-    driftTolerance: env.DRIFT_TOLERANCE ? Number(env.DRIFT_TOLERANCE) : 0.20,
+    coverageMin: num(env.COVERAGE_MIN, 0.95),
+    driftTolerance: num(env.DRIFT_TOLERANCE, 0.20),
   };
 }
 
@@ -69,14 +73,22 @@ export function backupPath(dir: string, stamp: string): string {
 }
 
 /** Empty every main-schema (selene.db) table in one transaction. FK enforcement is
- *  toggled off for the truncation, restored after. Never touches the attached `facts`
- *  schema (captured_notes / review_state). */
+ *  toggled off for the truncation, then restored to the caller's PRIOR state.
+ *  Never touches the attached `facts` schema (captured_notes / review_state).
+ *
+ *  Note: the foreign_keys pragma is toggled OUTSIDE the transaction deliberately —
+ *  toggling foreign_keys mid-transaction is a no-op in better-sqlite3, so this
+ *  ordering is required for the OFF to actually take effect. */
 export function wipe(db: DB): void {
   const tables = listDerivedTables(db);
+  const prevFk = db.pragma('foreign_keys', { simple: true });
   db.pragma('foreign_keys = OFF');
-  const tx = db.transaction(() => {
-    for (const name of tables) db.exec(`DELETE FROM "${name}"`);
-  });
-  tx();
-  db.pragma('foreign_keys = ON');
+  try {
+    const tx = db.transaction(() => {
+      for (const name of tables) db.exec(`DELETE FROM "${name}"`);
+    });
+    tx();
+  } finally {
+    db.pragma(`foreign_keys = ${prevFk ? 'ON' : 'OFF'}`);
+  }
 }
