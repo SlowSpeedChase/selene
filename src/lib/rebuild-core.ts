@@ -17,8 +17,21 @@ export interface Snapshot {
   clusters: number; clusterLinks: number; exported: number;
 }
 
-const count = (db: DB, sql: string): number =>
-  (db.prepare(sql).get() as { n: number }).n;
+// Absent derived table/column = 0 (the "pending = derivation-absence" model): a
+// never-derived DB may lack processed_notes.essence (added lazily by
+// distill-essences) or whole derived tables (note_embeddings, topic_clusters).
+// We can't probe sqlite_master for existence — raw_notes is a per-connection TEMP
+// view, so it would read as "absent" — hence the try/catch on the specific error.
+// The rethrow keeps genuine typos/bugs from being masked; the full-schema snapshot
+// test guards exact counts.
+const count = (db: DB, sql: string): number => {
+  try {
+    return (db.prepare(sql).get() as { n: number }).n;
+  } catch (err) {
+    if (err instanceof Error && /no such (column|table)/i.test(err.message)) return 0;
+    throw err;
+  }
+};
 
 /** Read derived counts from selene.db (facts via the raw_notes view). Content-free. */
 export function snapshot(db: DB): Snapshot {
