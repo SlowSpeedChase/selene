@@ -39,7 +39,7 @@ import {
   ensureNoteStateTable,
   ensureRawNotesView,
 } from '../src/lib/facts-db';
-import { migrateToFactStore, stripRawNotesFk } from './migrate-to-fact-store';
+import { migrateToFactStore, stripRawNotesFk } from '../src/lib/migrate-to-fact-store';
 
 afterAll(() => {
   for (const k of ENV_KEYS) {
