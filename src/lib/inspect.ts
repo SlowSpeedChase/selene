@@ -76,8 +76,15 @@ function columnNames(db: DB, table: string): string[] {
 }
 
 export function inspectSchema(db: DB, table?: string): SchemaReport {
+  // Include views (post-split `raw_notes` is a TEMP view) and look in BOTH main and temp
+  // sqlite_master — mirroring relationExists — so the listing matches what counts/coverage report.
   const tables = (db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'
+       UNION
+       SELECT name FROM temp.sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'
+       ORDER BY name`
+    )
     .all() as Array<{ name: string }>).map((r) => r.name);
 
   if (!table) {

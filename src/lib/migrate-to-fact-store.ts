@@ -64,17 +64,11 @@ const BOOKKEEPING_COLUMNS = [
  * structurally impossible (the referenced ids live cross-file in facts.captured_notes), so these
  * two tables must be rebuilt FK-free BEFORE the rename. The other 6 raw_notes-referencing tables
  * (processed_notes_apple, note_associations, thread_notes, thread_history, note_relationships,
- * sentiment_history) are DORMANT — no live writer — so their inert rewritten FK is never exercised;
- * we deliberately leave them and LOG that (see logLeftDormantFkTables). `note_state` was built
- * FK-free from the start (facts-db.ts).
+ * sentiment_history) are DORMANT — no live writer — so their inert rewritten FK is never exercised
+ * (foreign_key_check stays empty: all their EXISTING rows reference ids that ARE in the backup). We
+ * deliberately leave them as-is. `note_state` was built FK-free from the start (facts-db.ts).
  */
 const LIVE_FK_DERIVED_TABLES = ['processed_notes', 'note_embeddings'] as const;
-
-/** The 6 raw_notes-referencing tables we intentionally LEAVE (dormant, no live writer). */
-const DORMANT_FK_DERIVED_TABLES = [
-  'processed_notes_apple', 'note_associations', 'thread_notes', 'thread_history',
-  'note_relationships', 'sentiment_history',
-] as const;
 
 /**
  * Remove ONLY the `raw_notes` foreign key from a CREATE TABLE statement, leaving every other
@@ -198,22 +192,6 @@ function rebuildWithoutRawNotesFk(db: DatabaseType, table: string): void {
   ).sql;
   if (/raw_notes/i.test(finalSql)) {
     throw new Error(`FK strip guard failed for ${table}: rebuilt DDL still mentions raw_notes`);
-  }
-}
-
-/**
- * LOG (no silent scope) the dormant raw_notes-referencing tables we intentionally did NOT rebuild.
- * Their FK gets inertly rewritten to raw_notes_legacy_backup by the rename, but since nothing
- * writes them post-migration that FK is never exercised; foreign_key_check stays empty because all
- * their EXISTING rows reference ids that ARE in the backup.
- */
-function logLeftDormantFkTables(db: DatabaseType): void {
-  const present = DORMANT_FK_DERIVED_TABLES.filter((t) => tableExists(db, t));
-  if (present.length > 0) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `left dormant (no live writer; inert FK→legacy_backup, never written): ${present.join(', ')}`
-    );
   }
 }
 

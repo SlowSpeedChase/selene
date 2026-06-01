@@ -1,6 +1,6 @@
 // @map purpose: Write Kindle-Scribe annotations back as markdown feedback files in each Folio project repo
 // @map reads: raw_notes, processed_notes
-// @map writes: Folio project feedback files, raw_notes (status_folio)
+// @map writes: Folio project feedback files, note_state (status_folio)
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { homedir } from 'os';

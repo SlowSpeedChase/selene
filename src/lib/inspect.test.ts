@@ -164,6 +164,15 @@ describe('inspectCounts/inspectCoverage on a migrated two-file DB (raw_notes is 
     expect(JSON.stringify(r)).not.toContain(SENTINEL);
     expect(JSON.stringify(r)).not.toContain(SENTINEL2);
   });
+
+  it('lists raw_notes (the TEMP view) in the schema relation listing', () => {
+    // inspectCounts/coverage already recognize the view via relationExists; the `schema` listing
+    // must too, or `selene-inspect schema` would omit raw_notes on a migrated DB while `counts`
+    // still reports a row count for it — an inconsistent picture for an operator.
+    const r = inspectSchema(db);
+    expect(r.tables).toContain('raw_notes');
+    expect(r.tables).toContain('processed_notes');
+  });
 });
 
 describe('content-leak invariant', () => {
