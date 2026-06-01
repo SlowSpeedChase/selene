@@ -31,3 +31,34 @@ export function snapshot(db: DB): Snapshot {
     exported: count(db, `SELECT COUNT(*) n FROM raw_notes WHERE exported_to_obsidian = 1`),
   };
 }
+
+export interface Thresholds { coverageMin: number; driftTolerance: number; }
+export interface Verdict { pass: boolean; coverage: number; reasons: string[]; }
+
+const DRIFT_METRICS: Array<keyof Snapshot> = [
+  'processed', 'essences', 'embeddings', 'clusters', 'clusterLinks', 'exported',
+];
+
+export function verdict(pre: Snapshot, post: Snapshot, t: Thresholds): Verdict {
+  const reasons: string[] = [];
+  const coverage = post.captured === 0 ? 1 : post.processed / post.captured;
+  if (coverage < t.coverageMin) {
+    reasons.push(`coverage ${(coverage * 100).toFixed(1)}% < floor ${(t.coverageMin * 100).toFixed(0)}%`);
+  }
+  for (const m of DRIFT_METRICS) {
+    if (pre[m] === 0) continue;
+    const drift = (post[m] - pre[m]) / pre[m];
+    if (drift < -t.driftTolerance) {
+      reasons.push(`${m} drift ${(drift * 100).toFixed(1)}% < -${(t.driftTolerance * 100).toFixed(0)}%`);
+    }
+  }
+  return { pass: reasons.length === 0, coverage, reasons };
+}
+
+/** Thresholds from env, with the agreed defaults. */
+export function thresholdsFromEnv(env: NodeJS.ProcessEnv = process.env): Thresholds {
+  return {
+    coverageMin: env.COVERAGE_MIN ? Number(env.COVERAGE_MIN) : 0.95,
+    driftTolerance: env.DRIFT_TOLERANCE ? Number(env.DRIFT_TOLERANCE) : 0.20,
+  };
+}
