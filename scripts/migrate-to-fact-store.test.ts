@@ -55,7 +55,7 @@ afterAll(() => {
  * DELIBERATELY omits `exported_at` (a note_state DDL column) so the intersection logic is
  * exercised — it must be skipped, not break the SELECT.
  */
-function buildLegacyDb(opts: { orphanProcessed?: boolean; danglingSelfRef?: boolean } = {}): { dir: string; dbPath: string; factsPath: string } {
+function buildLegacyDb(opts: { orphanProcessed?: boolean; danglingSelfRef?: boolean; empty?: boolean } = {}): { dir: string; dbPath: string; factsPath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'selene-migrate-'));
   const dbPath = join(dir, 'selene.db');
   const factsPath = join(dir, 'facts.db');
@@ -98,24 +98,30 @@ function buildLegacyDb(opts: { orphanProcessed?: boolean; danglingSelfRef?: bool
       (id, title, content, content_hash, capture_type, created_at, source_note_id, test_run, status, exported_to_obsidian, obsidian_export_hash)
     VALUES (@id,@title,@content,@content_hash,@capture_type,@created_at,@source_note_id,@test_run,@status,@exported_to_obsidian,@obsidian_export_hash)
   `);
-  // id=10: a root note (self-referenced by 20), pending
-  ins.run({ id: 10, title: 'Root', content: 'root body', content_hash: 'h10', capture_type: 'drafts', created_at: '2026-01-01T00:00:00Z', source_note_id: null, test_run: null, status: 'pending', exported_to_obsidian: 0, obsidian_export_hash: null });
-  // id=20: an annotation of 10 (source_note_id=10), processed, carries an export hash
-  ins.run({ id: 20, title: 'Annotation', content: 'note about root', content_hash: 'h20', capture_type: 'eink', created_at: '2026-01-02T00:00:00Z', source_note_id: 10, test_run: null, status: 'processed', exported_to_obsidian: 1, obsidian_export_hash: 'export-hash-20' });
-  // id=30: archived + a test_run marker
-  ins.run({ id: 30, title: 'Archived', content: 'old', content_hash: 'h30', capture_type: 'drafts', created_at: '2026-01-03T00:00:00Z', source_note_id: null, test_run: 'x', status: 'archived', exported_to_obsidian: 0, obsidian_export_hash: null });
-  // id=40 (optional): an annotation whose source note (777) was deleted long ago — a PRE-EXISTING
-  // dangling source_note_id self-ref. Real prod has these (annotation feature + later deletions).
-  if (opts.danglingSelfRef) {
-    ins.run({ id: 40, title: 'Orphan annotation', content: 'annotates a deleted note', content_hash: 'h40', capture_type: 'eink', created_at: '2026-01-04T00:00:00Z', source_note_id: 777, test_run: null, status: 'pending', exported_to_obsidian: 0, obsidian_export_hash: null });
+  // The `empty` variant keeps the FULL schema but seeds NO rows — modelling a freshly-created dev DB
+  // (create-dev-db.sh) about to be migrated then seeded. Note inserts are skipped; tables stay empty.
+  if (!opts.empty) {
+    // id=10: a root note (self-referenced by 20), pending
+    ins.run({ id: 10, title: 'Root', content: 'root body', content_hash: 'h10', capture_type: 'drafts', created_at: '2026-01-01T00:00:00Z', source_note_id: null, test_run: null, status: 'pending', exported_to_obsidian: 0, obsidian_export_hash: null });
+    // id=20: an annotation of 10 (source_note_id=10), processed, carries an export hash
+    ins.run({ id: 20, title: 'Annotation', content: 'note about root', content_hash: 'h20', capture_type: 'eink', created_at: '2026-01-02T00:00:00Z', source_note_id: 10, test_run: null, status: 'processed', exported_to_obsidian: 1, obsidian_export_hash: 'export-hash-20' });
+    // id=30: archived + a test_run marker
+    ins.run({ id: 30, title: 'Archived', content: 'old', content_hash: 'h30', capture_type: 'drafts', created_at: '2026-01-03T00:00:00Z', source_note_id: null, test_run: 'x', status: 'archived', exported_to_obsidian: 0, obsidian_export_hash: null });
+    // id=40 (optional): an annotation whose source note (777) was deleted long ago — a PRE-EXISTING
+    // dangling source_note_id self-ref. Real prod has these (annotation feature + later deletions).
+    if (opts.danglingSelfRef) {
+      ins.run({ id: 40, title: 'Orphan annotation', content: 'annotates a deleted note', content_hash: 'h40', capture_type: 'eink', created_at: '2026-01-04T00:00:00Z', source_note_id: 777, test_run: null, status: 'pending', exported_to_obsidian: 0, obsidian_export_hash: null });
+    }
   }
 
   // processed_notes referencing raw_note_id 20 and 30 (+ optional orphan for the negative test)
   db.exec(`CREATE TABLE processed_notes (raw_note_id INTEGER, concepts TEXT, primary_theme TEXT)`);
-  db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(20, 'work');
-  db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(30, 'life');
-  if (opts.orphanProcessed) {
-    db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(999, 'ghost');
+  if (!opts.empty) {
+    db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(20, 'work');
+    db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(30, 'life');
+    if (opts.orphanProcessed) {
+      db.prepare(`INSERT INTO processed_notes (raw_note_id, primary_theme) VALUES (?, ?)`).run(999, 'ghost');
+    }
   }
 
   // pkm_review_state with 2 rows → migrates to facts.review_state
@@ -128,8 +134,10 @@ function buildLegacyDb(opts: { orphanProcessed?: boolean; danglingSelfRef?: bool
       PRIMARY KEY (entity_type, entity_id)
     );
   `);
-  db.prepare(`INSERT INTO pkm_review_state (entity_type, entity_id, last_surfaced_at, surface_count) VALUES (?,?,?,?)`).run('note', '20', '2026-01-05T00:00:00Z', 3);
-  db.prepare(`INSERT INTO pkm_review_state (entity_type, entity_id, last_surfaced_at, surface_count) VALUES (?,?,?,?)`).run('category', 'work', null, 0);
+  if (!opts.empty) {
+    db.prepare(`INSERT INTO pkm_review_state (entity_type, entity_id, last_surfaced_at, surface_count) VALUES (?,?,?,?)`).run('note', '20', '2026-01-05T00:00:00Z', 3);
+    db.prepare(`INSERT INTO pkm_review_state (entity_type, entity_id, last_surfaced_at, surface_count) VALUES (?,?,?,?)`).run('category', 'work', null, 0);
+  }
 
   db.close();
   return { dir, dbPath, factsPath };
@@ -259,6 +267,25 @@ describe('migrateToFactStore — single file → two files (id-preserving, trans
     const row = db.prepare(`SELECT source_note_id FROM facts.captured_notes WHERE id = 40`).get() as { source_note_id: number };
     expect(row.source_note_id).toBe(777);
     db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('EMPTY source (0 notes) migrates cleanly — the dev-reset path: create-dev-db (empty raw_notes) → migrate → seed', () => {
+    // reset-dev-data.sh now migrates the FRESH (empty) dev DB to two-file BEFORE seeding, so the
+    // seed writes facts.captured_notes against a coherent layout. That hinges on migrate() handling
+    // a 0-row source: no count mismatch, no orphan/seq asserts, raw_notes → empty legacy backup.
+    const { dir, dbPath, factsPath } = buildLegacyDb({ empty: true });
+
+    const result = migrateToFactStore(dbPath, factsPath);
+    expect(result.notes).toBe(0);
+    expect(result.alreadyMigrated).toBeFalsy();
+
+    const two = openTwoFile(dbPath, factsPath);
+    expect((two.prepare(`SELECT COUNT(*) AS n FROM facts.captured_notes`).get() as { n: number }).n).toBe(0);
+    // A fresh capture into the empty migrated DB starts at id=1 — seeding works.
+    const id = insertNote({ title: 'first', content: 'x', contentHash: 'h1', tags: [], createdAt: '2026-02-01T00:00:00Z' }, two);
+    expect(id).toBe(1);
+    two.close();
     rmSync(dir, { recursive: true, force: true });
   });
 
