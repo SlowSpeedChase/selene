@@ -9,7 +9,17 @@ import {
   ensureRawNotesView,
 } from './facts-db';
 import { setNoteState } from './note-state';
+import { ensureMigrated } from './ensure-migrated';
 import type { CalendarEvent } from '../types';
+
+// Self-heal an un-migrated dev DB / fail loud on un-migrated prod, BEFORE opening the long-lived
+// connection (so the migration's journal_mode=DELETE has no competing handle). Skipped under jest:
+// tests import db.ts against the real dev DB, and config.env is 'development' under jest, so an
+// unguarded call here would auto-migrate the real dev DB. jest sets JEST_WORKER_ID (see
+// db-guard.test.ts, which pins that contract).
+if (!process.env.JEST_WORKER_ID) {
+  ensureMigrated(config.dbPath, config.factsDbPath, config.env);
+}
 
 // Initialize database connection
 export const db: DatabaseType = new Database(config.dbPath);

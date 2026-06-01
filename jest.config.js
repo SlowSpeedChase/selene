@@ -13,6 +13,7 @@ module.exports = {
     '**/src/lib/cosine.test.ts',
     '**/src/lib/db-capture.test.ts',
     '**/src/lib/db-config.test.ts',
+    '**/src/lib/db-guard.test.ts',
     '**/src/lib/db-pending.test.ts',
     '**/src/lib/ensure-migrated.test.ts',
     '**/src/lib/facts-db.test.ts',
