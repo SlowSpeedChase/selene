@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { join } from 'path';
 type DB = InstanceType<typeof Database>;
 
 /** Tables in the `main` schema (selene.db) only — NOT the attached `facts` schema,
@@ -61,4 +62,21 @@ export function thresholdsFromEnv(env: NodeJS.ProcessEnv = process.env): Thresho
     coverageMin: env.COVERAGE_MIN ? Number(env.COVERAGE_MIN) : 0.95,
     driftTolerance: env.DRIFT_TOLERANCE ? Number(env.DRIFT_TOLERANCE) : 0.20,
   };
+}
+
+export function backupPath(dir: string, stamp: string): string {
+  return join(dir, `pre-rebuild-${stamp}.db`);
+}
+
+/** Empty every main-schema (selene.db) table in one transaction. FK enforcement is
+ *  toggled off for the truncation, restored after. Never touches the attached `facts`
+ *  schema (captured_notes / review_state). */
+export function wipe(db: DB): void {
+  const tables = listDerivedTables(db);
+  db.pragma('foreign_keys = OFF');
+  const tx = db.transaction(() => {
+    for (const name of tables) db.exec(`DELETE FROM "${name}"`);
+  });
+  tx();
+  db.pragma('foreign_keys = ON');
 }
