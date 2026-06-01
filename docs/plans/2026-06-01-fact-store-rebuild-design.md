@@ -44,19 +44,34 @@ All decision logic lives in typed, unit-tested TS. Bash is confined to what only
 scripts/rebuild.ts            the brain — dev runs this directly
   1. snapshot()   read selene.db: pre-rebuild derived counts  → PRE
   2. backup()     cp selene.db → BACKUP_DIR/pre-rebuild-<ts>.db ; verify the copy
-  3. wipe()       close handle → rm selene.db{,-wal,-shm} → reopen
-                  (db.ts recreates empty derived schema + re-ATTACHes facts.db; facts.db untouched)
+  3. wipe()       TRUNCATE every main-schema table in selene.db (DELETE FROM each, in a txn,
+                  FK-safe) via a short-lived connection — NOT a file delete. facts.db (ATTACHed,
+                  separate schema namespace) is never touched. Emptying note_state makes every
+                  fact read "pending" (derivation-absence) → re-derivation is automatic.
   4. rederive()   drain the pipeline: process-llm (loop) → distill-essences (loop)
                   → synthesize-topics (once) → export-obsidian (once)
   5. validate()   read selene.db → POST ; verdict(PRE, POST, thresholds)
         ├─ PASS → prune old backups (keep newest N) ; print verdict
-        └─ FAIL → rollback(): close handle → restore backup over selene.db → reopen
+        └─ FAIL → rollback(): restore backup over selene.db → reopen
 
-src/lib/rebuild-core.ts       pure, unit-tested: snapshot reader, verdict(), backup-path naming
-scripts/rebuild-prod.sh       thin wrapper: source prod-agents.sh → pause/stop → rebuild.ts → restart/resume
-scripts/lib/prod-agents.sh    NEW shared lib: pause_watcher / resume_watcher / stop_agents / restart_agents
-                              EXTRACTED from cutover-prod.sh so both scripts share one copy
+src/lib/rebuild-core.ts       pure, unit-tested: snapshot reader, verdict(), backup-path naming,
+                              the truncate table-list query (main schema only, sqlite_% excluded)
+scripts/rebuild-prod.sh       thin wrapper: source prod-agents.sh → stop DERIVATION agents only
+                              (server stays UP) → rebuild.ts → restart derivation agents → resume watcher.
+                              An EXIT trap restarts agents + resumes the watcher on ANY exit (incl. crash).
+scripts/lib/prod-agents.sh    NEW shared lib EXTRACTED from cutover-prod.sh: pause_watcher /
+                              resume_watcher / restart_agents + a NEW granular stop_derivation_agents
+                              (all com.selene.prod.* EXCEPT the webhook server + the watcher).
+                              cutover keeps using stop-ALL; rebuild uses the derivation-only subset.
 ```
+
+### Why `wipe()` truncates instead of deleting the file (resolved feasibility finding)
+
+The original sketch said "rm `selene.db` → reopen → db.ts recreates the schema." **Empirically false:** `processed_notes` and `note_embeddings` have **no runtime `CREATE TABLE IF NOT EXISTS`** anywhere in `src/` — their DDL lives only in `create-dev-db.sh` and `migrate-to-fact-store.ts`. `db.ts` on open ensures only `note_state` (`db.ts:38`); the synthesis tables self-create when `synthesize-topics` runs. A file-delete + reopen would come back **missing `processed_notes`/`note_embeddings`**, crashing `process-llm`'s first INSERT.
+
+Truncating (DELETE FROM each existing main-schema table, enumerated from `sqlite_master`) avoids this entirely — the tables already exist, we just empty them — and additive schema evolution stays covered by the existing `ensure*`/ALTER-add-column guards on open/run. It also has two free wins: (a) **no file unlink**, so a live webhook-server handle on `selene.db` stays valid → the server can stay UP during rebuild; (b) no singleton-handle hazard (nothing is `rm`'d out from under an open connection). `ensureMigrated` is safe across this — it only fails loud on a *physical `raw_notes` table*, which truncation never creates.
+
+> Known limitation: truncate preserves the existing schema, so it does **not** recover from structural schema *corruption* (vs. data loss/staleness, which it fully handles). The verified backup + a manual `create-dev-db`/cutover rebuild covers that rare nuclear case.
 
 This is the same TS-core / thin-bash seam the cutover landed on (`ensure-migrated.ts` guard + `cutover-prod.sh`). Rebuild inherits the cutover's *tested* prod muscle — verified backup, agent pause, `DRY_RUN` stubbing — instead of growing a parallel one.
 
@@ -73,33 +88,34 @@ This is the same TS-core / thin-bash seam the cutover landed on (`ensure-migrate
 Bracketed steps are **prod-only** (the bash wrapper adds them; dev runs straight through the TS core):
 
 ```
-[prod] pause_watcher          stop the deploy-watcher reacting mid-rebuild
-[prod] stop_agents            stop com.selene.prod.* so no process-llm/synthesize races the drain
+[prod] pause_watcher              stop the deploy-watcher reacting mid-rebuild
+[prod] stop_derivation_agents     stop com.selene.prod.{process-llm,distill,synthesize,export} so none
+                                  races the drain. The WEBHOOK SERVER STAYS UP — capture writes only
+                                  facts.db (pending = absence), which rebuild never touches → zero
+                                  capture outage (preserves the #1 ADHD principle).
+[prod] (trap installed)           an EXIT trap will restart_agents + resume_watcher on ANY exit
        ──────────────────────────────────────────────────────────────────
        snapshot()             selene.db counts {processed_notes, embeddings, clusters,
                               cluster_links, essences, exported}                 → PRE
        backup()               cp selene.db → BACKUP_DIR/pre-rebuild-<ts>.db ; verify
                               (facts.db NOT backed up — precious, TM-backed, never modified)
-       wipe()                 close handle → rm selene.db{,-wal,-shm} → reopen
-                              → every fact now reads "pending" (derivation-absence)
+       wipe()                 short-lived conn → DELETE FROM each main-schema table (txn, FK-safe)
+                              → every fact now reads "pending" (derivation-absence). No file unlink.
        rederive()             drain process-llm → distill → synthesize → export
        validate()             POST counts → coverage% + drift vs PRE → verdict
               ┌── PASS ──→  prune backups (keep newest N) ; report
-              └── FAIL ──→  rollback(): close handle → restore backup → reopen
+              └── FAIL ──→  rollback(): restore backup over selene.db → reopen
        ──────────────────────────────────────────────────────────────────
-[prod] restart_agents         bring prod server + workflow agents back UP
-[prod] resume_watcher         re-arm the deploy-watcher
+[prod] restart_agents (via trap)  bring the derivation agents back UP
+[prod] resume_watcher (via trap)  re-arm the deploy-watcher
 ```
 
 ### Three properties
 
 - **The human layer needs no explicit re-apply in Phase 2.** `review_state` lives in `facts.db`, which `wipe()` never touches — review flags survive automatically and still join by note id (stable, because `captured_notes.id` is never regenerated). The parent design's "re-apply human layer last" becomes real work only in Phase 3 (`category_overrides` must *win* over re-derived categories). Phase 2's `validate()` merely **confirms** `review_state` still joins cleanly.
-- **`rollback()` restores `selene.db` only** — never touches `facts.db`. It always runs through `restart_agents`/`resume_watcher` afterward. Cutover's hard lesson applies: the teardown tail must run even when the rollback itself errors → **`set +e` at the top of the restore path** (do not rely on bash errexit to let the tail run; behavior inside `||`-lists + nested funcs is bash-version-dependent).
-- **Crash between wipe and validate is safe-by-construction.** Un-derived notes read as pending; once agents resume, the normal pipeline finishes them. The backup remains for a manual clean restore.
-
-### Why `wipe()` is a file delete, not a table truncate
-
-`db.ts` recreates the derived schema (`CREATE TABLE IF NOT EXISTS`) and re-attaches `facts.db` on every open. So deleting the file and reopening yields a guaranteed-clean derived schema **and** a fresh `ATTACH` in one move — no hand-maintained `DROP TABLE` list to drift as the schema evolves. The disposability of `selene.db` is exactly what makes this safe.
+- **`rollback()` restores `selene.db` only** — never touches `facts.db`. The prod wrapper's **EXIT trap** guarantees `restart_agents`/`resume_watcher` run on *any* exit, including a hard crash of `rebuild.ts` — so a failure never leaves prod with its derivation agents stopped. Cutover's hard lesson applies to the restore path itself: **`set +e` at the top** (do not rely on bash errexit to let the tail run; behavior inside `||`-lists + nested funcs is bash-version-dependent).
+- **Crash between wipe and validate is safe-by-construction.** Un-derived notes read as pending; the trap resumes the agents, and the normal pipeline finishes them. The backup remains for a manual clean restore.
+- **`rebuild.ts` never holds the `db.ts` module singleton across the wipe.** It uses short-lived `openSeleneConnection()` for snapshot / wipe / validate, so there is no stale long-lived handle. (Truncation, unlike a file delete, would be safe even if a handle were held — but short-lived connections keep the contract clean.)
 
 ---
 
@@ -154,10 +170,10 @@ The strategy leans on a pattern this codebase proved twice (cutover's `ALTER REN
 
 - `scripts/rebuild.ts` — NEW: the orchestrator brain (snapshot → backup → wipe → rederive → validate → keep/rollback).
 - `src/lib/rebuild-core.ts` — NEW: pure helpers (`snapshot()` reader, `verdict()`, backup-path naming).
-- `scripts/rebuild-prod.sh` — NEW: thin prod wrapper (source `prod-agents.sh`; pause/stop → `rebuild.ts` → restart/resume).
-- `scripts/lib/prod-agents.sh` — NEW: shared agent-control helpers, extracted from `cutover-prod.sh`.
-- `scripts/cutover-prod.sh` — MODIFIED: source the extracted `prod-agents.sh` instead of its inline copies (regression: `verify-cutover.sh`).
-- `scripts/verify-rebuild.sh` — NEW: end-to-end rehearsal harness.
+- `scripts/rebuild-prod.sh` — NEW: thin prod wrapper (source `prod-agents.sh`; pause watcher + stop *derivation* agents → `rebuild.ts` → restart via EXIT trap). Server stays up.
+- `scripts/lib/prod-agents.sh` — NEW: shared agent-control helpers extracted from `cutover-prod.sh`, plus a NEW granular `stop_derivation_agents` (derivation agents only, not the server/watcher).
+- `scripts/cutover-prod.sh` — MODIFIED: source the extracted `prod-agents.sh` instead of its inline copies; keeps using `stop_agents` (stop-ALL) (regression: `verify-cutover.sh` stays 45/45).
+- `scripts/verify-rebuild.sh` — NEW: end-to-end rehearsal harness. Seeds a `/tmp` two-file DB from a dev `.backup`; **migrates it first if the snapshot is still legacy single-file** (the on-disk dev `selene.db` currently has a physical `raw_notes`), mirroring `reset-dev-data.sh`.
 - `src/lib/__tests__/rebuild-core.test.ts` — NEW: jest unit suite.
 - `docs/guides/features/releases.md` — MODIFIED: add the `rebuild` operator section (lives here, alongside the cutover runbook it mirrors — same "prod maintenance ops" surface).
 
@@ -165,9 +181,10 @@ The strategy leans on a pattern this codebase proved twice (cutover's `ALTER REN
 
 ## Acceptance criteria
 
-- [ ] `rebuild` (dev) wipes `selene.db`, re-derives from `facts.db` through Obsidian export; afterward every fact has a `processed_notes` row (within the coverage floor) and `review_state` flags are intact.
+- [ ] `rebuild` (dev) truncates the derived tables in `selene.db`, re-derives from `facts.db` through Obsidian export; afterward every fact has a `processed_notes` row (within the coverage floor) and `review_state` flags are intact.
 - [ ] The validation gate KEEPs on a healthy rebuild and AUTO-ROLLS-BACK (restoring the pre-rebuild `selene.db`) when coverage < `COVERAGE_MIN` or any metric drifts below `-DRIFT_TOLERANCE`; thresholds are env-overridable.
 - [ ] `facts.db` is never modified by `rebuild` (verified before/after).
+- [ ] On the prod path the **webhook server stays up** for the whole rebuild (capture never refused); only derivation agents stop, and the EXIT trap restarts them + resumes the watcher on any exit.
 - [ ] A mid-rebuild crash leaves the DB self-healing (pending remainder finished by the normal pipeline); the backup is available for a manual clean restore.
 - [ ] `--dry-run` rehearses the full sequence (incl. both rollback paths) without destroying anything.
 - [ ] `prod-agents.sh` extraction leaves `verify-cutover.sh` at 45/45.
