@@ -237,33 +237,48 @@ gate1() {
     fail "gate1: processedNotes=$now_proc != PRE_PROC=$PRE_PROC"; ok=0
   fi
 
-  # (c) Capture→pending probe (content-free, nets to zero rows). Vault redirected to /tmp belt-and-
-  #     suspenders. The probe self-guards to /tmp-only paths.
-  info "gate1: running cutover-probe (capture -> pending, then self-delete)"
-  local probe_out probe_rc
-  set +e
-  probe_out="$( cd "$REPO_ROOT" && \
-      SELENE_DB_PATH="$DB" SELENE_FACTS_DB_PATH="$FACTS" \
-      SELENE_VAULT_PATH=/tmp/cutover-probe-vault \
-      npx ts-node scripts/cutover-probe.ts 2>&1 )"
-  probe_rc=$?
-  set -e
-  echo "$probe_out" | grep -v '^\[dotenv@' || true
-  if [ "$probe_rc" -eq 0 ]; then
-    pass "gate1: capture->pending probe PASS"
-  else
-    fail "gate1: capture->pending probe FAIL (rc=$probe_rc)"; ok=0
-  fi
+  # (c) Capture→pending probe — only against a /tmp copy. The probe WRITES a note to
+  #     facts.captured_notes (then self-deletes), and cutover-probe.ts self-refuses unless both DB
+  #     paths are under /tmp — by design, so it can never write the precious real store. The /tmp
+  #     dry-run validation (cutover-prod.sh against a .backup copy) exercises this path on real data;
+  #     against the live store we SKIP it (the capture→pending logic is store-independent + unit-tested
+  #     in db-capture.test.ts). gate2's live /health is the post-deploy capture-path signal.
+  case "$DB" in
+    /tmp/*)
+      info "gate1: running cutover-probe (capture -> pending, then self-delete)"
+      local probe_out probe_rc
+      set +e
+      probe_out="$( cd "$REPO_ROOT" && \
+          SELENE_DB_PATH="$DB" SELENE_FACTS_DB_PATH="$FACTS" \
+          SELENE_VAULT_PATH=/tmp/cutover-probe-vault \
+          npx ts-node scripts/cutover-probe.ts 2>&1 )"
+      probe_rc=$?
+      set -e
+      echo "$probe_out" | grep -v '^\[dotenv@' || true
+      if [ "$probe_rc" -eq 0 ]; then
+        pass "gate1: capture->pending probe PASS"
+      else
+        fail "gate1: capture->pending probe FAIL (rc=$probe_rc)"; ok=0
+      fi
+      ;;
+    *)
+      pass "gate1: capture->pending probe SKIPPED on the live store (write-probe runs only in /tmp validation; path is unit-tested)"
+      ;;
+  esac
 
-  # (d) Whole-DB foreign-key integrity. Live derived tables had their raw_notes FK stripped; dormant
-  #     ones point (inertly) at raw_notes_legacy_backup and their existing rows still validate. Any
-  #     row from foreign_key_check => a real integrity break.
-  local fk_rows
-  fk_rows="$(sqlite3 "$DB" "PRAGMA foreign_key_check;" 2>/dev/null | wc -l | tr -d ' ')"
-  if [ "${fk_rows:-0}" = "0" ]; then
-    pass "gate1: foreign_key_check clean (0 violations)"
+  # (d) Live derived tables must be FK-FREE of raw_notes — the real post-migration invariant the
+  #     migration enforces (it strips processed_notes'/note_embeddings' raw_notes FK). We check the
+  #     DDL, NOT `PRAGMA foreign_key_check`: real prod legitimately carries PRE-EXISTING FK violations
+  #     (dormant/self refs to since-deleted notes) that the migration faithfully PRESERVES, so a raw
+  #     foreign_key_check count is not zero and is not a fault. The migration's OWN internal
+  #     foreign_key_check (post <= pre) is the authoritative integrity gate; this is the content-free
+  #     structural cross-check, immune to pre-existing data cruft.
+  local live_fk
+  live_fk="$(sqlite3 "$DB" "SELECT group_concat(name, ',') FROM sqlite_master WHERE type='table' AND name IN ('processed_notes','note_embeddings') AND sql LIKE '%raw_notes%';" 2>/dev/null)"
+  if [ -z "$live_fk" ]; then
+    pass "gate1: live derived tables (processed_notes/note_embeddings) are raw_notes-FK-free"
   else
-    fail "gate1: foreign_key_check returned $fk_rows violation(s)"; ok=0
+    fail "gate1: live derived table(s) still reference raw_notes after migration: $live_fk"; ok=0
   fi
 
   if [ "$ok" = "1" ]; then
@@ -341,10 +356,17 @@ prod_agents() {
 # rollback_all(): it runs as the command after `gate* || { rollback_all; ... }` — the ONE position
 # `set -e` does NOT exempt — so a non-zero `launchctl` in stop_agents could otherwise skip the
 # irreplaceable rollback_db DB-restore. `|| true` protects both main() and rollback_all().
-# (pause_watcher is intentionally NOT guarded: failing it before anything is torn down is a safe
-# early abort.)
+# pause_watcher — bootout the deploy-watcher so it can't auto-deploy mid-cutover. IDEMPOTENT: if the
+# watcher is already unloaded (e.g. the operator pre-paused it to avert a bad auto-deploy), the goal
+# state is already met — that's a success, not an abort. We only bootout when it's actually loaded,
+# so a genuine bootout failure (while loaded) still surfaces as a safe early abort (nothing torn down).
 pause_watcher() {
-  run_or_echo launchctl bootout "gui/$(id -u)/com.selene.prod.deploy-watcher"
+  local label="com.selene.prod.deploy-watcher"
+  if launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; then
+    run_or_echo launchctl bootout "gui/$(id -u)/$label"
+  else
+    echo "  watcher already not loaded — nothing to pause"
+  fi
 }
 resume_watcher() {
   run_or_echo launchctl bootstrap "gui/$(id -u)" "$REPO_ROOT/launchd/com.selene.prod.deploy-watcher.plist" || true
