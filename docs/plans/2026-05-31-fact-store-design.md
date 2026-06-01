@@ -131,7 +131,7 @@ Phase 1 (the split) is built and validated end-to-end on `feat/fact-store` (22 c
 
 ### ⚠️ Prod cutover (the gate before merge — NOT yet done)
 
-**Merging to `main` auto-deploys to prod, but the deploy-watcher does NOT run the migration.** The new code, started against the un-migrated prod DB, leaves `raw_notes` a physical table (view-guard no-ops) while captures write to `facts.captured_notes` — the incoherent intermediate state. A plain merge would break prod. The cutover must be a deliberate sequence: **stop `com.selene.prod.*` agents → run `scripts/migrate-to-fact-store.ts` on the real prod DB → deploy the new `dist/` → verify (`selene-inspect`) → restart** — or add an **auto-migrate-on-startup guard** to `db.ts` so the deployed code self-heals an un-migrated DB before serving. Designing + rehearsing this runbook is the next unit of work.
+**Merging to `main` auto-deploys to prod, but the deploy-watcher does NOT run the migration.** The new code, started against the un-migrated prod DB, leaves `raw_notes` a physical table (view-guard no-ops) while captures write to `facts.captured_notes` — the incoherent intermediate state. A plain merge would break prod. The cutover must be a deliberate sequence: **stop `com.selene.prod.*` agents → run `scripts/migrate-to-fact-store.ts` on the real prod DB → deploy the new `dist/` → verify (`selene-inspect`) → restart** — or add an **auto-migrate-on-startup guard** to `db.ts` so the deployed code self-heals an un-migrated DB before serving. **Designed: [2026-05-31-fact-store-cutover-design.md](2026-05-31-fact-store-cutover-design.md)** (hybrid — dev-self-heal/prod-fail-loud guard + a gated `cutover-prod.sh` orchestrator with verified backup + auto-rollback).
 
 ### Known follow-ups discovered during Phase 1
 
