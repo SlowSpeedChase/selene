@@ -25,6 +25,8 @@ module.exports = {
     '**/src/lib/obsidian-render.test.ts',
     '**/src/lib/obsidian-render.db.test.ts',
     '**/src/lib/pkm-db.test.ts',
+    '**/src/lib/rebuild-core.test.ts',
+    '**/src/lib/rebuild-core.db.test.ts',
     '**/src/lib/pkm-queries.test.ts',
     '**/src/lib/pkm-render.test.ts',
     '**/src/lib/synthesis-db.test.ts',
