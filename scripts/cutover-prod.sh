@@ -387,10 +387,19 @@ gate2() {
     return 0
   fi
   local ok=1
-  if curl -fsS http://localhost:5678/health >/dev/null; then
+  # Readiness-wait: `launchctl bootstrap` (restart_agents) returns when the job is LOADED, not when
+  # Node has bound port 5678 — so retry /health up to ~30s before declaring failure, else a slow
+  # cold start spuriously trips gate2 → rollback_all (prod rolled back when it would have come up a
+  # second later).
+  local tries=30 health_ok=
+  for _ in $(seq 1 "$tries"); do
+    if curl -fsS http://localhost:5678/health >/dev/null 2>&1; then health_ok=1; break; fi
+    sleep 1
+  done
+  if [ -n "$health_ok" ]; then
     pass "gate2: /health OK"
   else
-    fail "gate2: /health did not respond OK"; ok=0
+    fail "gate2: /health not reachable after ${tries}s"; ok=0
   fi
   # facts.db must exist post-cutover.
   if [ -f "$FACTS" ]; then
