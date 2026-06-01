@@ -133,6 +133,13 @@ function main(): void {
     const report = { pre, post, coverage: v.coverage, pass: v.pass, reasons: v.reasons, backup: backupFile };
     if (JSON_OUT) process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     else logger.info(report, v.pass ? 'rebuild: PASS — keeping' : 'rebuild: FAIL — rolling back');
+    // Dry-run is a rehearsal: nothing was wiped/re-derived, so POST==PRE makes the
+    // gate verdict meaningless. Skip enforcement (no rollback, no exit 1) so callers
+    // like rebuild-prod.sh can rehearse the full sequence under `set -e` without aborting.
+    if (DRY) {
+      logger.info('[dry-run] plan complete — verdict gate not enforced');
+      return;
+    }
     if (!v.pass) {
       restore(backupFile);
       process.exit(1);
