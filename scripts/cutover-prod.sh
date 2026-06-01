@@ -349,10 +349,27 @@ stop_agents() {
     run_or_echo launchctl bootout "gui/$(id -u)/$a" || true
   done
 }
+# restart_agents — bring the prod server + workflow agents back UP after stop_agents.
+# Why BOOTSTRAP (not kickstart, which deploy-prod.sh uses): stop_agents() does a full
+# `launchctl bootout`, so the agents are GONE from the domain. `kickstart -k` only
+# restarts an ALREADY-LOADED service, so post-bootout it is a no-op → prod stays DOWN.
+# The inverse of `bootout` is `bootstrap`. We therefore re-LOAD each agent, mirroring
+# install-prod.sh's Pass 2 (bootstrap "gui/$(id -u)" <installed prod plist>).
+#
+# We must iterate the installed prod plist FILES, NOT prod_agents()/`launchctl list`:
+# after the real bootout the agents are unloaded, so `launchctl list` shows nothing to
+# loop over. The deployed prod plists live in install-prod.sh's OUT_DIR
+# ($HOME/Library/LaunchAgents, the COMPILED-dist variants) — bootstrapping the canonical
+# launchd/ sources would load dev (ts-node) code under prod labels.
+#
+# EXCLUDE the deploy-watcher: resume_watcher() owns it (from the repo plist). Bootstrapping
+# an already-loaded service errors, so re-loading it here would double-bootstrap it.
 restart_agents() {
-  local a
-  for a in $(prod_agents); do
-    run_or_echo launchctl kickstart -k "gui/$(id -u)/$a" || true
+  local plist
+  for plist in "$HOME/Library/LaunchAgents/com.selene.prod."*.plist; do
+    [ -e "$plist" ] || continue                       # nullglob-safe (no installed plists)
+    case "$plist" in *deploy-watcher.plist) continue ;; esac   # resume_watcher owns the watcher
+    run_or_echo launchctl bootstrap "gui/$(id -u)" "$plist" || true
   done
 }
 deploy() {
