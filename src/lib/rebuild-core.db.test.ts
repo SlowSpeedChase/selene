@@ -1,5 +1,11 @@
 import Database from 'better-sqlite3';
-import { listDerivedTables, snapshot, backupPath, wipe, pendingCount } from './rebuild-core';
+import { mkdtempSync, rmSync, existsSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import {
+  listDerivedTables, snapshot, backupPath, wipe, pendingCount,
+  vacuumBackup, restoreFromBackup,
+} from './rebuild-core';
 type DB = InstanceType<typeof Database>;
 
 it('lists only main-schema user tables, excluding sqlite_* and views', () => {
@@ -93,6 +99,81 @@ it('pendingCount tolerates a never-distilled schema (missing essence column = no
 
 it('backupPath names a timestamped file under the backup dir', () => {
   expect(backupPath('/b', '20260601-120000')).toBe('/b/pre-rebuild-20260601-120000.db');
+});
+
+describe('vacuumBackup + restoreFromBackup (WAL-safe, no file swap)', () => {
+  // These need real files on disk: VACUUM INTO writes a file, and restore ATTACHes
+  // one. We build a WAL DB with an ATTACHed facts schema + derived tables, exactly
+  // like a live selene.db, so the tests prove the precious facts are never copied
+  // into the backup and never touched by the restore.
+  let dir: string;
+  const open = (): { db: DB; mainPath: string; factsPath: string } => {
+    const mainPath = join(dir, 'selene.db');
+    const factsPath = join(dir, 'facts.db');
+    const db: DB = new Database(mainPath);
+    db.pragma('journal_mode = WAL');
+    db.prepare('ATTACH ? AS facts').run(factsPath);
+    db.exec(`
+      CREATE TABLE facts.captured_notes (id INTEGER PRIMARY KEY);
+      INSERT INTO facts.captured_notes VALUES (1),(2),(3);
+      CREATE TEMP VIEW raw_notes AS SELECT id, 'pending' AS status FROM facts.captured_notes;
+      CREATE TABLE processed_notes (raw_note_id INTEGER, essence TEXT);
+      INSERT INTO processed_notes VALUES (1,'a'),(2,'b');
+      CREATE TABLE note_embeddings (raw_note_id INTEGER);
+      INSERT INTO note_embeddings VALUES (1);
+    `);
+    return { db, mainPath, factsPath };
+  };
+
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'rebuild-core-')); });
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  it('vacuumBackup writes a standalone copy of the main schema, excluding attached facts', () => {
+    const { db } = open();
+    const dest = join(dir, 'backup.db');
+    vacuumBackup(db, dest);
+    db.close();
+    expect(existsSync(dest)).toBe(true);
+    const bak: DB = new Database(dest, { readonly: true });
+    const tables = listDerivedTables(bak).sort();
+    expect(tables).toEqual(['note_embeddings', 'processed_notes']); // facts.captured_notes NOT copied
+    expect((bak.prepare('SELECT COUNT(*) n FROM processed_notes').get() as { n: number }).n).toBe(2);
+    bak.close();
+  });
+
+  it('restoreFromBackup rolls derived tables back via attach+row-copy, leaving facts untouched', () => {
+    const { db } = open();
+    const dest = join(dir, 'backup.db');
+    vacuumBackup(db, dest);
+    // Simulate a rebuild that lazily added a column (drift) then wiped everything.
+    db.exec(`ALTER TABLE note_embeddings ADD COLUMN model TEXT`);
+    db.exec(`DELETE FROM processed_notes; DELETE FROM note_embeddings;`);
+    expect((db.prepare('SELECT COUNT(*) n FROM processed_notes').get() as { n: number }).n).toBe(0);
+
+    restoreFromBackup(db, dest);
+
+    expect((db.prepare('SELECT COUNT(*) n FROM processed_notes').get() as { n: number }).n).toBe(2);
+    expect((db.prepare('SELECT COUNT(*) n FROM note_embeddings').get() as { n: number }).n).toBe(1);
+    // The drift column the backup never had defaults to NULL (column-explicit insert).
+    expect((db.prepare('SELECT model FROM note_embeddings').get() as { model: string | null }).model).toBeNull();
+    // The precious attached facts schema is never written by restore.
+    expect((db.prepare('SELECT COUNT(*) n FROM facts.captured_notes').get() as { n: number }).n).toBe(3);
+    db.close();
+  });
+
+  it('restoreFromBackup empties a derived table that did not exist at backup time', () => {
+    const { db } = open();
+    const dest = join(dir, 'backup.db');
+    vacuumBackup(db, dest);
+    // rederive created a brand-new derived table after the backup was taken.
+    db.exec(`CREATE TABLE topic_clusters (id TEXT PRIMARY KEY); INSERT INTO topic_clusters VALUES ('c1');`);
+
+    restoreFromBackup(db, dest);
+
+    // PRE had no such table, so rollback must leave it empty (not carry the post-backup row).
+    expect((db.prepare('SELECT COUNT(*) n FROM topic_clusters').get() as { n: number }).n).toBe(0);
+    db.close();
+  });
 });
 
 it('wipe empties every main-schema table but leaves attached facts untouched', () => {
