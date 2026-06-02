@@ -63,6 +63,30 @@ export function pendingCount(db: DB): number {
   );
 }
 
+export type DrainOutcome = 'continue' | 'drained' | 'stalled' | 'capped';
+
+/** Pure decision for the re-derivation drain loop, called once per pass with the
+ *  work remaining AFTER that pass, the count BEFORE it (previous), the iteration
+ *  index, and the ceiling. Extracted from the loop so the termination logic is
+ *  unit-testable in isolation.
+ *    - drained: nothing left (remaining === 0) — the clean finish; takes precedence
+ *      over the cap so a final-pass completion isn't misreported as truncation.
+ *    - capped:  hit the iteration ceiling with work still outstanding (defensive
+ *      backstop against an unforeseen non-converging case).
+ *    - stalled: a pass made no progress (remaining === previous) but work remains —
+ *      a permanently-stuck note; stop and let the coverage gate judge the shortfall.
+ *    - continue: still making progress.
+ *  Pass previous = Infinity (or any value > remaining) on the first pass so it can
+ *  never false-read as stalled. */
+export function drainDecision(
+  remaining: number, previous: number, iteration: number, cap: number,
+): DrainOutcome {
+  if (remaining === 0) return 'drained';
+  if (iteration >= cap) return 'capped';
+  if (remaining === previous) return 'stalled';
+  return 'continue';
+}
+
 export interface Thresholds { coverageMin: number; driftTolerance: number; }
 export interface Verdict { pass: boolean; coverage: number; reasons: string[]; }
 
