@@ -46,6 +46,23 @@ export function snapshot(db: DB): Snapshot {
   };
 }
 
+/** Outstanding re-derivation work: pending notes awaiting LLM extraction + processed
+ *  rows still missing an essence. The drain loop in rebuild.ts gates on this combined
+ *  total (mirrors dev-process-batch.sh draining both stages to zero). Routed through
+ *  the SAME absent-tolerant `count()` as snapshot(): on a never-distilled DB the
+ *  essence column does not exist yet (distill-essences adds it lazily), so a raw read
+ *  would throw "no such column: essence" at the top of the loop — which main()'s catch
+ *  would mistake for a mid-rebuild crash and roll back. Treating the absent column as
+ *  0 is safe in the wipe-then-rederive flow: processed_notes is empty post-wipe, so the
+ *  pending raw_notes count drives the loop and distill-essences creates the column on
+ *  the first pass. */
+export function pendingCount(db: DB): number {
+  return (
+    count(db, `SELECT COUNT(*) n FROM raw_notes WHERE status='pending'`) +
+    count(db, `SELECT COUNT(*) n FROM processed_notes WHERE essence IS NULL`)
+  );
+}
+
 export interface Thresholds { coverageMin: number; driftTolerance: number; }
 export interface Verdict { pass: boolean; coverage: number; reasons: string[]; }
 

@@ -16,13 +16,15 @@ import { copyFileSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { config } from '../src/lib/config';
 import { openSeleneConnection } from '../src/lib/open-selene-connection';
-import { snapshot, wipe, verdict, thresholdsFromEnv, backupPath, type Snapshot } from '../src/lib/rebuild-core';
+import { snapshot, wipe, verdict, thresholdsFromEnv, backupPath, pendingCount, type Snapshot } from '../src/lib/rebuild-core';
 import { logger } from '../src/lib/logger';
 
 const DRY = process.argv.includes('--dry-run');
 const JSON_OUT = process.argv.includes('--json');
 const BACKUP_DIR = process.env.BACKUP_DIR ?? join(dirname(config.dbPath), 'backups');
-const STAMP = process.env.REBUILD_STAMP ?? new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+// YYYYMMDDHHMMSS — 14 digits; slice(0,14) stops before the milliseconds '.' so the
+// backup filename has no doubled dot. Env-pinnable so verify-rebuild.sh can assert it.
+const STAMP = process.env.REBUILD_STAMP ?? new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
 
 function readSnapshot(): Snapshot {
   const db = openSeleneConnection(config.dbPath, config.factsDbPath, { readonly: true, fileMustExist: true });
@@ -55,18 +57,16 @@ function doWipe(): void {
   }
 }
 
-/** Outstanding re-derivation work: notes awaiting LLM extraction + processed notes
- *  still missing an essence. Mirrors dev-process-batch.sh, which drains both stages
- *  to zero separately — gating on the COMBINED total keeps the loop correct even if
- *  one stage's batch outpaces the other (the snippet's pending-only gate could run
- *  synth/export over under-distilled essences). Monotonically decreasing, so it
- *  terminates; a stuck note still trips the no-progress break. */
+/** Outstanding re-derivation work (pending notes + essence-less processed rows).
+ *  Delegates to rebuild-core.pendingCount, which routes both reads through the same
+ *  absent-column-tolerant counter as snapshot() — so a never-distilled DB (no essence
+ *  column yet) returns a count instead of throwing at the top of the drain loop.
+ *  Monotonically decreasing across the loop, so it terminates; a stuck note still
+ *  trips the no-progress break. */
 function pendingWork(): number {
   const db = openSeleneConnection(config.dbPath, config.factsDbPath, { readonly: true });
   try {
-    const pending = (db.prepare(`SELECT COUNT(*) n FROM raw_notes WHERE status='pending'`).get() as { n: number }).n;
-    const noEssence = (db.prepare(`SELECT COUNT(*) n FROM processed_notes WHERE essence IS NULL`).get() as { n: number }).n;
-    return pending + noEssence;
+    return pendingCount(db);
   } finally {
     db.close();
   }
