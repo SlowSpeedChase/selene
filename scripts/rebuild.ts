@@ -12,11 +12,14 @@
  * singleton with import side effects).
  */
 import { execFileSync } from 'child_process';
-import { copyFileSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
+import { readdirSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { config } from '../src/lib/config';
 import { openSeleneConnection } from '../src/lib/open-selene-connection';
-import { snapshot, wipe, verdict, thresholdsFromEnv, backupPath, pendingCount, drainDecision, type Snapshot } from '../src/lib/rebuild-core';
+import {
+  snapshot, wipe, verdict, thresholdsFromEnv, backupPath, pendingCount, drainDecision,
+  vacuumBackup, restoreFromBackup, type Snapshot,
+} from '../src/lib/rebuild-core';
 import { logger } from '../src/lib/logger';
 
 const DRY = process.argv.includes('--dry-run');
@@ -40,7 +43,15 @@ function backup(): string {
   // Dry-run touches nothing real: don't even create the backups/ dir.
   if (DRY) return dest;
   mkdirSync(BACKUP_DIR, { recursive: true });
-  copyFileSync(config.dbPath, dest);
+  // VACUUM INTO (not copyFileSync): selene.db is WAL and the webhook server holds a
+  // live handle during a prod rebuild. A file copy would miss uncheckpointed WAL
+  // pages; VACUUM INTO writes a consistent main-schema snapshot (facts excluded).
+  const db = openSeleneConnection(config.dbPath, config.factsDbPath, { fileMustExist: true });
+  try {
+    vacuumBackup(db, dest);
+  } finally {
+    db.close();
+  }
   return dest;
 }
 
@@ -124,12 +135,21 @@ function restore(backupFile: string): void {
     return;
   }
   try {
-    copyFileSync(backupFile, config.dbPath);
+    // Attach+row-copy restore (not a file copy over selene.db): the webhook server
+    // holds a live WAL handle during a prod rebuild, so swapping the file underneath
+    // it would corrupt that connection. restoreFromBackup writes through a connection.
+    const db = openSeleneConnection(config.dbPath, config.factsDbPath, { fileMustExist: true });
+    try {
+      restoreFromBackup(db, backupFile);
+    } finally {
+      db.close();
+    }
     logger.info({ backupFile }, 'rebuild: rolled back selene.db from backup');
   } catch (err) {
     logger.error(
       { err, backupFile, dbPath: config.dbPath },
-      `rebuild: ROLLBACK FAILED — selene.db may be half-wiped. MANUAL RECOVERY: cp "${backupFile}" "${config.dbPath}"`,
+      `rebuild: ROLLBACK FAILED — derived tables may be half-wiped. MANUAL RECOVERY: ` +
+        `re-run rebuild, or restore rows from the backup at "${backupFile}"`,
     );
   }
 }

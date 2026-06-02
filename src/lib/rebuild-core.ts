@@ -146,3 +146,51 @@ export function wipe(db: DB): void {
     db.pragma(`foreign_keys = ${prevFk ? 'ON' : 'OFF'}`);
   }
 }
+
+/** Snapshot selene.db's MAIN schema to a standalone file via `VACUUM INTO`.
+ *  WAL-safe and concurrency-safe: it runs through a connection (so the webhook
+ *  server's live handle keeps a consistent view) and never swaps a file. VACUUM
+ *  targets only the `main` schema, so the ATTACHed `facts` (captured_notes /
+ *  review_state) is NOT copied into the backup — the backup is disposable-only.
+ *  Replaces a raw copyFileSync, which would miss uncheckpointed WAL pages. */
+export function vacuumBackup(db: DB, dest: string): void {
+  db.prepare('VACUUM INTO ?').run(dest);
+}
+
+/** Roll the derived (main-schema) tables back to a vacuumBackup, IN PLACE, by
+ *  ATTACHing the backup and copying rows table-by-table inside one FK-off
+ *  transaction. Crucially this NEVER overwrites the selene.db file, so a
+ *  concurrent connection (the webhook server, which stays up during a prod
+ *  rebuild) is never corrupted by a file swapped out from under it.
+ *
+ *  Column drift: rederive can lazily ADD COLUMNs (e.g. processed_notes.essence)
+ *  after the backup was taken, so the live table may be a superset of the backup's
+ *  columns. We build the insert column list from the BACKUP's PRAGMA table_info,
+ *  so live-only columns simply default to NULL. A live table absent from the
+ *  backup (created by rederive post-backup) is emptied — PRE never had it. Never
+ *  touches the attached `facts` schema. */
+export function restoreFromBackup(db: DB, backupFile: string): void {
+  const tables = listDerivedTables(db);
+  const prevFk = db.pragma('foreign_keys', { simple: true });
+  db.pragma('foreign_keys = OFF');
+  try {
+    db.prepare('ATTACH ? AS bak').run(backupFile);
+    try {
+      const tx = db.transaction(() => {
+        for (const name of tables) {
+          const cols = (db.prepare(`PRAGMA bak.table_info("${name}")`).all() as Array<{ name: string }>)
+            .map((c) => c.name);
+          db.exec(`DELETE FROM main."${name}"`);
+          if (cols.length === 0) continue; // table absent in backup (PRE lacked it) → leave empty
+          const colList = cols.map((c) => `"${c}"`).join(', ');
+          db.exec(`INSERT INTO main."${name}" (${colList}) SELECT ${colList} FROM bak."${name}"`);
+        }
+      });
+      tx();
+    } finally {
+      db.prepare('DETACH bak').run();
+    }
+  } finally {
+    db.pragma(`foreign_keys = ${prevFk ? 'ON' : 'OFF'}`);
+  }
+}
