@@ -30,7 +30,11 @@ cleanup() {                       # runs on ANY exit; set +e so the whole tail r
   restart_derivation_agents
   resume_watcher
 }
-trap cleanup EXIT
+# EXIT covers normal/FAIL/crash exits; INT+TERM cover an operator Ctrl-C or a kill
+# mid-rebuild (a multi-minute wipe+re-derive) — without them an interrupt leaves prod
+# half-restored. On a signal: the INT/TERM trap restores, the interrupted rebuild
+# returns non-zero, set -e exits, and the EXIT trap short-circuits on `restored`.
+trap cleanup EXIT INT TERM
 
 info "pausing watcher + stopping derivation agents (server stays up)"
 pause_watcher
