@@ -16,7 +16,7 @@ import { copyFileSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { config } from '../src/lib/config';
 import { openSeleneConnection } from '../src/lib/open-selene-connection';
-import { snapshot, wipe, verdict, thresholdsFromEnv, backupPath, pendingCount, type Snapshot } from '../src/lib/rebuild-core';
+import { snapshot, wipe, verdict, thresholdsFromEnv, backupPath, pendingCount, drainDecision, type Snapshot } from '../src/lib/rebuild-core';
 import { logger } from '../src/lib/logger';
 
 const DRY = process.argv.includes('--dry-run');
@@ -72,6 +72,8 @@ function pendingWork(): number {
   }
 }
 
+const DRAIN_CAP = 1000; // defensive backstop; drainDecision owns real termination
+
 function rederive(): void {
   const run = (wf: string): void => {
     if (DRY) {
@@ -83,26 +85,53 @@ function rederive(): void {
       env: { ...process.env, SELENE_ENV: config.env },
     });
   };
-  let last = -1;
-  for (let i = 0; i < 1000; i++) {
-    if (!DRY && pendingWork() === 0) break;
+  // Dry-run logs the plan once per stage and drains nothing real.
+  if (DRY) {
+    for (const wf of ['process-llm', 'distill-essences', 'synthesize-topics', 'export-obsidian']) run(wf);
+    return;
+  }
+  // Drain the two per-batch LLM stages until the (unit-tested) drainDecision says
+  // stop — drained (work hit 0), stalled (a stuck note made no progress), or capped
+  // (ceiling hit). The loop is intentionally unbounded: drainDecision guarantees
+  // termination via DRAIN_CAP, so it's the single source of truth, not a second
+  // bound here. Then run synthesis + export once over the full corpus.
+  let previous = Infinity;
+  for (let i = 0; ; i++) {
+    const remaining = pendingWork();
+    const decision = drainDecision(remaining, previous, i, DRAIN_CAP);
+    if (decision !== 'continue') {
+      if (decision !== 'drained') {
+        logger.warn({ remaining, decision }, 'rebuild: drain stopped before zero — coverage gate will judge the shortfall');
+      }
+      break;
+    }
+    previous = remaining;
     run('process-llm');
     run('distill-essences');
-    if (DRY) break;
-    const now = pendingWork();
-    if (now === last) break; // no progress — a stuck note would otherwise spin forever
-    last = now;
   }
   run('synthesize-topics');
   run('export-obsidian');
 }
 
+/** Roll selene.db back to the pre-rebuild backup. This is the safety net for the
+ *  whole feature, so it must never itself throw: a throw here would (a) escape the
+ *  catch in main() as a bare stack trace and (b) risk a double-restore. Instead it
+ *  swallows the failure and logs a loud MANUAL RECOVERY instruction — the operator
+ *  can always copy the backup over by hand, and the disposable DB is rebuildable. */
 function restore(backupFile: string): void {
   if (DRY) {
     logger.warn('[dry-run] would restore backup');
     return;
   }
-  copyFileSync(backupFile, config.dbPath);
+  try {
+    copyFileSync(backupFile, config.dbPath);
+    logger.info({ backupFile }, 'rebuild: rolled back selene.db from backup');
+  } catch (err) {
+    logger.error(
+      { err, backupFile, dbPath: config.dbPath },
+      `rebuild: ROLLBACK FAILED — selene.db may be half-wiped. MANUAL RECOVERY: cp "${backupFile}" "${config.dbPath}"`,
+    );
+  }
 }
 
 function pruneBackups(): void {
@@ -115,9 +144,12 @@ function main(): void {
   const t = thresholdsFromEnv();
   const pre = readSnapshot();
   logger.info({ pre }, 'rebuild: PRE snapshot');
-  const backupFile = backup();
+  let backupFile = '';
   let wiped = false;
   try {
+    // backup() is inside the try so a copy failure routes through the uniform abort
+    // log below. It precedes the wipe, so wiped stays false and no restore fires.
+    backupFile = backup();
     doWipe();
     wiped = true;
     // SIMULATE_REDERIVE_FAIL is placed AFTER the wipe (not before) so the verify
