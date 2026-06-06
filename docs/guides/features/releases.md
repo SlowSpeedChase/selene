@@ -113,6 +113,36 @@ The script runs this ordered sequence, **aborting cleanly with nothing changed**
 
 **Claude never runs this against prod.** The prod-data guard blocks Claude's tools from `~/selene-data`; Claude authors and `/tmp`-validates the script, the operator runs it. Every gate is content-free (counts/structure + a self-deleting probe), so no note text is ever read.
 
+## The `rebuild` command
+
+> **What it's for.** The cutover above made `selene.db` *disposable*; `rebuild` is the command that actually disposes of it and regenerates it. It **wipes the derived tables, re-derives the whole corpus from `facts.db`** (`process-llm → distill-essences → synthesize-topics → export-obsidian`), validates the result, and **keeps it or auto-rolls-back**. `facts.db` — your precious captured notes + review state — is **never touched**. Use it to reprocess everything after a pipeline/model upgrade, to recover from a corrupted derived DB, or to safely experiment.
+
+It only ever truncates a fixed **allowlist of derived tables** (`processed_notes`, `note_embeddings`, `note_state`, `topic_clusters`, …). Non-derived state in `selene.db` — the `_selene_metadata` environment marker, `device_tokens`, the `raw_notes_legacy_backup` migration net — is preserved by omission. (An allowlist fails *safe*: a table added later is left alone rather than silently destroyed.)
+
+### Running it
+
+```bash
+# DEV (also how Claude validates it) — run directly, never touches prod:
+SELENE_ENV=development npx ts-node scripts/rebuild.ts            # wipe + re-derive + validate
+SELENE_ENV=development npx ts-node scripts/rebuild.ts --dry-run  # rehearse: read counts, NO wipe
+#   add --json for a machine-readable {pre, post, coverage, pass, reasons} report
+
+# PROD — the supervised wrapper (run on the prod box):
+./scripts/rebuild-prod.sh --dry-run   # rehearse: cycles the derivation agents, rebuild dry-run, no wipe
+./scripts/rebuild-prod.sh             # live: wipe + re-derive + validate + keep/rollback
+DRY_RUN=1 ./scripts/rebuild-prod.sh   # fully inert smoke — echoes every launchctl + the rebuild, touches nothing
+```
+
+`rebuild-prod.sh` keeps the **webhook server UP** the whole time — captures write only `facts.db`, which `rebuild` never touches, so **capture never blocks** (unlike the cutover, which has brief downtime). It stops **only the derivation agents** so none races the drain, and an **EXIT trap restarts them + resumes the deploy-watcher on *any* exit** — success, a FAIL verdict, or a crash/Ctrl-C mid-rebuild.
+
+### How it protects the DB
+
+- **Verified backup first** — `selene.db` is snapshotted (WAL-safe `VACUUM INTO`) before the wipe; that backup is the rollback target.
+- **Validation gate** — `verdict(pre, post)` requires **≥95% coverage** (every captured note has a processed row) and **≤20% downward drift** on each derived metric vs. the pre-rebuild snapshot. Fail either → **auto-rollback** to the backup (restored in-place, never a file swap, so the live server's handle is never corrupted).
+- **Crash mid-rebuild self-heals** — a crash *after* the wipe restores the backup; if anything slips through, the normal pipeline finishes the pending remainder on its next run.
+
+Validated end-to-end by `scripts/verify-rebuild.sh` (real Ollama on a `/tmp` copy of the dev DB: happy-path drain, both rollback paths, crash-resume, and `facts.db` asserted byte-identical throughout). **Claude runs `rebuild.ts` on dev/`/tmp` only — never `rebuild-prod.sh` against prod.**
+
 ## Configure & customize
 
 **Poll interval** — `launchd/com.selene.prod.deploy-watcher.plist`, `StartInterval` = `300` (seconds, i.e. every 5 minutes). Change that integer and reload the agent to poll more/less often.
@@ -141,6 +171,13 @@ The script runs this ordered sequence, **aborting cleanly with nothing changed**
 
 **Deploy log** lives at `~/selene-prod/deploy.log` — the timestamped success/FAILED/WARN summary lines.
 
+**`rebuild` validation thresholds** (env vars on `rebuild.ts` / `rebuild-prod.sh`):
+
+| Env var | Default | Purpose |
+|---------|---------|---------|
+| `COVERAGE_MIN` | `0.95` | Minimum fraction of captured notes that must have a processed row, or the rebuild rolls back |
+| `DRIFT_TOLERANCE` | `0.20` | Max allowed *downward* drift per derived metric vs. the pre-rebuild snapshot (zero-baseline metrics are skipped) |
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -153,6 +190,7 @@ The script runs this ordered sequence, **aborting cleanly with nothing changed**
 | **Prod crashlooping with "DB not migrated" after a fact-store deploy** | The fact-store code reached prod on an un-migrated DB (the `ensure-migrated` guard refusing to serve, by design — e.g. a cutover that rolled back *after* the merge). Don't patch around it — run the supervised cutover: `./scripts/cutover-prod.sh --ref origin/main`. |
 | **`cutover-prod.sh` says "already migrated — nothing to do"** | The DB is already on the two-file layout; the cutover is a safe no-op. Nothing to do. |
 | **Cutover hit a gate and rolled back** | Expected safety behavior — prod is restored to single-file on the last-good code (you'll have gotten **"Selene cutover ROLLED BACK"**). Check the `[FAIL]` line in the script output and `~/selene-data/backups/` for the verified pre-cutover backup, fix the cause, re-run. |
+| **`rebuild` rolled back (coverage/drift verdict FAIL)** | The re-derived corpus didn't clear the gate — `selene.db` was auto-restored from the pre-rebuild backup; nothing lost. Re-run `rebuild.ts --json` and read `reasons` to see which gate fired (a transient Ollama hiccup is common — just re-run; a persistent shortfall means a pipeline regression to fix first). `facts.db` is untouched either way. |
 
 ## Related
 
