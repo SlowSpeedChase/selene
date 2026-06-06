@@ -14,7 +14,7 @@ export function buildNotesDb(db: DatabaseType) {
       .prepare(
         `SELECT id, name, slug, synthesis_text, note_count
          FROM topic_clusters
-         WHERE is_proto = 0
+         WHERE is_proto = 0 AND parent_id IS NULL
          ORDER BY note_count DESC`
       )
       .all() as Array<{

@@ -18,6 +18,7 @@ describe('notes route helpers', () => {
         synthesis_text TEXT,
         note_count INTEGER NOT NULL DEFAULT 0,
         is_proto INTEGER NOT NULL DEFAULT 0,
+        parent_id TEXT,
         created_at TEXT NOT NULL
       );
       CREATE TABLE topic_note_links (
@@ -39,16 +40,35 @@ describe('notes route helpers', () => {
   afterEach(() => db.close());
 
   it('getClusters returns non-proto clusters ordered by note_count', () => {
-    db.prepare(`INSERT INTO topic_clusters VALUES (?,?,?,?,?,?,?)`).run(
-      'c1', 'Focus', 'focus', 'synthesis about focus', 3, 0, '2026-01-01'
-    );
-    db.prepare(`INSERT INTO topic_clusters VALUES (?,?,?,?,?,?,?)`).run(
-      'c2', 'Proto', 'proto', null, 1, 1, '2026-01-01'
-    );
+    db.prepare(
+      `INSERT INTO topic_clusters (id, name, slug, synthesis_text, note_count, is_proto, parent_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run('c1', 'Focus', 'focus', 'synthesis about focus', 3, 0, null, '2026-01-01');
+    db.prepare(
+      `INSERT INTO topic_clusters (id, name, slug, synthesis_text, note_count, is_proto, parent_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run('c2', 'Proto', 'proto', null, 1, 1, null, '2026-01-01');
     const { getClusters } = buildNotesDb(db);
     const result = getClusters();
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('c1');
+  });
+
+  it('getClusters excludes sub-clusters (parent_id set), returning only top-level categories', () => {
+    // Top-level category cluster (parent_id NULL) — should appear.
+    db.prepare(
+      `INSERT INTO topic_clusters (id, name, slug, synthesis_text, note_count, is_proto, parent_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run('top', 'Health', 'health', null, 5, 0, null, '2026-01-01');
+    // Sub-cluster: non-proto but parent_id set — must be excluded from the iPad cluster browse.
+    db.prepare(
+      `INSERT INTO topic_clusters (id, name, slug, synthesis_text, note_count, is_proto, parent_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run('sub', 'Sleep', 'sleep', null, 2, 0, 'top', '2026-01-01');
+    const { getClusters } = buildNotesDb(db);
+    const result = getClusters();
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('top');
   });
 
   it('getNotesForCluster returns raw notes linked to a cluster', () => {

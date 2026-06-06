@@ -10,6 +10,10 @@
 
 ---
 
+## Execution note (path correction)
+
+The seed config lives at **`src/config/sub-taxonomy.ts`** (NOT `config/sub-taxonomy.ts` as originally drafted). Reason: `tsconfig.json` sets `rootDir: "./src"`, so a real `src/` file importing a sibling under `/config` errors with `TS6059: not under rootDir`. Relocating under `src/config/` keeps it git-tracked (still the precious layer surviving a fact-store `rebuild`) and makes its exhaustiveness guard fire in the main `tsc --noEmit`. Import paths: from `src/config/sub-taxonomy.ts` use `../lib/prompts`; from `src/lib/*` use `../config/sub-taxonomy`; from `src/workflows/*` use `../config/sub-taxonomy`.
+
 ## Design decisions baked in (from design + adversarial review)
 
 These were settled before planning — do not re-litigate:
