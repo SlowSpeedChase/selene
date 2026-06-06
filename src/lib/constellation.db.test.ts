@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { existsSync, readdirSync, readFileSync, mkdtempSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadNoteClusters, loadClusters, exportClusterNotes } from './constellation';
+import { loadNoteClusters, loadClusters, exportClusterNotes, buildClusterNote } from './constellation';
 
 type DB = InstanceType<typeof Database>;
 
@@ -38,6 +38,22 @@ describe('loadClusters', () => {
       { name: 'Creativity & Expression', parentName: undefined },
       { name: 'Relationships & Social', parentName: undefined },
     ]);
+  });
+
+  it('emits parent:: for a sub-cluster pointing at its category cluster', () => {
+    const db = new Database(':memory:');
+    db.exec('CREATE TABLE topic_clusters (id TEXT PRIMARY KEY, name TEXT, parent_id TEXT);');
+    const insert = db.prepare('INSERT INTO topic_clusters VALUES (?,?,?)');
+    // Parent category cluster (parent_id = NULL) and a sub-cluster whose
+    // parent_id = the parent's id, with a namespaced slug id (health-body/running).
+    insert.run('health-body', 'Health & Body', null);
+    insert.run('health-body/running', 'Running', 'health-body');
+
+    const clusters = loadClusters(db);
+    const running = clusters.find((c) => c.name === 'Running');
+    expect(running?.parentName).toBe('Health & Body');
+    // The rendered note for the sub-cluster contains a parent:: edge.
+    expect(buildClusterNote({ name: 'Running' }, running?.parentName)).toContain('parent::');
   });
 });
 
