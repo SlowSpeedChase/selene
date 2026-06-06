@@ -10,20 +10,20 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     echo "DRY RUN — no changes will be made"
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+LAUNCHD_DIR="$PROJECT_DIR/launchd"
 PLIST_DIR="$HOME/Library/LaunchAgents"
-PLISTS=(
-    "com.selene.server"
-    "com.selene.process-llm"
-    "com.selene.extract-tasks"
-    "com.selene.compute-relationships"
-    "com.selene.index-vectors"
-    "com.selene.detect-threads"
-    "com.selene.reconsolidate-threads"
-    "com.selene.export-obsidian"
-    "com.selene.daily-summary"
-    "com.selene.send-digest"
-    "com.selene.transcribe-voice-memos"
-)
+
+# Agent labels — derived from the plists in launchd/ (single source of truth),
+# then acted upon as installed copies in $PLIST_DIR. Skips prod/dev agents
+# (com.selene.prod.*, com.selene.dev.*): those are not managed by this dev installer.
+PLISTS=()
+for f in "$LAUNCHD_DIR"/com.selene.*.plist; do
+    label="$(basename "$f" .plist)"
+    case "$label" in com.selene.prod.*|com.selene.dev.*) continue;; esac
+    PLISTS+=("$label")
+done
 
 echo "Uninstalling Selene launchd agents..."
 echo ""
