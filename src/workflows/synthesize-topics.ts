@@ -126,6 +126,17 @@ async function generateWeeklyRollup(): Promise<void> {
   log.info('Weekly rollup generated');
 }
 
+/** Reconcile a topic's note links to exactly `noteIds` (insert missing, delete stale). */
+function reconcileLinks(database: Database, topicId: string, noteIds: number[], now: string): void {
+  const desired = new Set(noteIds);
+  for (const { note_id } of (database.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?').all(topicId) as Array<{ note_id: number }>)) {
+    if (!desired.has(note_id)) database.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(topicId, note_id);
+  }
+  for (const noteId of noteIds) {
+    database.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)').run(topicId, noteId, now);
+  }
+}
+
 /**
  * Upsert sub-cluster rows (parent_id set, namespaced slug) + their note links from the
  * current sub-grouping, then delete any now-stale sub-cluster (a sub-cluster = a row with
@@ -159,19 +170,7 @@ export function materializeSubClusters(
         ON CONFLICT(slug) DO UPDATE SET
           name = excluded.name, parent_id = excluded.parent_id, note_count = excluded.note_count, is_proto = 0
       `).run(sid, subName, sslug, parent.id, noteIds.length, now);
-      // reconcile links: insert missing, delete stale
-      const desired = new Set(noteIds);
-      for (const { note_id } of (database
-        .prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
-        .all(sid) as Array<{ note_id: number }>)) {
-        if (!desired.has(note_id)) {
-          database.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(sid, note_id);
-        }
-      }
-      for (const noteId of noteIds) {
-        database.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)')
-          .run(sid, noteId, now);
-      }
+      reconcileLinks(database, sid, noteIds, now);
     }
   }
   // Delete stale sub-clusters (parent_id NOT NULL) no longer desired — covers emptied
@@ -302,16 +301,7 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
     `).run(id, cat, slug, newSynthesis, prevSynthesis, now, noteIds.length, now);
 
     // Reconcile links (insert missing, delete stale).
-    for (const { note_id } of (db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
-        .all(id) as Array<{ note_id: number }>)) {
-      if (!desired.has(note_id)) {
-        db.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(id, note_id);
-      }
-    }
-    for (const noteId of noteIds) {
-      db.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)')
-        .run(id, noteId, now);
-    }
+    reconcileLinks(db, id, noteIds, now);
 
     // Evolution detection: compare prev vs new synthesis
     if (prevSynthesis && newSynthesis && prevSynthesis !== newSynthesis) {
