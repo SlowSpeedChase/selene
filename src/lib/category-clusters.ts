@@ -1,4 +1,5 @@
 import { CATEGORIES } from './prompts';
+import { subCategoriesFor } from '../config/sub-taxonomy';
 
 const VALID = new Set<string>(CATEGORIES);
 
@@ -139,6 +140,19 @@ export function groupNotesBySubCategory(
     const m = new Map<string, number[]>();
     for (const [sub, set] of subMap) m.set(sub, [...set]);
     out.set(cat, m);
+  }
+  return out;
+}
+
+/** Seed sub-category lists keyed by each VALID category the note actually landed in. */
+export function buildAllowedFor(category: string | null, crossRefs: string[]): Record<string, string[]> {
+  const cats = new Set<string>();
+  for (const c of normalizeToValidCategories(category)) cats.add(c);
+  for (const cr of crossRefs) for (const c of normalizeToValidCategories(cr)) cats.add(c);
+  const out: Record<string, string[]> = {};
+  for (const c of cats) {
+    const subs = subCategoriesFor(c);
+    if (subs.length) out[c] = subs;
   }
   return out;
 }

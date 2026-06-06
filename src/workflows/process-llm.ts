@@ -13,6 +13,7 @@ import {
   searchSimilarNotes,
 } from '../lib';
 import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
+import { buildAllowedFor, buildSubCategoryPrompt, parseSubCategories } from '../lib/category-clusters';
 import { initSynthesisSchema, writeConnection } from '../lib/synthesis-db';
 import type { WorkflowResult } from '../types';
 
@@ -22,6 +23,9 @@ try {
 } catch { /* column already exists */ }
 try {
   db.exec('ALTER TABLE processed_notes ADD COLUMN cross_ref_categories TEXT');
+} catch { /* column already exists */ }
+try {
+  db.exec('ALTER TABLE processed_notes ADD COLUMN sub_categories TEXT');
 } catch { /* column already exists */ }
 
 initSynthesisSchema(db);
@@ -84,11 +88,24 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         };
       }
 
+      // Closed-set sub-category classification over the categories this note landed in
+      let subCategories: Record<string, string> = {};
+      const allowed = buildAllowedFor(extracted.category || null, extracted.cross_ref_categories || []);
+      if (Object.keys(allowed).length > 0) {
+        try {
+          const subPrompt = buildSubCategoryPrompt(note.title, note.content, allowed);
+          const subResp = await generate(subPrompt, { temperature: 0 });
+          subCategories = parseSubCategories(subResp, allowed);
+        } catch (err) {
+          log.warn({ noteId: note.id, err: err as Error }, 'Sub-category classification failed; leaving empty');
+        }
+      }
+
       // Store in processed_notes table
       db.prepare(
         `INSERT OR REPLACE INTO processed_notes
-         (raw_note_id, concepts, primary_theme, secondary_themes, overall_sentiment, emotional_tone, energy_level, category, cross_ref_categories, processed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         (raw_note_id, concepts, primary_theme, secondary_themes, overall_sentiment, emotional_tone, energy_level, category, cross_ref_categories, sub_categories, processed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         note.id,
         JSON.stringify(extracted.concepts || []),
@@ -99,6 +116,7 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         extracted.energy_level || 'medium',
         extracted.category || null,
         JSON.stringify(extracted.cross_ref_categories || []),
+        JSON.stringify(subCategories),
         new Date().toISOString()
       );
 

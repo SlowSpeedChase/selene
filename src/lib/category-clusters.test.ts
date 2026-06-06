@@ -10,6 +10,7 @@ import {
   parseSubCategories,
   buildSubCategoryPrompt,
   groupNotesBySubCategory,
+  buildAllowedFor,
 } from './category-clusters';
 import { CATEGORIES } from './prompts';
 
@@ -195,5 +196,22 @@ describe('groupNotesBySubCategory', () => {
       subCategories: { 'Career & Work': 'Job' } }];
     const g = groupNotesBySubCategory(notes);
     expect(g.get('Career & Work')?.size ?? 0).toBe(0);
+  });
+});
+
+describe('buildAllowedFor', () => {
+  it('returns seed lists only for the categories the note landed in', () => {
+    const allowed = buildAllowedFor('Health & Body', ['Projects & Tech']);
+    expect(Object.keys(allowed).sort()).toEqual(['Health & Body', 'Projects & Tech']);
+    expect(allowed['Health & Body'].length).toBeGreaterThan(0);
+  });
+  it('returns {} when there are no valid categories', () => {
+    expect(buildAllowedFor(null, [])).toEqual({});
+  });
+  it('omits a valid category that has no seed sub-categories', () => {
+    // If some category has an empty seed list in src/config/sub-taxonomy.ts this would matter.
+    // With the v0 config all 8 have non-empty lists, so a real category always appears.
+    const allowed = buildAllowedFor('Health & Body', []);
+    expect(allowed['Health & Body'].length).toBeGreaterThan(0);
   });
 });
