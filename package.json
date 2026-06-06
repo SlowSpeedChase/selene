@@ -4,17 +4,10 @@
   "description": "ADHD-focused knowledge management system",
   "private": true,
   "scripts": {
-    "mcp-wrapper": "node scripts/things-mcp-wrapper.js",
-    "test-mcp": "node scripts/test-mcp-wrapper.js",
     "start": "ts-node src/server.ts",
     "dev": "ts-node-dev src/server.ts",
     "workflow:process-llm": "ts-node src/workflows/process-llm.ts",
-    "workflow:extract-tasks": "ts-node src/workflows/extract-tasks.ts",
-    "workflow:compute-embeddings": "echo 'DEPRECATED: Use workflow:index-vectors instead' && exit 1",
-    "workflow:compute-associations": "echo 'DEPRECATED: Use workflow:compute-relationships instead' && exit 1",
     "workflow:daily-summary": "ts-node src/workflows/daily-summary.ts",
-    "workflow:index-vectors": "ts-node src/workflows/index-vectors.ts",
-    "workflow:compute-relationships": "ts-node src/workflows/compute-relationships.ts",
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "build:check": "node -e \"const f=require('fs'); ['server.js','workflows/process-llm.js','workflows/export-obsidian.js','lib/config.js'].forEach(p=>{if(!f.existsSync('dist/'+p)){console.error('MISSING dist/'+p);process.exit(1)}}); console.log('dist OK')\""
   },
