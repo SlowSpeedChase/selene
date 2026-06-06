@@ -59,11 +59,16 @@ export function normalizeToValidCategories(value: string | null): string[] {
     .filter((part) => VALID.has(part));
 }
 
-function validCategoriesFor(note: CategorizableNote): Set<string> {
+/** The valid controlled categories a note belongs to (primary category ∪ cross-refs). */
+export function resolveCategories(category: string | null, crossRefs: string[]): Set<string> {
   const cats = new Set<string>();
-  for (const c of normalizeToValidCategories(note.category)) cats.add(c);
-  for (const cr of note.crossRefs) for (const c of normalizeToValidCategories(cr)) cats.add(c);
+  for (const c of normalizeToValidCategories(category)) cats.add(c);
+  for (const cr of crossRefs) for (const c of normalizeToValidCategories(cr)) cats.add(c);
   return cats;
+}
+
+function validCategoriesFor(note: CategorizableNote): Set<string> {
+  return resolveCategories(note.category, note.crossRefs);
 }
 
 /** Map every controlled category -> the distinct note IDs that belong to it
@@ -146,9 +151,7 @@ export function groupNotesBySubCategory(
 
 /** Seed sub-category lists keyed by each VALID category the note actually landed in. */
 export function buildAllowedFor(category: string | null, crossRefs: string[]): Record<string, string[]> {
-  const cats = new Set<string>();
-  for (const c of normalizeToValidCategories(category)) cats.add(c);
-  for (const cr of crossRefs) for (const c of normalizeToValidCategories(cr)) cats.add(c);
+  const cats = resolveCategories(category, crossRefs);
   const out: Record<string, string[]> = {};
   for (const c of cats) {
     const subs = subCategoriesFor(c);

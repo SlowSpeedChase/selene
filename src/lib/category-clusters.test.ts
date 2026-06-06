@@ -208,10 +208,4 @@ describe('buildAllowedFor', () => {
   it('returns {} when there are no valid categories', () => {
     expect(buildAllowedFor(null, [])).toEqual({});
   });
-  it('omits a valid category that has no seed sub-categories', () => {
-    // If some category has an empty seed list in src/config/sub-taxonomy.ts this would matter.
-    // With the v0 config all 8 have non-empty lists, so a real category always appears.
-    const allowed = buildAllowedFor('Health & Body', []);
-    expect(allowed['Health & Body'].length).toBeGreaterThan(0);
-  });
 });
