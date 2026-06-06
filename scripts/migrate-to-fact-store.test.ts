@@ -21,16 +21,10 @@ import Database from 'better-sqlite3';
 import { tmpdir } from 'os';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
+import { redirectSeleneSingleton } from '../src/lib/test-two-file-db';
 
 // --- env redirect for the ../src/lib/db singleton (must precede its import) ---
-const ENV_KEYS = ['SELENE_ENV', 'SELENE_DB_PATH', 'SELENE_FACTS_DB_PATH'] as const;
-const savedEnv: Record<string, string | undefined> = {};
-for (const k of ENV_KEYS) savedEnv[k] = process.env[k];
-
-process.env.SELENE_ENV = 'production';
-const singletonDir = mkdtempSync(join(tmpdir(), 'selene-migrate-singleton-'));
-process.env.SELENE_DB_PATH = join(singletonDir, 'selene.db');
-process.env.SELENE_FACTS_DB_PATH = join(singletonDir, 'facts.db');
+const { restore: restoreSingletonEnv } = redirectSeleneSingleton('selene-migrate-singleton-');
 
 import { insertNote } from '../src/lib/db';
 import {
@@ -42,11 +36,7 @@ import {
 import { migrateToFactStore, stripRawNotesFk } from '../src/lib/migrate-to-fact-store';
 
 afterAll(() => {
-  for (const k of ENV_KEYS) {
-    if (savedEnv[k] === undefined) delete process.env[k];
-    else process.env[k] = savedEnv[k];
-  }
-  rmSync(singletonDir, { recursive: true, force: true });
+  restoreSingletonEnv();
 });
 
 /**

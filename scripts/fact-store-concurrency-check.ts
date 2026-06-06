@@ -24,7 +24,7 @@
  */
 import { spawn } from 'child_process';
 import { createHash } from 'crypto';
-import { openSeleneConnection } from '../src/lib/open-selene-connection';
+import { openSeleneConnection, assertTmpIsolated } from '../src/lib/open-selene-connection';
 
 const DB_PATH = process.env.SELENE_DB_PATH || '';
 const FACTS_PATH = process.env.SELENE_FACTS_DB_PATH || '';
@@ -34,19 +34,6 @@ interface RoleResult {
   role: 'reader' | 'writer';
   ops: number;
   busy: number;
-}
-
-/** Hard safety gate: never run against a real store, even if env is misconfigured. */
-function assertTmpIsolated(): void {
-  for (const [name, p] of [
-    ['SELENE_DB_PATH', DB_PATH],
-    ['SELENE_FACTS_DB_PATH', FACTS_PATH],
-  ] as const) {
-    if (!p) throw new Error(`${name} must be set (this harness is /tmp-only).`);
-    if (!p.startsWith('/tmp/')) {
-      throw new Error(`${name}=${p} is not under /tmp — refusing (real-store guard).`);
-    }
-  }
 }
 
 /** Is this better-sqlite3 error a SQLITE_BUSY / lock-contention error? */
@@ -65,7 +52,7 @@ function isBusy(err: unknown): boolean {
  * facts.captured_notes as fast as possible for the window. Counts any SQLITE_BUSY.
  */
 function runWriter(): RoleResult {
-  assertTmpIsolated();
+  assertTmpIsolated(DB_PATH, FACTS_PATH);
   const db = openSeleneConnection(DB_PATH, FACTS_PATH); // read-write: WAL + busy_timeout + ATTACH
   let ops = 0;
   let busy = 0;
@@ -106,7 +93,7 @@ function runWriter(): RoleResult {
  * raw_notes COUNT/GROUP — exactly the reads the pipeline does over the attached facts.
  */
 function runReader(): RoleResult {
-  assertTmpIsolated();
+  assertTmpIsolated(DB_PATH, FACTS_PATH);
   const db = openSeleneConnection(DB_PATH, FACTS_PATH); // read-write conn: full WAL + busy_timeout
   let ops = 0;
   let busy = 0;
@@ -137,7 +124,7 @@ function main(): void {
     return;
   }
 
-  assertTmpIsolated();
+  assertTmpIsolated(DB_PATH, FACTS_PATH);
 
   // Spawn the writer as a genuinely separate process (its own connection → real concurrency).
   const child = spawn('npx', ['ts-node', __filename, '--writer'], {

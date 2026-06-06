@@ -10,22 +10,15 @@
  * and the import skips the dev/test `_selene_metadata` verification. Assertions drive an EXPLICIT
  * two-file connection, never the singleton.
  */
-import { tmpdir } from 'os';
-import { mkdtempSync } from 'fs';
-import { join } from 'path';
+import { makeTwoFileTestDb, redirectSeleneSingleton } from '../src/lib/test-two-file-db';
 
-const ENV_KEYS = ['SELENE_ENV', 'SELENE_DB_PATH', 'SELENE_FACTS_DB_PATH'] as const;
-const savedEnv: Record<string, string | undefined> = {};
-for (const k of ENV_KEYS) savedEnv[k] = process.env[k];
-
-process.env.SELENE_ENV = 'production';
-const singletonDir = mkdtempSync(join(tmpdir(), 'selene-backfill-singleton-'));
-process.env.SELENE_DB_PATH = join(singletonDir, 'selene.db');
-process.env.SELENE_FACTS_DB_PATH = join(singletonDir, 'facts.db');
+// Redirect the db.ts singleton to throwaway files BEFORE the script is imported (it opens a
+// real connection on import); production env so config.testRunFilter() yields `test_run IS NULL`
+// and the import skips the dev/test _selene_metadata verification.
+const { restore: restoreSingletonEnv } = redirectSeleneSingleton('selene-backfill-singleton-');
 
 import { insertNote } from '../src/lib/db';
 import { setNoteState } from '../src/lib/note-state';
-import { makeTwoFileTestDb } from '../src/lib/test-two-file-db';
 import { resetExportFlagsForProcessed } from './backfill-categories';
 
 describe('backfill-categories resetExportFlagsForProcessed (writes note_state, not the read-only view)', () => {
@@ -38,10 +31,7 @@ describe('backfill-categories resetExportFlagsForProcessed (writes note_state, n
     two.db.close();
   });
   afterAll(() => {
-    for (const k of ENV_KEYS) {
-      if (savedEnv[k] === undefined) delete process.env[k];
-      else process.env[k] = savedEnv[k];
-    }
+    restoreSingletonEnv();
   });
 
   it('resets exported_to_obsidian=0 for processed notes via note_state, without writing the read-only raw_notes view', () => {

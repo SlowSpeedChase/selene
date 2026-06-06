@@ -10,28 +10,13 @@
  * it, so the import is harmless; the assertions then drive `insertNote` against an EXPLICIT
  * two-file connection (the new DI param), never the singleton.
  */
-import { tmpdir } from 'os';
-import { mkdtempSync } from 'fs';
-import { join } from 'path';
+import { makeTwoFileTestDb, redirectSeleneSingleton } from './test-two-file-db';
 
-// Redirect the db.ts singleton to throwaway files before it is imported. Force production
-// env so the import skips the test/dev `_selene_metadata` verification (which would throw on
-// a fresh throwaway DB). The singleton is never used for assertions — we inject `two.db`.
-//
-// Jest shares process.env across files in a worker without restoring it, so we snapshot the
-// three vars and restore them in afterAll — otherwise a later file in the same worker would
-// re-evaluate config.ts against our leaked env (order-dependent flakiness).
-const ENV_KEYS = ['SELENE_ENV', 'SELENE_DB_PATH', 'SELENE_FACTS_DB_PATH'] as const;
-const savedEnv: Record<string, string | undefined> = {};
-for (const k of ENV_KEYS) savedEnv[k] = process.env[k];
-
-process.env.SELENE_ENV = 'production';
-const singletonDir = mkdtempSync(join(tmpdir(), 'selene-capture-singleton-'));
-process.env.SELENE_DB_PATH = join(singletonDir, 'selene.db');
-process.env.SELENE_FACTS_DB_PATH = join(singletonDir, 'facts.db');
+// Redirect the db.ts singleton to throwaway files BEFORE it is imported (db.ts opens a real
+// connection on import). The singleton is never used for assertions — we inject `two.db`.
+const { restore: restoreSingletonEnv } = redirectSeleneSingleton('selene-capture-singleton-');
 
 import { insertNote } from './db';
-import { makeTwoFileTestDb } from './test-two-file-db';
 
 describe('insertNote → facts.captured_notes (fact-store capture redirect)', () => {
   let two: ReturnType<typeof makeTwoFileTestDb>;
@@ -45,11 +30,9 @@ describe('insertNote → facts.captured_notes (fact-store capture redirect)', ()
   });
 
   afterAll(() => {
-    // Restore env so this file can't pollute sibling test files in the same Jest worker.
-    for (const k of ENV_KEYS) {
-      if (savedEnv[k] === undefined) delete process.env[k];
-      else process.env[k] = savedEnv[k];
-    }
+    // Restore env (+ remove the singleton temp dir) so this file can't pollute sibling test
+    // files in the same Jest worker.
+    restoreSingletonEnv();
   });
 
   it('writes exactly one row to facts.captured_notes with the right content_hash, no note_state row, and reads back via the view as pending', () => {

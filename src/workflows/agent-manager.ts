@@ -12,6 +12,7 @@ import {
 } from '../lib/agent-db';
 import { ThingsMetadataEnricher } from '../agents/things-metadata-enricher';
 import { execSync } from 'child_process';
+import { upsertAppleNote } from '../lib/apple-notes';
 
 const log = createWorkflowLogger('agent-manager');
 
@@ -27,24 +28,8 @@ function sendMacOSNotification(title: string, body: string): void {
 }
 
 async function deliverToAppleNotes(report: { id: string; title: string; body: string }): Promise<void> {
-  const escaped = report.body
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, '\\n');
-
   const noteName = `Selene Agent: ${report.title.split(' — ')[0]}`;
-  const script = `osascript -e 'tell application "Notes"' \
-    -e 'set noteName to "${noteName.replace(/'/g, "'\"'\"'")}"' \
-    -e 'set noteBody to "${escaped}"' \
-    -e 'try' \
-    -e 'set targetNote to first note whose name is noteName' \
-    -e 'set body of targetNote to body of targetNote & "<br><hr><br>" & noteBody' \
-    -e 'on error' \
-    -e 'make new note with properties {name:noteName, body:noteBody}' \
-    -e 'end try' \
-    -e 'end tell'`;
-
-  execSync(script, { timeout: 15000, stdio: 'pipe' });
+  upsertAppleNote(noteName, report.body, { mode: 'append' });
 }
 
 async function deliverToObsidian(report: {

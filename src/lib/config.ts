@@ -19,52 +19,61 @@ const isTestEnv = seleneEnv === 'test';
 const isDevEnv = seleneEnv === 'development';
 const devDataRoot = join(homedir(), 'selene-data-dev');
 
-// Path resolution based on environment
-function getDbPath(): string {
+// Path resolution based on environment.
+//
+// The four-branch ladder (explicit env var → test → dev → prod default) is identical
+// across five getters; only the concrete paths differ. `resolvePath` captures the ladder
+// once. The test/dev/prod paths are passed in pre-resolved (not derived from a relative
+// segment) so each getter reproduces its EXACT current values with no uniform-scheme
+// assumption — e.g. getLogsPath's test path is `projectRoot/logs` (same as prod), NOT
+// `projectRoot/data-test/logs`.
+function resolvePath(
+  envVarValue: string | undefined,
+  testAbs: string,
+  devAbs: string,
+  prodAbs: string,
+): string {
   // Explicit env var always wins
-  if (process.env.SELENE_DB_PATH) {
-    return process.env.SELENE_DB_PATH;
+  if (envVarValue) {
+    return envVarValue;
   }
-  // Test environment uses project-local test database
+  // Test environment
   if (isTestEnv) {
-    return join(projectRoot, 'data-test/selene.db');
+    return testAbs;
   }
   // Development environment uses dedicated dev data directory
   if (isDevEnv) {
-    return join(devDataRoot, 'selene.db');
+    return devAbs;
   }
   // Production default
-  return join(homedir(), 'selene-data/selene.db');
+  return prodAbs;
+}
+
+function getDbPath(): string {
+  return resolvePath(
+    process.env.SELENE_DB_PATH,
+    join(projectRoot, 'data-test/selene.db'),
+    join(devDataRoot, 'selene.db'),
+    join(homedir(), 'selene-data/selene.db'),
+  );
 }
 
 function getFactsDbPath(): string {
-  // Explicit env var always wins
-  if (process.env.SELENE_FACTS_DB_PATH) {
-    return process.env.SELENE_FACTS_DB_PATH;
-  }
-  // Test environment uses project-local test database
-  if (isTestEnv) {
-    return join(projectRoot, 'data-test/facts.db');
-  }
-  // Development environment uses dedicated dev data directory
-  if (isDevEnv) {
-    return join(devDataRoot, 'facts.db');
-  }
-  // Production default
-  return join(homedir(), 'selene-data/facts.db');
+  return resolvePath(
+    process.env.SELENE_FACTS_DB_PATH,
+    join(projectRoot, 'data-test/facts.db'),
+    join(devDataRoot, 'facts.db'),
+    join(homedir(), 'selene-data/facts.db'),
+  );
 }
 
 function getVectorsPath(): string {
-  if (process.env.SELENE_VECTORS_PATH) {
-    return process.env.SELENE_VECTORS_PATH;
-  }
-  if (isTestEnv) {
-    return join(projectRoot, 'data-test/vectors.lance');
-  }
-  if (isDevEnv) {
-    return join(devDataRoot, 'vectors.lance');
-  }
-  return join(homedir(), 'selene-data/vectors.lance');
+  return resolvePath(
+    process.env.SELENE_VECTORS_PATH,
+    join(projectRoot, 'data-test/vectors.lance'),
+    join(devDataRoot, 'vectors.lance'),
+    join(homedir(), 'selene-data/vectors.lance'),
+  );
 }
 
 /**
@@ -104,29 +113,22 @@ function getVaultPath(): string {
 }
 
 function getDigestsPath(): string {
-  if (process.env.SELENE_DIGESTS_PATH) {
-    return process.env.SELENE_DIGESTS_PATH;
-  }
-  if (isTestEnv) {
-    return join(projectRoot, 'data-test/digests');
-  }
-  if (isDevEnv) {
-    return join(devDataRoot, 'digests');
-  }
-  return join(projectRoot, 'data', 'digests');
+  return resolvePath(
+    process.env.SELENE_DIGESTS_PATH,
+    join(projectRoot, 'data-test/digests'),
+    join(devDataRoot, 'digests'),
+    join(projectRoot, 'data', 'digests'),
+  );
 }
 
 function getLogsPath(): string {
-  if (process.env.SELENE_LOGS_PATH) {
-    return process.env.SELENE_LOGS_PATH;
-  }
-  if (isTestEnv) {
-    return join(projectRoot, 'logs');
-  }
-  if (isDevEnv) {
-    return join(devDataRoot, 'logs');
-  }
-  return join(projectRoot, 'logs');
+  // NOTE: the test path is `projectRoot/logs` (identical to prod) — NOT `data-test/logs`.
+  return resolvePath(
+    process.env.SELENE_LOGS_PATH,
+    join(projectRoot, 'logs'),
+    join(devDataRoot, 'logs'),
+    join(projectRoot, 'logs'),
+  );
 }
 
 export const config = {

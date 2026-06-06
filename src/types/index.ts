@@ -1,9 +1,6 @@
 // Re-export database types
 export { RawNote } from '../lib/db';
 
-// Agent layer types
-export * from './agents';
-
 // Ingest workflow types
 // Cross-repo contract: also consumed by Folio's trySeleneWebhook.
 // KEEP IN SYNC with folio `src/feedback.ts` → SeleneDraftPayload (~/folio).
@@ -34,31 +31,6 @@ export interface WorkflowResult {
   processed: number;
   errors: number;
   details: Array<{ id: number; success: boolean; error?: string }>;
-}
-
-// Obsidian export types
-export interface ExportableNote {
-  id: number;
-  title: string;
-  content: string;
-  created_at: string;
-  tags: string | null;
-  word_count: number;
-  concepts: string | null;
-  primary_theme: string;
-  secondary_themes: string | null;
-  overall_sentiment: string;
-  sentiment_score: number | null;
-  emotional_tone: string;
-  energy_level: string;
-  sentiment_data: string | null;
-}
-
-export interface ExportResult {
-  success: boolean;
-  exported_count: number;
-  errors: number;
-  message: string;
 }
 
 // Calendar event context (from selene-calendar CLI)

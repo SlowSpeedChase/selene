@@ -28,17 +28,12 @@ export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
     };
   });
 
-  fastify.post<{ Params: { name: string } }>('/agents/:name/enable', async (request, reply) => {
+  // Single handler for both enable and disable — byte-identical except the boolean.
+  // The sole caller (dashboard.ts) builds the URL as `/agents/<name>/<enable|disable>`.
+  fastify.post<{ Params: { name: string; action: string } }>('/agents/:name/:action', async (request, reply) => {
     const agent = getAgentByName(request.params.name);
     if (!agent) { reply.status(404); return { error: 'Agent not found' }; }
-    setAgentEnabled(request.params.name, true);
-    return { ok: true };
-  });
-
-  fastify.post<{ Params: { name: string } }>('/agents/:name/disable', async (request, reply) => {
-    const agent = getAgentByName(request.params.name);
-    if (!agent) { reply.status(404); return { error: 'Agent not found' }; }
-    setAgentEnabled(request.params.name, false);
+    setAgentEnabled(request.params.name, request.params.action === 'enable');
     return { ok: true };
   });
 

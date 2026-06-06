@@ -7,11 +7,11 @@ module.exports = {
   testMatch: [
     '**/scripts/migrate-to-fact-store.test.ts',
     '**/scripts/backfill-categories.test.ts',
+    '**/src/lib/apple-notes.test.ts',
     '**/src/lib/category-clusters.test.ts',
     '**/src/lib/config.test.ts',
     '**/src/lib/constellation.test.ts',
     '**/src/lib/constellation.db.test.ts',
-    '**/src/lib/cosine.test.ts',
     '**/src/lib/db-capture.test.ts',
     '**/src/lib/db-config.test.ts',
     '**/src/lib/db-guard.test.ts',

@@ -33,19 +33,15 @@ mkdir -p "$LAUNCH_AGENTS_DIR"
 # Ensure logs directory exists
 mkdir -p "$PROJECT_DIR/logs"
 
-# List of agents
-AGENTS=(
-    "com.selene.server"
-    "com.selene.process-llm"
-    "com.selene.distill-essences"
-    "com.selene.export-obsidian"
-    "com.selene.daily-summary"
-    "com.selene.send-digest"
-    "com.selene.synthesize-topics"
-    "com.selene.voice-ingest"
-    "com.selene.eink-ingest"
-    "com.selene.agent-manager"
-)
+# List of agents — derived from the plists in launchd/ (single source of truth).
+# Skips prod/dev agents (com.selene.prod.*, com.selene.dev.*): installing those
+# in a dev context would arm prod auto-deploy or collide on the dev server port.
+AGENTS=()
+for f in "$LAUNCHD_DIR"/com.selene.*.plist; do
+    label="$(basename "$f" .plist)"
+    case "$label" in com.selene.prod.*|com.selene.dev.*) continue;; esac
+    AGENTS+=("$label")
+done
 
 echo "Step 1: Unloading existing agents..."
 echo "----------------------------------------"
