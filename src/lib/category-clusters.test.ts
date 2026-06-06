@@ -5,7 +5,10 @@ import {
   uncategorizedNoteIds,
   extractCategoryFields,
   normalizeToValidCategories,
+  subSlug,
+  isValidClusterSlug,
 } from './category-clusters';
+import { CATEGORIES } from './prompts';
 
 describe('normalizeToValidCategories', () => {
   it('returns [] for null/empty', () => {
@@ -95,6 +98,28 @@ describe('uncategorizedNoteIds', () => {
       { noteId: 2, category: null, crossRefs: [] },
       { noteId: 3, category: 'Bogus', crossRefs: ['Nope'] },
     ])).toEqual([2, 3]);
+  });
+});
+
+describe('subSlug', () => {
+  it('namespaces sub under category slug', () => {
+    expect(subSlug('Health & Body', 'Running')).toBe('health-body/running');
+  });
+});
+
+describe('isValidClusterSlug (orphan-cleanup guard)', () => {
+  const cats = CATEGORIES.map(slugForCategory);
+  it('keeps an exact category slug', () => {
+    expect(isValidClusterSlug('health-body', cats)).toBe(true);
+  });
+  it('KEEPS a valid sub-slug (landmine: must not be deleted)', () => {
+    expect(isValidClusterSlug('health-body/running', cats)).toBe(true);
+  });
+  it('DELETES a true orphan (old concept-hash slug)', () => {
+    expect(isValidClusterSlug('running-a1b2c3', cats)).toBe(false);
+  });
+  it('DELETES a sub-slug whose parent is not a real category', () => {
+    expect(isValidClusterSlug('bogus-parent/running', cats)).toBe(false);
   });
 });
 

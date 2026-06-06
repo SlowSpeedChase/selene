@@ -12,6 +12,25 @@ export function slugForCategory(category: string): string {
   return category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+/** Namespaced slug for a sub-cluster, e.g. "health-body/running". */
+export function subSlug(category: string, sub: string): string {
+  return `${slugForCategory(category)}/${slugForCategory(sub)}`;
+}
+
+/**
+ * True if a topic_clusters slug is legitimate: either one of the 8 category slugs,
+ * or a sub-slug `<categorySlug>/<sub>` whose prefix is a real category slug.
+ * Used by synthesize-topics orphan cleanup. NOTE: slugForCategory maps any
+ * non-alphanumeric run to '-', so a sub-name can never introduce a stray '/'.
+ */
+export function isValidClusterSlug(slug: string, categorySlugs: string[]): boolean {
+  const set = new Set(categorySlugs);
+  if (set.has(slug)) return true;
+  const slash = slug.indexOf('/');
+  if (slash === -1) return false;
+  return set.has(slug.slice(0, slash));
+}
+
 export function parseCrossRefs(json: string | null): string[] {
   if (!json) return [];
   try {
