@@ -92,14 +92,13 @@ function updateAppleNote(htmlBody: string): void {
   execSync(script, { timeout: 15000, stdio: 'pipe' });
 }
 
-export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: string }> {
-  log.info({ env: config.env }, 'Starting send-digest');
-
-  // In test mode, write to file instead of posting to Apple Notes
-  if (config.isTestEnv) {
-    return sendDigestToFile();
-  }
-
+/**
+ * Load today's digest (falling back to yesterday's), returning the trimmed
+ * message and synthesis sections. Returns null on any skip condition — when the
+ * digest file is missing or the message is empty — after logging the same
+ * message the inline guards used to log. Callers branch only on delivery.
+ */
+function loadTodaysDigest(): { message: string; synthesis: string } | null {
   // Look for today's digest, fall back to yesterday's
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -111,17 +110,33 @@ export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: str
 
   if (!existsSync(digestPath)) {
     log.info('No digest file found, skipping');
-    return { sent: false };
+    return null;
   }
 
   const message = readFileSync(digestPath, 'utf-8').trim();
   if (!message) {
     log.info('Empty digest, skipping');
+    return null;
+  }
+
+  const synthesis = buildSynthesisSections(db);
+  return { message, synthesis };
+}
+
+export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: string }> {
+  log.info({ env: config.env }, 'Starting send-digest');
+
+  // In test mode, write to file instead of posting to Apple Notes
+  if (config.isTestEnv) {
+    return sendDigestToFile();
+  }
+
+  const loaded = loadTodaysDigest();
+  if (!loaded) {
     return { sent: false };
   }
 
-  const synthesisSections = buildSynthesisSections(db);
-  const fullMessage = message + synthesisSections;
+  const fullMessage = loaded.message + loaded.synthesis;
 
   let anySent = false;
 
@@ -160,34 +175,18 @@ export async function sendDigest(): Promise<{ sent: boolean; writtenToFile?: str
 async function sendDigestToFile(): Promise<{ sent: boolean; writtenToFile?: string }> {
   log.info('Test mode: writing digest to file instead of Apple Notes');
 
-  // Look for today's digest, fall back to yesterday's
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-  let digestPath = join(config.digestsPath, `${today}-digest.txt`);
-  if (!existsSync(digestPath)) {
-    digestPath = join(config.digestsPath, `${yesterday}-digest.txt`);
-  }
-
-  if (!existsSync(digestPath)) {
-    log.info('No digest file found, skipping');
+  const loaded = loadTodaysDigest();
+  if (!loaded) {
     return { sent: false };
   }
-
-  const message = readFileSync(digestPath, 'utf-8').trim();
-  if (!message) {
-    log.info('Empty digest, skipping');
-    return { sent: false };
-  }
-
-  const synthesisSections = buildSynthesisSections(db);
 
   // Write to sent-digests subdirectory
+  const today = new Date().toISOString().split('T')[0];
   const sentDir = join(config.digestsPath, 'sent');
   mkdirSync(sentDir, { recursive: true });
 
   const sentPath = join(sentDir, `${today}-sent.txt`);
-  const fullMessage = `🌅 Selene Daily Digest\n\n${message}${synthesisSections}`;
+  const fullMessage = `🌅 Selene Daily Digest\n\n${loaded.message}${loaded.synthesis}`;
   writeFileSync(sentPath, fullMessage);
 
   log.info({ path: sentPath }, 'Digest written to file (test mode)');
