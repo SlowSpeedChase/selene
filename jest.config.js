@@ -46,4 +46,11 @@ module.exports = {
   moduleNameMapper: {
     '@lancedb/lancedb': '<rootDir>/src/__mocks__/lancedb.ts',
   },
+  // Child git worktrees under .claude/worktrees/ carry their own copies of
+  // package.json + src/__mocks__/lancedb.ts, which collide in jest's haste map and
+  // corrupt module resolution for the REAL root tests (e.g. rebuild-core's
+  // absent-column tolerance throws instead of being caught). The parent repo's jest
+  // must never scan sibling worktrees. (Do NOT delete the worktrees — they're locked
+  // on live feature branches.)
+  modulePathIgnorePatterns: ['<rootDir>/.claude/'],
 };
