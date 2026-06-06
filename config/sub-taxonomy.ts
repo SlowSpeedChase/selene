@@ -1,4 +1,4 @@
-import { CATEGORIES, type Category } from '../src/lib/prompts';
+import type { Category } from '../src/lib/prompts';
 
 /**
  * Seed sub-taxonomy: each of the 8 fixed categories → its closed-set sub-categories.
@@ -19,11 +19,6 @@ export const SUB_TAXONOMY: Record<Category, string[]> = {
   'Politics & Society':     ['Policy', 'Economics', 'Culture', 'Environment'],
   'Daily Systems':          ['Planning', 'Errands', 'Routines', 'Tools'],
 };
-
-// Compile-time guard: every category has a key (TS errors if CATEGORIES drifts).
-const _exhaustive: Record<Category, string[]> = SUB_TAXONOMY;
-void _exhaustive;
-void CATEGORIES;
 
 export function subCategoriesFor(category: string): string[] {
   return (SUB_TAXONOMY as Record<string, string[]>)[category] ?? [];
