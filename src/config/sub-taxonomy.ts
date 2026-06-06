@@ -1,4 +1,4 @@
-import type { Category } from '../src/lib/prompts';
+import type { Category } from '../lib/prompts';
 
 /**
  * Seed sub-taxonomy: each of the 8 fixed categories → its closed-set sub-categories.

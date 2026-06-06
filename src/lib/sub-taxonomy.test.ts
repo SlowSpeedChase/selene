@@ -1,5 +1,5 @@
 import { CATEGORIES } from '../lib/prompts';
-import { SUB_TAXONOMY, subCategoriesFor } from '../../config/sub-taxonomy';
+import { SUB_TAXONOMY, subCategoriesFor } from '../config/sub-taxonomy';
 
 describe('sub-taxonomy seed config', () => {
   it('has an entry for every one of the 8 categories', () => {
