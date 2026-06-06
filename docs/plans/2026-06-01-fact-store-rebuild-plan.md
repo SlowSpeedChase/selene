@@ -509,10 +509,11 @@ Print a `PASS/FAIL` tally like `verify-cutover.sh`. Keep every assertion content
 
 ## Task 10: Full verification gate
 
-**Step 1:** `npx tsc --noEmit` → clean.
-**Step 2:** `npx jest` → full suite green (includes new `rebuild-core.*` tests).
-**Step 3:** `DRY_RUN=1 ./scripts/verify-cutover.sh` → **45/45** (proves the `prod-agents.sh` extraction didn't regress cutover).
-**Step 4:** `./scripts/verify-rebuild.sh` → all scenarios PASS.
+**Step 1:** `npx tsc --noEmit` → clean. ✅ (2026-06-06)
+**Step 2:** `npx jest` → full suite green (includes new `rebuild-core.*` tests). ✅ 30/30 suites, 191/191 tests. Required a test-infra fix first: `modulePathIgnorePatterns: ['<rootDir>/.claude/']` so the locked `.claude/worktrees/` copies of `package.json` + `lancedb` mock stop colliding in jest's haste map and corrupting ROOT module resolution.
+**Step 3:** `DRY_RUN=1 ./scripts/verify-cutover.sh` → **DARK (fixture-rot), not run as a gate.** The harness `.backup`s the real dev DB to seed its /tmp copy, but the dev DB has since migrated to the two-file layout, so the snapshot's `raw_notes` is a temp view (absent), not a physical table — every migration/rollback scenario short-circuits at "already migrated". This is **environmental and pre-existing**, orthogonal to the rebuild work. The thing it was meant to prove — that the `prod-agents.sh` extraction didn't regress cutover — was instead proven **directly and more strongly**: the 5 cutover-reachable functions (`prod_agents`, `pause_watcher`, `resume_watcher`, `stop_agents`, `restart_agents`) are **byte-identical** to their pre-extraction inlined bodies in `origin/main:scripts/cutover-prod.sh` (verified by per-function `diff`). Byte-equality is behavioral equality, so the extraction is a proven pure move. The two *new* functions (`stop_derivation_agents`/`restart_derivation_agents`) are trivial server-excluding mirrors, consumed only by the operator-run `rebuild-prod.sh` (never auto-deployed).
+  - **FOLLOW-UP (tracked):** relight `verify-cutover.sh` by seeding from a freshly-created **un-migrated single-file** DB (e.g. `create-dev-db.sh` into /tmp + a few synthetic `raw_notes` rows) instead of `.backup`-ing the now-migrated dev DB. This restores the gate for *future* cutover changes; it is test-fixture repair, not blocking the rebuild merge.
+**Step 4:** `./scripts/verify-rebuild.sh` → all scenarios PASS. ✅ 20/20 checks across 5 scenarios (happy-path, coverage-fail, drift-fail, crash-resume, facts-untouched).
 **Step 5:** Update `docs/plans/INDEX.md`: move this design from **Ready** toward **In Progress/Done** per the GitOps stage reached. Commit.
 
 ---
