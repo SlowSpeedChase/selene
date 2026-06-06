@@ -13,28 +13,14 @@
  * singleton to throwaway temp files (SELENE_DB_PATH / SELENE_FACTS_DB_PATH) BEFORE importing
  * it, so the import is harmless; the assertions drive the real helpers against `two.db`.
  */
-import { tmpdir } from 'os';
-import { mkdtempSync, rmSync } from 'fs';
-import { join } from 'path';
+import { rmSync } from 'fs';
+import { makeTwoFileTestDb, redirectSeleneSingleton } from './test-two-file-db';
 
-// Redirect the db.ts singleton to throwaway files before it is imported. Force production env
-// so the import skips the test/dev `_selene_metadata` verification (which would throw on a
-// fresh throwaway DB). The singleton is never used for assertions — we inject `two.db`.
-//
-// Jest shares process.env across files in a worker without restoring it, so we snapshot the
-// three vars and restore them in afterAll — otherwise a later file in the same worker would
-// re-evaluate config.ts against our leaked env (order-dependent flakiness).
-const ENV_KEYS = ['SELENE_ENV', 'SELENE_DB_PATH', 'SELENE_FACTS_DB_PATH'] as const;
-const savedEnv: Record<string, string | undefined> = {};
-for (const k of ENV_KEYS) savedEnv[k] = process.env[k];
-
-process.env.SELENE_ENV = 'production';
-const singletonDir = mkdtempSync(join(tmpdir(), 'selene-pending-singleton-'));
-process.env.SELENE_DB_PATH = join(singletonDir, 'selene.db');
-process.env.SELENE_FACTS_DB_PATH = join(singletonDir, 'facts.db');
+// Redirect the db.ts singleton to throwaway files BEFORE it is imported (db.ts opens a real
+// connection on import). The singleton is never used for assertions — we inject `two.db`.
+const { restore: restoreSingletonEnv } = redirectSeleneSingleton('selene-pending-singleton-');
 
 import { insertNote, markProcessed, getPendingNotes } from './db';
-import { makeTwoFileTestDb } from './test-two-file-db';
 
 describe('getPendingNotes → derivation-absence through the raw_notes view (fact-store)', () => {
   let conn: ReturnType<typeof makeTwoFileTestDb>['db'];
@@ -52,12 +38,9 @@ describe('getPendingNotes → derivation-absence through the raw_notes view (fac
   });
 
   afterAll(() => {
-    // Restore env so this file can't pollute sibling test files in the same Jest worker.
-    for (const k of ENV_KEYS) {
-      if (savedEnv[k] === undefined) delete process.env[k];
-      else process.env[k] = savedEnv[k];
-    }
-    rmSync(singletonDir, { recursive: true, force: true });
+    // Restore env (+ remove the singleton temp dir) so this file can't pollute sibling test
+    // files in the same Jest worker.
+    restoreSingletonEnv();
   });
 
   it('treats fresh captures as pending (no note_state row), drops a note once markProcessed writes its derivation, and honors ORDER BY created_at ASC + LIMIT', () => {

@@ -13,25 +13,17 @@ import { tmpdir } from 'os';
 import { mkdtempSync } from 'fs';
 import { join } from 'path';
 import Database from 'better-sqlite3';
+import { makeTwoFileTestDb, redirectSeleneSingleton } from './test-two-file-db';
 
-const ENV_KEYS = ['SELENE_ENV', 'SELENE_DB_PATH', 'SELENE_FACTS_DB_PATH'] as const;
-const savedEnv: Record<string, string | undefined> = {};
-for (const k of ENV_KEYS) savedEnv[k] = process.env[k];
-
-process.env.SELENE_ENV = 'production';
-const singletonDir = mkdtempSync(join(tmpdir(), 'selene-legacycols-singleton-'));
-process.env.SELENE_DB_PATH = join(singletonDir, 'selene.db');
-process.env.SELENE_FACTS_DB_PATH = join(singletonDir, 'facts.db');
+// Redirect the db.ts singleton to throwaway files BEFORE it is imported (db.ts opens a real
+// connection on import); production env so the import skips the dev/test _selene_metadata check.
+const { restore: restoreSingletonEnv } = redirectSeleneSingleton('selene-legacycols-singleton-');
 
 import { ensureLegacyRawNotesColumns } from './db';
-import { makeTwoFileTestDb } from './test-two-file-db';
 
 describe('ensureLegacyRawNotesColumns', () => {
   afterAll(() => {
-    for (const k of ENV_KEYS) {
-      if (savedEnv[k] === undefined) delete process.env[k];
-      else process.env[k] = savedEnv[k];
-    }
+    restoreSingletonEnv();
   });
 
   it('adds source_note_id + inbox_status to a legacy PHYSICAL raw_notes table that lacks them', () => {
