@@ -1,11 +1,11 @@
 // @map purpose: Deliver the daily digest (plus synthesis sections) to the "Selene Daily" Apple Note and TRMNL
 // @map reads: digest .txt file, topic_clusters
 // @map writes: Apple Notes, TRMNL
-import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { createWorkflowLogger, config, db } from '../lib';
 import { buildSynthesisSections } from '../lib/synthesis-digest';
+import { upsertAppleNote } from '../lib/apple-notes';
 
 const log = createWorkflowLogger('send-digest');
 
@@ -71,25 +71,7 @@ async function pushToTrmnl(digestText: string): Promise<void> {
 }
 
 function updateAppleNote(htmlBody: string): void {
-  // Escape for AppleScript: backslashes, double quotes, single quotes, newlines
-  const escaped = htmlBody
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/'/g, "'\"'\"'")
-    .replace(/\n/g, '\\n');
-
-  const script = `osascript -e 'tell application "Notes"' \
-    -e 'set noteName to "${DIGEST_NOTE_NAME}"' \
-    -e 'set noteBody to "${escaped}"' \
-    -e 'try' \
-    -e 'set targetNote to first note whose name is noteName' \
-    -e 'set body of targetNote to noteBody' \
-    -e 'on error' \
-    -e 'make new note with properties {name:noteName, body:noteBody}' \
-    -e 'end try' \
-    -e 'end tell'`;
-
-  execSync(script, { timeout: 15000, stdio: 'pipe' });
+  upsertAppleNote(DIGEST_NOTE_NAME, htmlBody, { mode: 'replace' });
 }
 
 /**
