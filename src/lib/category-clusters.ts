@@ -109,3 +109,50 @@ export function extractCategoryFields(response: string): {
     return { category: null, crossRefs: [] };
   }
 }
+
+/** Build the closed-set sub-category prompt for one note over its assigned categories. */
+export function buildSubCategoryPrompt(
+  title: string,
+  content: string,
+  allowedByCategory: Record<string, string[]>,
+): string {
+  const lines = Object.entries(allowedByCategory)
+    .map(([cat, subs]) => `- ${cat}: ${[...subs, 'none'].join(' | ')}`)
+    .join('\n');
+  return `For each category below, pick the ONE best-fitting sub-category from its list, or "none".
+Choose ONLY from the given options — do not invent sub-categories.
+
+Title: ${title}
+Note: ${content}
+
+Categories and their allowed sub-categories:
+${lines}
+
+Reply with JSON mapping each category to one chosen value, e.g. {"Health & Body":"Running"}:`;
+}
+
+/**
+ * Parse the sub-category LLM response. Closed-set: a value is kept only if it
+ * exactly matches an entry in that category's allowed list. "none"/invalid/unknown
+ * categories are dropped. Returns a category→sub map (omits unassigned categories).
+ */
+export function parseSubCategories(
+  response: string,
+  allowedByCategory: Record<string, string[]>,
+): Record<string, string> {
+  const match = response.match(/\{[\s\S]*\}/);
+  if (!match) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(match[0]);
+  } catch {
+    return {};
+  }
+  if (parsed === null || typeof parsed !== 'object') return {};
+  const out: Record<string, string> = {};
+  for (const [cat, allowed] of Object.entries(allowedByCategory)) {
+    const v = (parsed as Record<string, unknown>)[cat];
+    if (typeof v === 'string' && allowed.includes(v)) out[cat] = v;
+  }
+  return out;
+}

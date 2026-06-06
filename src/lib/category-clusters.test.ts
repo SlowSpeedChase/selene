@@ -7,6 +7,8 @@ import {
   normalizeToValidCategories,
   subSlug,
   isValidClusterSlug,
+  parseSubCategories,
+  buildSubCategoryPrompt,
 } from './category-clusters';
 import { CATEGORIES } from './prompts';
 
@@ -134,5 +136,36 @@ describe('extractCategoryFields', () => {
   it('returns null category when missing/invalid and [] cross-refs on parse failure', () => {
     expect(extractCategoryFields('no json here')).toEqual({ category: null, crossRefs: [] });
     expect(extractCategoryFields('{"category":"Invalid"}')).toEqual({ category: null, crossRefs: [] });
+  });
+});
+
+describe('parseSubCategories (closed-set)', () => {
+  const allowed = { 'Health & Body': ['Running', 'Sleep'], 'Projects & Tech': ['Selene'] };
+
+  it('keeps only values in that category seed list', () => {
+    const r = parseSubCategories('{"Health & Body":"Running","Projects & Tech":"Nope"}', allowed);
+    expect(r).toEqual({ 'Health & Body': 'Running' });
+  });
+  it('drops "none"', () => {
+    expect(parseSubCategories('{"Health & Body":"none"}', allowed)).toEqual({});
+  });
+  it('ignores categories not in the allowed map', () => {
+    expect(parseSubCategories('{"Career & Work":"Job"}', allowed)).toEqual({});
+  });
+  it('returns {} on malformed JSON', () => {
+    expect(parseSubCategories('not json', allowed)).toEqual({});
+  });
+  it('finds JSON embedded in chatty output', () => {
+    expect(parseSubCategories('Sure! {"Health & Body":"Sleep"} ok', allowed))
+      .toEqual({ 'Health & Body': 'Sleep' });
+  });
+});
+
+describe('buildSubCategoryPrompt', () => {
+  it('lists each assigned category with its seed options', () => {
+    const p = buildSubCategoryPrompt('T', 'C', { 'Health & Body': ['Running', 'Sleep'] });
+    expect(p).toContain('Health & Body');
+    expect(p).toContain('Running');
+    expect(p).toContain('none');
   });
 });
