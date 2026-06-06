@@ -34,6 +34,7 @@ module.exports = {
     '**/src/lib/system-map.test.ts',
     '**/src/lib/synthesis-digest.test.ts',
     '**/src/lib/view-mode-readers.test.ts',
+    '**/src/workflows/synthesize-topics.subcats.db.test.ts',
     '**/src/routes/notes.test.ts',
     '**/src/routes/pkm.test.ts',
   ],
