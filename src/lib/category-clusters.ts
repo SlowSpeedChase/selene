@@ -110,6 +110,39 @@ export function extractCategoryFields(response: string): {
   }
 }
 
+export interface SubCategorizableNote extends CategorizableNote {
+  subCategories: Record<string, string>;
+}
+
+/**
+ * For each note, for each VALID category it belongs to, place it under the sub-cat
+ * assigned for that category (if any). Returns category → (subName → noteIds[]).
+ * A note's sub-cat for a category it isn't actually in is ignored (guards bad LLM maps).
+ */
+export function groupNotesBySubCategory(
+  notes: SubCategorizableNote[],
+): Map<string, Map<string, number[]>> {
+  const groups = new Map<string, Map<string, Set<number>>>();
+  for (const note of notes) {
+    const cats = validCategoriesFor(note);
+    for (const cat of cats) {
+      const sub = note.subCategories[cat];
+      if (!sub) continue;
+      if (!groups.has(cat)) groups.set(cat, new Map());
+      const subMap = groups.get(cat)!;
+      if (!subMap.has(sub)) subMap.set(sub, new Set());
+      subMap.get(sub)!.add(note.noteId);
+    }
+  }
+  const out = new Map<string, Map<string, number[]>>();
+  for (const [cat, subMap] of groups) {
+    const m = new Map<string, number[]>();
+    for (const [sub, set] of subMap) m.set(sub, [...set]);
+    out.set(cat, m);
+  }
+  return out;
+}
+
 /** Build the closed-set sub-category prompt for one note over its assigned categories. */
 export function buildSubCategoryPrompt(
   title: string,

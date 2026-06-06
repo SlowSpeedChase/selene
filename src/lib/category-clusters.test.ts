@@ -9,6 +9,7 @@ import {
   isValidClusterSlug,
   parseSubCategories,
   buildSubCategoryPrompt,
+  groupNotesBySubCategory,
 } from './category-clusters';
 import { CATEGORIES } from './prompts';
 
@@ -167,5 +168,32 @@ describe('buildSubCategoryPrompt', () => {
     expect(p).toContain('Health & Body');
     expect(p).toContain('Running');
     expect(p).toContain('none');
+  });
+});
+
+describe('groupNotesBySubCategory', () => {
+  it('groups a note under a sub-cat for EACH parent it belongs to', () => {
+    const notes = [{
+      noteId: 1,
+      category: 'Health & Body',
+      crossRefs: ['Projects & Tech'],
+      subCategories: { 'Health & Body': 'Running', 'Projects & Tech': 'Side Projects' },
+    }];
+    const g = groupNotesBySubCategory(notes);
+    expect(g.get('Health & Body')?.get('Running')).toEqual([1]);
+    expect(g.get('Projects & Tech')?.get('Side Projects')).toEqual([1]);
+  });
+
+  it('omits a category whose sub-cat is unassigned', () => {
+    const notes = [{ noteId: 2, category: 'Health & Body', crossRefs: [], subCategories: {} }];
+    const g = groupNotesBySubCategory(notes);
+    expect(g.get('Health & Body')?.size ?? 0).toBe(0);
+  });
+
+  it('ignores a sub-cat for a category the note is NOT actually in', () => {
+    const notes = [{ noteId: 3, category: 'Health & Body', crossRefs: [],
+      subCategories: { 'Career & Work': 'Job' } }];
+    const g = groupNotesBySubCategory(notes);
+    expect(g.get('Career & Work')?.size ?? 0).toBe(0);
   });
 });
