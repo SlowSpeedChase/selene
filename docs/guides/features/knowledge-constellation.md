@@ -20,6 +20,8 @@ The hourly export workflow (`src/workflows/export-obsidian.ts`, run by the `com.
 
 The clusters come from the nightly `synthesize-topics` agent (2am), which builds one cluster per content category from each note's `category`/`cross_ref_categories`. So the constellation reflects the same 8 content categories you see in the Notes browse.
 
+**A third navigable level — sub-clusters.** Once `synthesize-topics` materializes sub-clusters (the sub-categories feature — facets like *Running* under *Health & Body*), the constellation gains an extra hop: **category cluster → sub-cluster → note**. Each sub-cluster `topic_clusters` row carries a `parent_id` pointing at its category cluster, so `loadClusters`' LEFT JOIN resolves that parent and `buildClusterNote` writes a `parent:: [[<category>]]` line on the sub-cluster's index note (`Constellation/<sub-cluster>.md`, named from the `health-body/running`-style namespaced slug). A note linked into a sub-cluster carries `parent::` edges to **both** its category cluster and its sub-cluster (multi-membership preserved), so the deeper level is additive, not a strict single chain. This required no constellation code change — the `parent::` emission was already future-proofed for parented clusters — so the extra level appears automatically as soon as sub-clusters exist.
+
 The pure logic lives in `src/lib/constellation.ts` (unit-tested in `constellation.test.ts` / `constellation.db.test.ts`); `export-obsidian.ts` just calls it.
 
 ## Configure & customize
@@ -43,8 +45,9 @@ The pure logic lives in `src/lib/constellation.ts` (unit-tested in `constellatio
 - Design doc: `docs/plans/2026-05-29-knowledge-constellation-design.md`
 - Phase A plan: `docs/plans/2026-05-29-knowledge-constellation-phase-a-plan.md`
 - Research: `docs/plans/2026-05-29-excalidraw-excalibrain-research.md`
+- Sub-categories (the category → sub-cluster → note level): `docs/plans/2026-05-31-sub-categories-design.md`, plan `docs/plans/2026-06-06-sub-categories-plan.md`
 - Connected guides: `docs/guides/features/synthesis-layer.md` (where the clusters come from)
 - **Phase B (not yet built):** note↔note `friend::` edges, gated on the empty `note_connections` table.
 
 ---
-*Last updated: 2026-05-30*
+*Last updated: 2026-06-06*
