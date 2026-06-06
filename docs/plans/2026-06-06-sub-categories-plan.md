@@ -118,7 +118,7 @@ export function subCategoriesFor(category: string): string[] {
 }
 ```
 
-> NOTE: the sub-category *names* above are a first cut. Confirm them with the user during execution review — the taxonomy content is a user-curation decision, the mechanism is what this plan delivers.
+> **v0 taxonomy — locked with the user 2026-06-06.** These are an intentional starting point, NOT a final answer: the Task 8 `--report` instrument measures per-category `none%` against the real corpus, and the user tightens the lists by editing this one file + re-running the backfill. The mechanism is the deliverable; the taxonomy self-corrects via the measure-and-edit loop. Do not block on "are these the perfect names" — ship v0, measure, iterate.
 
 **Step 4 — Run, expect PASS:** `npx jest sub-taxonomy.test.ts`
 
@@ -629,23 +629,49 @@ git commit -m "test(sub-cats): constellation emits parent:: for sub-clusters"
 
 ---
 
-### Task 8: Backfill existing corpus
+### Task 8: Backfill + coverage report instrument
 
 **Files:**
 - Create: `scripts/backfill-sub-categories.ts`
-- Test: `src/lib/backfill-sub-categories.test.ts` (test the pure selection/assembly, not the live model)
+- Test: `src/lib/backfill-sub-categories.test.ts` (test the pure selection/assembly + report aggregation, not the live model)
 
-Pattern: mirror `scripts/backfill-categories.ts`. For each `processed_notes` row that has ≥1 valid category but `sub_categories IS NULL`, run the same `buildSubCategoryPrompt`/`parseSubCategories` path (reuse `buildAllowedFor` from process-llm) and UPDATE `sub_categories`. Respect `test_run` isolation; log progress; idempotent (skip already-filled rows). `--dry-run` flag.
+Pattern: mirror `scripts/backfill-categories.ts`. For each `processed_notes` row that has ≥1 valid category but `sub_categories IS NULL`, run the same `buildSubCategoryPrompt`/`parseSubCategories` path (reuse `buildAllowedFor` from process-llm) and UPDATE `sub_categories`. Respect `test_run` isolation; log progress; idempotent (skip already-filled rows).
 
-**Step 1 — Test** the row-selection predicate (pure): "selects categorized notes with null sub_categories, skips filled ones, skips uncategorized."
+**Two modes:**
+- `--dry-run` — classify but do not write; useful to preview.
+- `--report` — classify (or read existing `sub_categories`) and print a **per-category histogram of counts only** (each sub-category's note count + a `none` count + `none%`). NO note text in output — this is the guard-safe misfit measure the operator runs against prod. This is the "settle → measure → iterate" dial.
+
+Extract a pure aggregator so the histogram is unit-testable without a model:
+```typescript
+// returns { [category]: { [sub|'none']: count } } from an array of {category-set, sub-map}
+export function aggregateCoverage(
+  rows: Array<{ categories: string[]; subCategories: Record<string, string> }>,
+): Record<string, Record<string, number>>;
+```
+
+**Step 1 — Test** (pure): (a) row-selection predicate — "selects categorized notes with null sub_categories, skips filled ones, skips uncategorized"; (b) `aggregateCoverage` — a note categorized Health with sub Running counts 1 under Health/Running; a Health note with no sub counts 1 under Health/none.
 **Step 2 — FAIL → Step 3 — implement → Step 4 — PASS.**
-**Step 5 — Commit:** `feat(sub-cats): one-shot backfill for existing corpus`
+**Step 5 — Commit:** `feat(sub-cats): backfill + content-free coverage report`
 
-> Claude runs this only against the **dev** DB to verify. The operator runs it against prod (content-free confirmation via `selene-inspect`).
+> Claude runs this only against the **dev** DB to verify. The operator runs `--report` against prod (counts only — guard-safe).
 
 ---
 
-### Task 9: Rebuild-safety regression
+### Task 9: Guard-safe sub-category coverage in inspect.ts
+
+**Files:**
+- Modify: `src/lib/inspect.ts` (+ its `CoverageReport` surface)
+- Test: `src/lib/inspect.test.ts` (extend)
+
+Add `subCategoryCoverage(db)` returning **counts only** (parent slug → sub-slug → count, plus per-category `none` count), wired into the existing `selene-inspect coverage` output. This gives the operator a standing, content-free prod read of taxonomy fit without running the LLM backfill — it reads whatever `sub_categories` already hold. Honor the file's invariant (line 4): "return ONLY schema, counts, and coverage numbers — never content."
+
+**Step 1 — Test:** seed `processed_notes` with `category` + `sub_categories` JSON; assert the report yields the right counts and a `none` tally; assert no note text appears in the output object.
+**Steps 2-4** as usual.
+**Step 5 — Commit:** `feat(sub-cats): content-free sub-category coverage in selene-inspect`
+
+---
+
+### Task 10: Rebuild-safety regression
 
 **Files:**
 - Test: extend `src/lib/rebuild-core.db.test.ts` (or a new `*.db.test.ts`)
@@ -656,7 +682,7 @@ Pattern: mirror `scripts/backfill-categories.ts`. For each `processed_notes` row
 
 ---
 
-### Task 10: Wrap-up (verification + review + docs)
+### Task 11: Wrap-up (verification + review + docs)
 
 **Step 1 — Full gate** (from worktree root):
 ```bash
@@ -692,7 +718,8 @@ SELENE_ENV=development npx ts-node scripts/backfill-sub-categories.ts --dry-run
 - [ ] `synthesize-topics.ts` creates sub-cluster rows with `parent_id` + note→sub-cluster links, preserving category membership. (Task 6)
 - [ ] Orphan-cleanup keeps valid sub-slugs and still deletes true orphans (regression-tested). (Tasks 2, 6)
 - [ ] Constellation export emits `parent::` for sub-clusters with no new export code. (Task 7)
-- [ ] A `rebuild` regenerates Phase 1 sub-categories deterministically (no human data lost). (Task 9)
+- [ ] A `rebuild` regenerates Phase 1 sub-categories deterministically (no human data lost). (Task 10)
+- [ ] Misfit count is measurable per-category, content-free (operator-runnable on prod). (Tasks 8, 9)
 - [ ] ADHD check: finer browsing without manual filing; deeper visual constellation; structure lives in the map.
 - [ ] Scope: Phase 1 < 1 week.
 ```
