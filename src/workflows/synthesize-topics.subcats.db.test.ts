@@ -21,7 +21,12 @@ jest.mock('../lib', () => {
 
 import { initSynthesisSchema } from '../lib/synthesis-db';
 import { materializeSubClusters, removeOrphanClusters } from './synthesize-topics';
-import { groupNotesBySubCategory, slugForCategory, subSlug } from '../lib/category-clusters';
+import {
+  groupNotesBySubCategory,
+  slugForCategory,
+  subSlug,
+  type SubCategorizableNote,
+} from '../lib/category-clusters';
 import { CATEGORIES } from '../lib/prompts';
 
 const NOW = '2026-06-06T00:00:00.000Z';
@@ -152,6 +157,96 @@ describe('materializeSubClusters', () => {
 
     expect(linkCount(db, run!.id)).toBe(1);
     expect(linkCount(db, selene!.id)).toBe(1);
+  });
+});
+
+describe('rebuild-safety: wipe + regenerate sub-clusters', () => {
+  let db: DB;
+  beforeEach(() => {
+    db = new Database(':memory:');
+    initSynthesisSchema(db);
+  });
+  afterEach(() => db.close());
+
+  type SubSnapshot = { slug: string; name: string; parentSlug: string | null; noteIds: number[] };
+
+  // Snapshot the DERIVED sub-cluster layer by stable keys (slug, name, parent-by-slug,
+  // sorted linked note ids). Deliberately omits the cluster `id` UUID — a rebuild
+  // re-derives fresh UUIDs, so id equality is NOT part of the safety property.
+  function snapshotSubClusters(database: DB): SubSnapshot[] {
+    const rows = database
+      .prepare("SELECT id, slug, name, parent_id FROM topic_clusters WHERE parent_id IS NOT NULL")
+      .all() as { id: string; slug: string; name: string; parent_id: string }[];
+
+    return rows
+      .map((row) => {
+        const parent = database
+          .prepare('SELECT slug FROM topic_clusters WHERE id = ?')
+          .get(row.parent_id) as { slug: string } | undefined;
+        const noteIds = (
+          database
+            .prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ? ORDER BY note_id')
+            .all(row.id) as { note_id: number }[]
+        ).map((r) => r.note_id);
+        return { slug: row.slug, name: row.name, parentSlug: parent ? parent.slug : null, noteIds };
+      })
+      .sort((a, b) => a.slug.localeCompare(b.slug));
+  }
+
+  // Re-derives the parent category clusters (a real rebuild re-creates these via the
+  // category loop). The parent UUIDs intentionally differ from the pre-wipe ones to
+  // prove the snapshot comparison does not depend on raw parent_id values.
+  function seedParentCategories(database: DB, suffix: string): void {
+    seedCategoryCluster(database, `parent-hb-${suffix}`, 'Health & Body', 'health-body', 'synthesis');
+    seedCategoryCluster(database, `parent-pt-${suffix}`, 'Projects & Tech', 'projects-tech', 'synthesis');
+  }
+
+  it('a rebuild wipe + regenerate reproduces the same sub-clusters (faithful cycle)', () => {
+    // ---- Derived state BEFORE the rebuild ----
+    seedParentCategories(db, 'v1');
+
+    // note 1 -> Health & Body/Running
+    // note 2 -> Health & Body/Running + Projects & Tech/Selene (cross-parent multi-membership)
+    // note 3 -> no sub assigned anywhere (a "misfit" at the sub level)
+    const notes: SubCategorizableNote[] = [
+      { noteId: 1, category: 'Health & Body', crossRefs: [], subCategories: { 'Health & Body': 'Running' } },
+      {
+        noteId: 2,
+        category: 'Health & Body',
+        crossRefs: ['Projects & Tech'],
+        subCategories: { 'Health & Body': 'Running', 'Projects & Tech': 'Selene' },
+      },
+      { noteId: 3, category: 'Health & Body', crossRefs: [], subCategories: {} },
+    ];
+    const subGroups = groupNotesBySubCategory(notes);
+
+    materializeSubClusters(db, subGroups, NOW);
+
+    const before = snapshotSubClusters(db);
+
+    // Sanity: the expected subs exist with the right parents + links; the misfit note made none.
+    expect(before).toEqual([
+      { slug: subSlug('Health & Body', 'Running'), name: 'Running', parentSlug: 'health-body', noteIds: [1, 2] },
+      { slug: subSlug('Projects & Tech', 'Selene'), name: 'Selene', parentSlug: 'projects-tech', noteIds: [2] },
+    ]);
+    // Note 3 (subCategories {}) produced no sub-cluster row anywhere.
+    expect(before.some((s) => s.noteIds.includes(3))).toBe(false);
+
+    // ---- Simulate the rebuild wipe of the DISPOSABLE derived layer ----
+    db.exec('DELETE FROM topic_note_links; DELETE FROM topic_clusters;');
+    expect(
+      (db.prepare('SELECT COUNT(*) AS c FROM topic_clusters').get() as { c: number }).c,
+    ).toBe(0);
+
+    // ---- Re-derive from the SAME (unchanged) derived inputs ----
+    // Fresh parent UUIDs (suffix v2) to prove the comparison is parent-by-slug, not by id.
+    seedParentCategories(db, 'v2');
+    materializeSubClusters(db, subGroups, NOW);
+
+    const after = snapshotSubClusters(db);
+
+    // ---- Faithful regeneration: identical in every meaningful dimension ----
+    expect(after).toEqual(before);
   });
 });
 
