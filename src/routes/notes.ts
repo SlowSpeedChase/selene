@@ -109,13 +109,16 @@ export function buildNotesDb(db: DatabaseType) {
 export async function notesRoutes(fastify: FastifyInstance): Promise<void> {
   const q = buildNotesDb(prodDb);
 
-  fastify.get('/api/clusters', { preHandler: requireAuth }, async () => {
+  // Every route in this (encapsulated) plugin requires auth — apply once via a plugin hook
+  // instead of repeating `{ preHandler: requireAuth }` per route.
+  fastify.addHook('preHandler', requireAuth);
+
+  fastify.get('/api/clusters', async () => {
     return { clusters: q.getClusters() };
   });
 
   fastify.get<{ Params: { id: string } }>(
     '/api/clusters/:id/notes',
-    { preHandler: requireAuth },
     async (request, reply) => {
       const notes = q.getNotesForCluster(request.params.id);
       if (!notes.length) {
@@ -132,7 +135,6 @@ export async function notesRoutes(fastify: FastifyInstance): Promise<void> {
 
   fastify.get<{ Params: { id: string } }>(
     '/api/notes/:id',
-    { preHandler: requireAuth },
     async (request, reply) => {
       const noteId = parseInt(request.params.id, 10);
       if (isNaN(noteId)) {
@@ -150,7 +152,6 @@ export async function notesRoutes(fastify: FastifyInstance): Promise<void> {
 
   fastify.post<{ Params: { id: string }; Body: { text: string } }>(
     '/api/notes/:id/annotations',
-    { preHandler: requireAuth },
     async (request, reply) => {
       const parentId = parseInt(request.params.id, 10);
       if (isNaN(parentId)) {

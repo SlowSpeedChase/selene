@@ -14,6 +14,7 @@
  * `pkm_review_state` table is left untouched as a migration backup.
  */
 import type { Database as DB } from 'better-sqlite3';
+import { baseNoteFilter } from './pkm-queries';
 
 export const REVIEW_WINDOW_DAYS = 7;
 
@@ -55,7 +56,7 @@ export function getDueForReview(db: DB, limit: number): ReviewItem[] {
        FROM raw_notes rn
        LEFT JOIN review_state prs
          ON prs.entity_type = 'note' AND prs.entity_id = CAST(rn.id AS TEXT)
-       WHERE rn.test_run IS NULL AND rn.status = 'processed'
+       WHERE ${baseNoteFilter('rn')}
          AND (prs.last_surfaced_at IS NULL
               OR prs.last_surfaced_at < datetime('now', '-' || ? || ' days'))
        ORDER BY surfaceCount ASC, prs.last_surfaced_at ASC

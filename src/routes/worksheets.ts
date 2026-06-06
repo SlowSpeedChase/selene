@@ -44,20 +44,23 @@ async function findRelatedNotes(text: string, excludeId: number): Promise<Relate
   // Convert L2 distance → 0–1 score. nomic-embed-text produces unit vectors,
   // so L2 ≈ sqrt(2*(1-cosine)). score = max(0, 1 - distance/2) gives intuitive range.
   return similar.map(s => {
-    const contentRow = db.prepare('SELECT content FROM raw_notes WHERE id = ?').get(s.id) as { content: string } | undefined;
-    const dateRow = db.prepare('SELECT created_at FROM raw_notes WHERE id = ?').get(s.id) as { created_at: string } | undefined;
+    const row = db.prepare('SELECT content, created_at FROM raw_notes WHERE id = ?').get(s.id) as { content: string; created_at: string } | undefined;
     return {
       noteId: s.id,
       title: s.title,
-      snippet: contentRow?.content.slice(0, 120).trimEnd() ?? '',
-      date: dateRow?.created_at.slice(0, 10) ?? '',
+      snippet: row?.content.slice(0, 120).trimEnd() ?? '',
+      date: row?.created_at.slice(0, 10) ?? '',
       score: Math.max(0, 1 - s.distance / 2),
     };
   });
 }
 
 export async function worksheetRoutes(fastify: FastifyInstance): Promise<void> {
-  fastify.get('/api/worksheets/today', { preHandler: requireAuth }, async () => {
+  // Every route in this (encapsulated) plugin requires auth — apply once via a plugin hook
+  // instead of repeating `{ preHandler: requireAuth }` per route.
+  fastify.addHook('preHandler', requireAuth);
+
+  fastify.get('/api/worksheets/today', async () => {
     return buildTodayWorksheet(new Date(), { fetchReviewNotes });
   });
 
@@ -66,7 +69,6 @@ export async function worksheetRoutes(fastify: FastifyInstance): Promise<void> {
     Body: WorksheetSubmission & { test_run?: string };
   }>(
     '/api/worksheets/:id/answers',
-    { preHandler: requireAuth },
     async (request, reply) => {
       const body = request.body;
       if (!body || !Array.isArray(body.answers)) {
