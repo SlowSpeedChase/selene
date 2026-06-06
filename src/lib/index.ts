@@ -1,5 +1,4 @@
 export { config } from './config';
-export { normalizeThreadName } from './strings';
 export { logger, createWorkflowLogger } from './logger';
 export {
   db,
@@ -7,16 +6,10 @@ export {
   markProcessed,
   findByContentHash,
   insertNote,
-  getAllNotes,
-  getNoteById,
   searchNotesKeyword,
-  getRecentNotes,
-  getNotesSince,
-  getThreadAssignmentsForNotes,
   updateCalendarEvent,
-  getActiveThreads,
 } from './db';
-export type { RawNote, Thread } from './db';
+export type { RawNote } from './db';
 export { generate, embed, isAvailable } from './ollama';
 export {
   getLanceDb,
