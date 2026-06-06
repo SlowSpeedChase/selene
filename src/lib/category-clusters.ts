@@ -206,3 +206,23 @@ export function parseSubCategories(
   }
   return out;
 }
+
+export interface CoverageRow { categories: string[]; subCategories: Record<string, string>; }
+
+/**
+ * Content-free coverage histogram: parent category → (sub-name | 'none') → note count.
+ * For each note, for each category it belongs to, increment its assigned sub (if any) or 'none'.
+ * Returns ONLY taxonomy labels + counts (no note text) — safe for content-free reporting.
+ */
+export function aggregateSubCoverage(rows: CoverageRow[]): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const row of rows) {
+    for (const cat of row.categories) {
+      const bucket = (out[cat] ??= {});
+      const sub = row.subCategories[cat];
+      const key = sub && sub.length ? sub : 'none';
+      bucket[key] = (bucket[key] ?? 0) + 1;
+    }
+  }
+  return out;
+}

@@ -11,7 +11,9 @@ import {
   buildSubCategoryPrompt,
   groupNotesBySubCategory,
   buildAllowedFor,
+  aggregateSubCoverage,
 } from './category-clusters';
+import type { CoverageRow } from './category-clusters';
 import { CATEGORIES } from './prompts';
 
 describe('normalizeToValidCategories', () => {
@@ -207,5 +209,26 @@ describe('buildAllowedFor', () => {
   });
   it('returns {} when there are no valid categories', () => {
     expect(buildAllowedFor(null, [])).toEqual({});
+  });
+});
+
+describe('aggregateSubCoverage', () => {
+  it('counts each note under its assigned sub, else under none, per category', () => {
+    const rows: CoverageRow[] = [
+      { categories: ['Health & Body'], subCategories: { 'Health & Body': 'Running' } },
+      { categories: ['Health & Body'], subCategories: {} },                 // -> none
+      { categories: ['Health & Body', 'Projects & Tech'],
+        subCategories: { 'Health & Body': 'Running', 'Projects & Tech': 'Selene' } },
+    ];
+    const cov = aggregateSubCoverage(rows);
+    expect(cov['Health & Body']).toEqual({ Running: 2, none: 1 });
+    expect(cov['Projects & Tech']).toEqual({ Selene: 1 });
+  });
+  it('returns {} for no rows', () => {
+    expect(aggregateSubCoverage([])).toEqual({});
+  });
+  it('counts a category-membership with an unassigned sub as none', () => {
+    const cov = aggregateSubCoverage([{ categories: ['Daily Systems'], subCategories: {} }]);
+    expect(cov['Daily Systems']).toEqual({ none: 1 });
   });
 });
