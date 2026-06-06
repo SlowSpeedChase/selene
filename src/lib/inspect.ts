@@ -10,6 +10,7 @@
  * wrapper (scripts/selene-inspect.ts) opens a READONLY connection and dispatches to these.
  */
 import Database from 'better-sqlite3';
+import { aggregateSubCoverage, resolveCategories, parseCrossRefs, type CoverageRow } from './category-clusters';
 
 type DB = InstanceType<typeof Database>;
 
@@ -36,6 +37,9 @@ export interface CoverageReport {
   noteLinks: number | null;
   avgClustersPerNote: number | null;
   notesWithNoCluster: number | null;
+  // Per parent-category sub-category histogram (sub-name | 'none' -> count). Content-free:
+  // only controlled-taxonomy labels + counts. Null when the sub_categories column is absent.
+  subCategoryCoverage: Record<string, Record<string, number>> | null;
 }
 
 // Tables we count when present. Order is cosmetic.
@@ -176,9 +180,46 @@ export function inspectCoverage(db: DB): CoverageReport {
     }
   }
 
+  let subCategoryCoverage: Record<string, Record<string, number>> | null = null;
+  if (hasProcessed) {
+    const cols = columnNames(db, 'processed_notes');
+    if (cols.includes('category') && cols.includes('sub_categories')) {
+      const hasCrossRef = cols.includes('cross_ref_categories');
+      const rows = db.prepare(
+        `SELECT category, ${hasCrossRef ? 'cross_ref_categories' : "'[]' AS cross_ref_categories"}, sub_categories
+         FROM processed_notes WHERE category IS NOT NULL AND category <> ''`
+      ).all() as Array<{ category: string | null; cross_ref_categories: string | null; sub_categories: string | null }>;
+      const covRows: CoverageRow[] = rows.map((r) => ({
+        categories: [...resolveCategories(r.category, parseCrossRefs(r.cross_ref_categories))],
+        subCategories: parseSubMap(r.sub_categories),
+      }));
+      subCategoryCoverage = aggregateSubCoverage(covRows);
+    }
+  }
+
   return {
     rawNotes, processedNotes, unprocessed,
     missingCategory, missingEssence, missingEmbedding,
     clusters, noteLinks, avgClustersPerNote, notesWithNoCluster,
+    subCategoryCoverage,
   };
+}
+
+/**
+ * Parse a stored sub_categories JSON object into a {category: sub-name} map, tolerating
+ * NULL/invalid JSON/non-object shapes (older rows). Returns only string-valued entries.
+ */
+function parseSubMap(json: string | null): Record<string, string> {
+  if (!json) return {};
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof v === 'string') out[k] = v;
+      }
+      return out;
+    }
+  } catch { /* ignore malformed JSON */ }
+  return {};
 }
