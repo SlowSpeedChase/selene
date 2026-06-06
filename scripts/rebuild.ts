@@ -180,7 +180,11 @@ function main(): void {
     rederive();
     let post = readSnapshot();
     if (process.env.SIMULATE_COVERAGE_FAIL === '1') post = { ...post, processed: 0 };
-    if (process.env.SIMULATE_DRIFT_FAIL === '1') post = { ...post, clusters: 0 };
+    // DRIFT must hit a NON-coverage metric with a NON-zero PRE baseline, or verdict()'s
+    // zero-baseline skip (rebuild-core.ts:135) nullifies it. `embeddings` qualifies: the
+    // verify harness seeds note_embeddings in PRE, so forcing post.embeddings=0 is a real
+    // downward drift the gate must catch — distinct from the coverage gate B exercises.
+    if (process.env.SIMULATE_DRIFT_FAIL === '1') post = { ...post, embeddings: 0 };
     const v = verdict(pre, post, t);
     const report = { pre, post, coverage: v.coverage, pass: v.pass, reasons: v.reasons, backup: backupFile };
     if (JSON_OUT) process.stdout.write(JSON.stringify(report, null, 2) + '\n');
