@@ -1,13 +1,7 @@
-import Database, { Database as DatabaseType } from 'better-sqlite3';
+import type { Database as DatabaseType } from 'better-sqlite3';
 import { config } from './config';
 import { logger } from './logger';
-import { applyConnectionPragmas } from './db-config';
-import {
-  ensureFactsDbInitialized,
-  attachFacts,
-  ensureNoteStateTable,
-  ensureRawNotesView,
-} from './facts-db';
+import { openSeleneConnection } from './open-selene-connection';
 import { setNoteState } from './note-state';
 import { ensureMigrated } from './ensure-migrated';
 import type { CalendarEvent } from '../types';
@@ -21,22 +15,12 @@ if (!process.env.JEST_WORKER_ID) {
   ensureMigrated(config.dbPath, config.factsDbPath, config.env);
 }
 
-// Initialize database connection
-export const db: DatabaseType = new Database(config.dbPath);
-
-// WAL + busy_timeout: concurrent agents (process-llm every 5 min vs. the nightly
-// synthesize-topics rebuild) must wait for a lock, not throw SQLITE_BUSY.
-applyConnectionPragmas(db);
-
-// Fact-store split: ensure facts.db exists + has its schema (standalone connection so its
-// UNQUALIFIED tables land in facts.db's own main), ATTACH it here as `facts`, create the
-// derived `note_state` bookkeeping table in selene.db, and (re)build the backward-compatible
-// `raw_notes` TEMP view. Guarded: on an un-migrated DB where raw_notes is still a physical
-// table, ensureRawNotesView is a no-op (Task 8 converts it).
-ensureFactsDbInitialized(config.factsDbPath);
-attachFacts(db, config.factsDbPath);
-ensureNoteStateTable(db);
-ensureRawNotesView(db);
+// Initialize database connection via the canonical opener — the ONE true way to build a
+// raw_notes-view-capable connection (applyConnectionPragmas → ensureFactsDbInitialized →
+// attachFacts → ensureNoteStateTable → ensureRawNotesView, in that load-bearing order: the
+// view DDL hard-codes the `facts.` alias, so ATTACH must precede it). This replaces the inline
+// re-implementation of that exact sequence.
+export const db: DatabaseType = openSeleneConnection(config.dbPath, config.factsDbPath);
 
 logger.info({ dbPath: config.dbPath, env: config.env }, 'Database connected');
 

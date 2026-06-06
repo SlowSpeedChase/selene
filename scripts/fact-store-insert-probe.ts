@@ -14,25 +14,13 @@
  * Strictly /tmp-isolated: refuses unless SELENE_DB_PATH / SELENE_FACTS_DB_PATH are under /tmp.
  */
 import { createHash } from 'crypto';
-import { openSeleneConnection } from '../src/lib/open-selene-connection';
+import { openSeleneConnection, assertTmpIsolated } from '../src/lib/open-selene-connection';
 
 const DB_PATH = process.env.SELENE_DB_PATH || '';
 const FACTS_PATH = process.env.SELENE_FACTS_DB_PATH || '';
 
-function assertTmpIsolated(): void {
-  for (const [name, p] of [
-    ['SELENE_DB_PATH', DB_PATH],
-    ['SELENE_FACTS_DB_PATH', FACTS_PATH],
-  ] as const) {
-    if (!p) throw new Error(`${name} must be set (this probe is /tmp-only).`);
-    if (!p.startsWith('/tmp/')) {
-      throw new Error(`${name}=${p} is not under /tmp — refusing (real-store guard).`);
-    }
-  }
-}
-
 function main(): void {
-  assertTmpIsolated();
+  assertTmpIsolated(DB_PATH, FACTS_PATH);
 
   // Distinctive marker so the verifier can locate exactly this row.
   const marker = process.env.T10_PROBE_MARKER || `T10-PROBE-${Date.now()}`;

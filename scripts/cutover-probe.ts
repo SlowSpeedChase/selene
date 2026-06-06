@@ -27,27 +27,16 @@
  * insertNote never exports to a vault.
  */
 import { createHash } from 'crypto';
-import { openSeleneConnection } from '../src/lib/open-selene-connection';
+import { openSeleneConnection, assertTmpIsolated } from '../src/lib/open-selene-connection';
 
 const DB_PATH = process.env.SELENE_DB_PATH || '';
 const FACTS_PATH = process.env.SELENE_FACTS_DB_PATH || '';
 const TEST_RUN = 'cutover-probe';
 
-/** Refuse to run unless both DB paths are under /tmp — this probe only ever touches a /tmp copy. */
-function assertTmpIsolated(): void {
-  for (const [name, p] of [
-    ['SELENE_DB_PATH', DB_PATH],
-    ['SELENE_FACTS_DB_PATH', FACTS_PATH],
-  ] as const) {
-    if (!p) throw new Error(`${name} must be set (this probe is /tmp-only).`);
-    if (!p.startsWith('/tmp/')) {
-      throw new Error(`${name}=${p} is not under /tmp — refusing (real-store guard).`);
-    }
-  }
-}
-
 async function main(): Promise<void> {
-  assertTmpIsolated();
+  // Refuse unless both DB paths are under /tmp (shared guard) — runs BEFORE the deferred db.ts
+  // import below, so this probe only ever touches a /tmp copy.
+  assertTmpIsolated(DB_PATH, FACTS_PATH);
 
   // Deferred import: db.ts's module-load side effects (ensureMigrated + long-lived connection on
   // config paths) run at THIS point, only AFTER the /tmp guard has passed. Fully typed — no `any`.

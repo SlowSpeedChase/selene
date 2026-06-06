@@ -43,6 +43,30 @@ export interface OpenOpts {
 }
 
 /**
+ * Shared /tmp-isolation safety gate for the fact-store probe scripts.
+ *
+ * Refuses to run unless BOTH the main and facts DB paths are under `/tmp` — so a probe can never
+ * touch the real prod/dev store even if its env is misconfigured. Throws on a missing or non-/tmp
+ * path; callers let the throw propagate (it exits the probe non-zero before any DB is opened).
+ *
+ * Homed here because this module is a verified db.ts-free leaf (it imports only ./db-config +
+ * ./facts-db). cutover-probe DEFERS importing db.ts until AFTER this guard runs — eagerly importing
+ * db.ts opens the singleton against whatever path is set, so the guard must be reachable without
+ * pulling in db.ts.
+ */
+export function assertTmpIsolated(dbPath: string, factsPath: string): void {
+  for (const [name, p] of [
+    ['SELENE_DB_PATH', dbPath],
+    ['SELENE_FACTS_DB_PATH', factsPath],
+  ] as const) {
+    if (!p) throw new Error(`${name} must be set (this probe is /tmp-only).`);
+    if (!p.startsWith('/tmp/')) {
+      throw new Error(`${name}=${p} is not under /tmp — refusing (real-store guard).`);
+    }
+  }
+}
+
+/**
  * Open a selene.db connection fully wired for the two-file layout: pragmas + facts ATTACHed
  * + note_state + the raw_notes TEMP view. The one true way to get a view-capable connection
  * outside the db.ts singleton.
