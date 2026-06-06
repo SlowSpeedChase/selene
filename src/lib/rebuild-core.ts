@@ -2,14 +2,45 @@ import type Database from 'better-sqlite3';
 import { join } from 'path';
 type DB = InstanceType<typeof Database>;
 
-/** Tables in the `main` schema (selene.db) only — NOT the attached `facts` schema,
- *  NOT views (raw_notes), NOT sqlite internal tables. These are what wipe() truncates.
- *  An unqualified `sqlite_master` reads the `main` schema only, so attached
- *  `facts.*` tables are never returned here. */
+/** The derived/disposable tables in selene.db's `main` schema — what a rebuild
+ *  truncates and re-derives from facts.db. This is an explicit ALLOWLIST, not
+ *  "every table in main", because selene.db also holds NON-derived state that
+ *  MUST survive a wipe:
+ *    - `_selene_metadata`        the env-identity marker db.ts reads on every
+ *                                dev/test connection (db.ts:44-61). Truncating it
+ *                                crashes re-derivation; PROD has no guard, so the
+ *                                same wipe would silently corrupt the DB's identity.
+ *    - `device_tokens`           live push registrations (not derivable from facts).
+ *    - `raw_notes_legacy_backup` the one-time Ph1 migration safety-net.
+ *    - chat / thread tables      archived (2026-03-21), preserved by omission.
+ *  An allowlist fails SAFE: a table added to `main` later is preserved (at worst a
+ *  stale/incomplete rebuild) rather than silently destroyed. */
+export const DERIVED_TABLES = [
+  'processed_notes',
+  'processed_notes_apple',
+  'note_embeddings',
+  'note_chunks',
+  'note_state',
+  'note_associations',
+  'note_relationships',
+  'detected_patterns',
+  'sentiment_history',
+  'topic_clusters',
+  'topic_note_links',
+] as const;
+
+/** The DERIVED_TABLES that actually EXIST in this db's `main` schema. Restricting to
+ *  present tables keeps wipe()/restoreFromBackup() from erroring on a derived table a
+ *  never-fully-derived DB hasn't created yet (e.g. topic_clusters before the first
+ *  synthesize). An unqualified `sqlite_master` reads `main` only, so attached
+ *  `facts.*` tables are never returned. */
 export function listDerivedTables(db: DB): string[] {
-  return (db.prepare(
-    `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`
-  ).all() as Array<{ name: string }>).map((r) => r.name);
+  const present = new Set(
+    (db.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`
+    ).all() as Array<{ name: string }>).map((r) => r.name)
+  );
+  return DERIVED_TABLES.filter((t) => present.has(t));
 }
 
 export interface Snapshot {

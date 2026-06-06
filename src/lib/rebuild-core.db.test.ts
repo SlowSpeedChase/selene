@@ -188,3 +188,33 @@ it('wipe empties every main-schema table but leaves attached facts untouched', (
   expect((db.prepare('SELECT COUNT(*) n FROM processed_notes').get() as { n: number }).n).toBe(0);
   expect((db.prepare('SELECT COUNT(*) n FROM facts.captured_notes').get() as { n: number }).n).toBe(2);
 });
+
+// REGRESSION (verify-rebuild scenario A): wipe() must NOT truncate non-derived tables.
+// _selene_metadata is the env-identity marker db.ts reads on every dev/test connection
+// (db.ts:44-61) — truncating it crashed re-derivation's process-llm with
+// "database is not marked as development environment". PROD has NO such guard, so the
+// same wipe would SILENTLY drop the marker, device push tokens, and the migration
+// safety-net. wipe must touch ONLY the known-derived allowlist.
+it('wipe truncates derived tables but preserves identity / device tokens / legacy backup', () => {
+  const db: DB = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE _selene_metadata (key TEXT PRIMARY KEY, value TEXT);
+    INSERT INTO _selene_metadata VALUES ('environment','development');
+    CREATE TABLE device_tokens (token TEXT);
+    INSERT INTO device_tokens VALUES ('apns-abc');
+    CREATE TABLE raw_notes_legacy_backup (id INTEGER);
+    INSERT INTO raw_notes_legacy_backup VALUES (1),(2);
+    CREATE TABLE processed_notes (raw_note_id INTEGER);
+    INSERT INTO processed_notes VALUES (1),(2),(3);
+  `);
+  wipe(db);
+  // derived data is gone
+  expect((db.prepare('SELECT COUNT(*) n FROM processed_notes').get() as { n: number }).n).toBe(0);
+  // identity marker survives — the dev-env guard depends on it (prod has no guard)
+  expect((db.prepare(`SELECT value FROM _selene_metadata WHERE key='environment'`).get() as { value: string }).value).toBe('development');
+  // non-derived operational state survives
+  expect((db.prepare('SELECT COUNT(*) n FROM device_tokens').get() as { n: number }).n).toBe(1);
+  expect((db.prepare('SELECT COUNT(*) n FROM raw_notes_legacy_backup').get() as { n: number }).n).toBe(2);
+  // listDerivedTables itself excludes the non-derived tables
+  expect(listDerivedTables(db)).toEqual(['processed_notes']);
+});
