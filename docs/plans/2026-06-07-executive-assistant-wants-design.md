@@ -243,14 +243,31 @@ This vision absorbs and supersedes two stale Vision docs:
 
 ## Open Questions (Act 1 — deferred, do not block the vision)
 
-- **⚠️ THE crux: can emergent want-knots be detected in homogeneous data? (mechanism B)**
-  Proposing a *new, unnamed* want requires unsupervised clustering over the note graph — the same
-  shape that *collapsed* on homogeneous e-ink journaling. If B doesn't work, the assistant can't
-  *propose* forming wants; it could only match fragments to wants you've already named by hand
-  (mechanism A), which is a weaker product. Resolving this is gated on the `note_connections`
-  diagnostic (below). Discriminating question: **does "assistant proposes a forming want" need B,
-  or can a cheaper signal (e.g. repeated capture on a topic, LLM "is a want forming?" over recent
-  notes) stand in for it?**
+- **✅ RESOLVED 2026-06-07 — why `note_connections` is empty: a mechanical normalization bug, NOT
+  homogeneity.** Diagnosed via systematic debugging (see `2026-06-07` investigation). The write
+  path *is* wired (`process-llm.ts:191` → `writeConnection`), but it can never fire:
+  `embed()` (ollama.ts) returns nomic-embed vectors **raw, un-normalized** (measured norm ≈ **20.4**,
+  not 1.0), while `process-llm.ts:183` computes `approxSimilarity = 1 − d²/2` — an identity valid
+  **only for unit vectors.** On raw vectors the L2 distance is ~13–23, so `d²/2` is ~90–260 and
+  `approxSimilarity` is always **hugely negative** (measured −93 to −261) → never clears the
+  `0.75` threshold → **zero connections, ever, regardless of content.** LanceDB compounds it:
+  `createTable` (lancedb.ts:69) specifies no metric (defaults to L2) and nothing normalizes at
+  index or query time, so even candidate *ranking* is magnitude-distorted.
+  **The good news for the vision:** with correct cosine the same embeddings **discriminate cleanly**
+  — measured cosine was **0.78 for a related pair** ("improv dinner" ≈ "improv potluck") vs **0.37–0.46
+  for unrelated pairs** (a ~0.3+ margin). So the signal is healthy; graph-coalescence (mechanism B)
+  is **viable**, gated only on a small fix (normalize at the `embed()` source → storage, LanceDB
+  index, query ranking, and the `1−d²/2` identity all become correct at once) + a backfill to
+  populate the graph over the existing corpus. **One fix unblocks two visions** (this + Constellation
+  Phase B `friend::` edges) — now confirmed, not hoped.
+- **⚠️ Secondary finding — the 7-day rule fights coalescence.** `process-llm.ts:185` only records a
+  connection when the candidate is **older than 7 days** (`isOlderThanSevenDays`). That serves the
+  *"surprise — here's an old note you forgot"* feature, but it would **prevent linking two fragments
+  of the same want captured days apart** (the Thursday voice memo ≈ Monday's note). Mechanism B for
+  *want-coalescence* must relax/remove this floor (or use a separate recent-to-recent pass). The
+  homogeneity question (does e-ink journaling over-connect?) is now **untested but no longer
+  blocking** — the math bug fully explains *total* emptiness; homogeneity would have produced *some*
+  connections, not zero. Re-evaluate once the fix lands and real connections exist.
 - **Ripeness** — what exactly makes a want "ripe"? (calendar free time + plan-completeness +
   …). How smart vs. how simple?
 - **Prioritization at scale** — when several wants are live/ripe at once, how does "what's
