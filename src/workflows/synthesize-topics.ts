@@ -2,11 +2,20 @@
 // @map reads: raw_notes, processed_notes
 // @map writes: topic_clusters, topic_note_links, synthesis_meta
 import { randomUUID } from 'crypto';
+import type { Database } from 'better-sqlite3';
 import { db, generate, isAvailable, createWorkflowLogger } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { initSynthesisSchema } from '../lib/synthesis-db';
 import { CATEGORIES } from '../lib/prompts';
-import { groupNotesByCategory, parseCrossRefs, slugForCategory, uncategorizedNoteIds } from '../lib/category-clusters';
+import {
+  groupNotesByCategory,
+  groupNotesBySubCategory,
+  isValidClusterSlug,
+  parseCrossRefs,
+  slugForCategory,
+  subSlug,
+  uncategorizedNoteIds,
+} from '../lib/category-clusters';
 
 const log = createWorkflowLogger('synthesize-topics');
 
@@ -19,18 +28,36 @@ interface CategoryMember {
   concepts: string | null;
   category: string | null;
   crossRefs: string[];
+  subCategories: Record<string, string>;
+}
+
+/** Safe-parse a stored category→sub map; returns {} on null/invalid JSON. */
+function parseSubMap(s: string | null): Record<string, string> {
+  if (!s) return {};
+  try {
+    const parsed: unknown = JSON.parse(s);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof v === 'string') out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 function loadClassifiedNotes(): CategoryMember[] {
   const rows = db.prepare(`
     SELECT rn.id AS noteId, rn.title AS title,
-           pn.essence, pn.concepts, pn.category, pn.cross_ref_categories
+           pn.essence, pn.concepts, pn.category, pn.cross_ref_categories, pn.sub_categories
     FROM raw_notes rn
     JOIN processed_notes pn ON rn.id = pn.raw_note_id
     WHERE rn.status = 'processed' ${testRunFilter('rn')}
   `).all() as Array<{
     noteId: number; title: string; essence: string | null;
     concepts: string | null; category: string | null; cross_ref_categories: string | null;
+    sub_categories: string | null;
   }>;
   return rows.map((r) => ({
     noteId: r.noteId,
@@ -39,6 +66,7 @@ function loadClassifiedNotes(): CategoryMember[] {
     concepts: r.concepts,
     category: r.category,
     crossRefs: parseCrossRefs(r.cross_ref_categories),
+    subCategories: parseSubMap(r.sub_categories),
   }));
 }
 
@@ -96,6 +124,81 @@ async function generateWeeklyRollup(): Promise<void> {
   ).run(rollup, now);
 
   log.info('Weekly rollup generated');
+}
+
+/** Reconcile a topic's note links to exactly `noteIds` (insert missing, delete stale). */
+function reconcileLinks(database: Database, topicId: string, noteIds: number[], now: string): void {
+  const desired = new Set(noteIds);
+  for (const { note_id } of (database.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?').all(topicId) as Array<{ note_id: number }>)) {
+    if (!desired.has(note_id)) database.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(topicId, note_id);
+  }
+  for (const noteId of noteIds) {
+    database.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)').run(topicId, noteId, now);
+  }
+}
+
+/**
+ * Upsert sub-cluster rows (parent_id set, namespaced slug) + their note links from the
+ * current sub-grouping, then delete any now-stale sub-cluster (a sub-cluster = a row with
+ * parent_id NOT NULL). The stale-delete handles BOTH an emptied sub-category AND an emptied
+ * parent category in one sweep. Structural only — sub-clusters carry NO synthesis_text in
+ * Phase 1. Decoupled from the category loop, so it runs regardless of whether parents were
+ * "unchanged".
+ */
+export function materializeSubClusters(
+  database: Database,
+  subGroups: Map<string, Map<string, number[]>>,
+  now: string,
+): void {
+  const desiredSlugs = new Set<string>();
+  for (const [cat, subMap] of subGroups) {
+    const parent = database
+      .prepare('SELECT id FROM topic_clusters WHERE slug = ?')
+      .get(slugForCategory(cat)) as { id: string } | undefined;
+    if (!parent) continue; // parent category cluster absent (e.g. emptied) -> skip its subs
+    for (const [subName, noteIds] of subMap) {
+      if (noteIds.length === 0) continue;
+      const sslug = subSlug(cat, subName);
+      desiredSlugs.add(sslug);
+      const existing = database
+        .prepare('SELECT id FROM topic_clusters WHERE slug = ?')
+        .get(sslug) as { id: string } | undefined;
+      const sid = existing?.id ?? randomUUID();
+      database.prepare(`
+        INSERT INTO topic_clusters (id, name, slug, parent_id, note_count, is_proto, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?)
+        ON CONFLICT(slug) DO UPDATE SET
+          name = excluded.name, parent_id = excluded.parent_id, note_count = excluded.note_count, is_proto = 0
+      `).run(sid, subName, sslug, parent.id, noteIds.length, now);
+      reconcileLinks(database, sid, noteIds, now);
+    }
+  }
+  // Delete stale sub-clusters (parent_id NOT NULL) no longer desired — covers emptied
+  // sub-cats + emptied parents.
+  const subClusters = database
+    .prepare('SELECT id, slug FROM topic_clusters WHERE parent_id IS NOT NULL')
+    .all() as Array<{ id: string; slug: string }>;
+  for (const sc of subClusters) {
+    if (!desiredSlugs.has(sc.slug)) {
+      database.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(sc.id);
+      database.prepare('DELETE FROM topic_clusters WHERE id = ?').run(sc.id);
+    }
+  }
+}
+
+/**
+ * Remove clusters whose slug is neither one of the category slugs nor a valid
+ * `<categorySlug>/<sub>` sub-slug. (Sub-clusters with a real parent slug are KEPT —
+ * this is the fix for the landmine where the old NOT-IN-8 query deleted every sub-cluster.)
+ */
+export function removeOrphanClusters(database: Database, categorySlugs: string[]): void {
+  const all = database.prepare('SELECT id, slug FROM topic_clusters').all() as Array<{ id: string; slug: string }>;
+  for (const c of all) {
+    if (!isValidClusterSlug(c.slug, categorySlugs)) {
+      database.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(c.id);
+      database.prepare('DELETE FROM topic_clusters WHERE id = ?').run(c.id);
+    }
+  }
 }
 
 export async function synthesizeTopics(): Promise<{ clusters: number; evolved: number; proto: number }> {
@@ -198,16 +301,7 @@ export async function synthesizeTopics(): Promise<{ clusters: number; evolved: n
     `).run(id, cat, slug, newSynthesis, prevSynthesis, now, noteIds.length, now);
 
     // Reconcile links (insert missing, delete stale).
-    for (const { note_id } of (db.prepare('SELECT note_id FROM topic_note_links WHERE topic_id = ?')
-        .all(id) as Array<{ note_id: number }>)) {
-      if (!desired.has(note_id)) {
-        db.prepare('DELETE FROM topic_note_links WHERE topic_id = ? AND note_id = ?').run(id, note_id);
-      }
-    }
-    for (const noteId of noteIds) {
-      db.prepare('INSERT OR IGNORE INTO topic_note_links (topic_id, note_id, added_at) VALUES (?, ?, ?)')
-        .run(id, noteId, now);
-    }
+    reconcileLinks(db, id, noteIds, now);
 
     // Evolution detection: compare prev vs new synthesis
     if (prevSynthesis && newSynthesis && prevSynthesis !== newSynthesis) {
@@ -247,19 +341,18 @@ Did the understanding meaningfully change (not just grow)? JSON only: { "changed
     clustersProcessed++;
   }
 
-  // Always-on orphan cleanup: remove any cluster whose slug isn't one of the 8 category slugs
-  // (self-heals if the scheduled agent ran before a one-shot rebuild). Safe: category slugs
-  // cannot collide with the old `${concept}-${hash}` slugs.
-  const keepSlugs = CATEGORIES.map(slugForCategory);
-  const placeholders = keepSlugs.map(() => '?').join(',');
-  const orphanIds = (db.prepare(
-    `SELECT id FROM topic_clusters WHERE slug NOT IN (${placeholders})`
-  ).all(...keepSlugs) as Array<{ id: string }>).map((r) => r.id);
-  for (const oid of orphanIds) {
-    db.prepare('DELETE FROM topic_note_links WHERE topic_id = ?').run(oid);
-    db.prepare('DELETE FROM topic_clusters WHERE id = ?').run(oid);
-  }
-  if (orphanIds.length) log.info({ removed: orphanIds.length }, 'Removed non-category (orphan) clusters');
+  // Sub-cluster pass — decoupled from the per-category `unchanged` short-circuit above,
+  // so sub-clusters materialize even when a parent category's membership is unchanged.
+  const subGroups = groupNotesBySubCategory(
+    notes.map((n) => ({ noteId: n.noteId, category: n.category, crossRefs: n.crossRefs, subCategories: n.subCategories }))
+  );
+  materializeSubClusters(db, subGroups, now);
+
+  // Always-on orphan cleanup: remove any cluster whose slug is neither a category slug nor a
+  // valid `<categorySlug>/<sub>` sub-slug (self-heals if the scheduled agent ran before a
+  // one-shot rebuild). Valid sub-clusters are KEPT — the old NOT-IN-8 query would have
+  // deleted every sub-cluster.
+  removeOrphanClusters(db, CATEGORIES.map(slugForCategory));
 
   if (new Date().getDay() === 0) {
     await generateWeeklyRollup();

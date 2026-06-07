@@ -49,6 +49,25 @@ On Sundays, a **weekly evolution rollup** summarises how your understanding acro
 
 **send-digest.ts:** Reads these tables and appends the synthesis sections to the digest before posting to Apple Notes.
 
+### Sub-categories (facets under the 8)
+
+The 8 categories are deliberately coarse — *Health & Body* lumps running, sleep, and diet together. **Sub-categories** add a second, finer level *under* each category, without re-opening the "source bucket" drift the flat model killed (they're a fixed, curated list, not free-form tags).
+
+- **What they are:** a short closed list of facets per category — e.g. *Health & Body* → Running, Sleep, Diet, Strength, Mental Health. The full seed list lives in **`src/config/sub-taxonomy.ts`** — a map of each of the 8 categories to its sub-category list. **This is the file you edit to curate the taxonomy.** It's git-tracked, which makes it the "precious layer": a fact-store `rebuild` of `selene.db` can't wipe it (no `facts.db` change is needed for this feature).
+- **How they're assigned:** for each note, `process-llm.ts` makes a *closed-set* choice — one best-fitting sub-category (or none) *per category the note landed in* — and stores the result as a per-category JSON map in `processed_notes.sub_categories` (so a multi-topic note keeps a sub per parent, preserving cross-parent multi-membership). On an Ollama failure the column is left **NULL** so the backfill retries it; a successful run that picks nothing stores `{}` (known-empty, not retried).
+- **Sub-clusters:** after the per-category loop, `synthesize-topics.ts`'s `materializeSubClusters` upserts one `topic_clusters` row per used sub-category with `parent_id` pointing at its category cluster and a namespaced slug like `health-body/running`, plus note→sub-cluster links. The orphan-cleanup guard treats `<categorySlug>/<sub>` slugs as valid so it doesn't delete them. (The iPad Notes `/api/clusters` browse stays at the **top level** in Phase 1 — sub-clusters are excluded there; they currently surface only in the Obsidian constellation.)
+
+**Curate-and-measure loop:** sub-categories are meant to be tuned by hand.
+
+1. Edit `src/config/sub-taxonomy.ts` (add/rename/remove facets under a category).
+2. Re-run the backfill so existing notes get re-classified against the new lists:
+   `npx ts-node scripts/backfill-sub-categories.ts` (use `--dry-run` to preview without writing).
+3. Read the fit with the **content-free** report (counts only — never note text):
+   `npx ts-node scripts/backfill-sub-categories.ts --report` — prints a per-category histogram of each sub-category's count plus a `none` line with a **misfit %**. (`selene-inspect coverage` exposes the same numbers as `subCategoryCoverage` for measuring fit on prod.)
+4. Read the `none%` per category and adjust the config; repeat.
+
+**Read `none%` *after* a full backfill, not before.** A note whose `sub_categories` is still NULL (a transient classification failure, or one captured before the feature) is counted in `none` exactly like a note the model genuinely declined to place — so before the backfill drains all NULLs, `none%` is inflated by retriable work, not real misfit. Once the backfill has run, `none` is the deliberate misfit residual — raw material for a future Phase 2 (an emergent-tail pass that mines those notes into soft sub-categories).
+
 **Tables:** `topic_clusters`, `topic_note_links`, `note_connections`, `synthesis_meta` (no schema change for this feature — the rewrite changed only what populates `topic_clusters`/`topic_note_links`).
 
 **Launchd agent:** `com.selene.synthesize-topics` (prod: `com.selene.prod.synthesize-topics`).
@@ -58,6 +77,7 @@ On Sundays, a **weekly evolution rollup** summarises how your understanding acro
 | Setting | Where | Default |
 |---------|-------|---------|
 | The category list | `src/lib/prompts.ts` `CATEGORIES` | 8 categories |
+| The sub-category lists (the file you edit to curate facets) | `src/config/sub-taxonomy.ts` `SUB_TAXONOMY` | a short closed list per category |
 | Synthesis context window | `src/workflows/synthesize-topics.ts` (`numCtx` on the synthesis call) | `4096` |
 | Members fed to one synthesis prompt | `src/workflows/synthesize-topics.ts` (`members.slice(0, 40)`) | `40` |
 | Connection similarity threshold | `src/workflows/process-llm.ts` `CONNECTION_THRESHOLD` | `0.75` |
@@ -78,13 +98,16 @@ On Sundays, a **weekly evolution rollup** summarises how your understanding acro
 | Synthesis seems to ignore some notes in a big category | Expected: only the first 40 members feed one synthesis prompt (logged when capped). Raise the cap if needed |
 | `note_connections` always empty | Normal until notes have been processed for 7+ days |
 | launchd agent not in list | Run `./scripts/install-launchd.sh` and check `launchctl list \| grep synthesize` |
+| A category's `none%` looks very high | Run the backfill first (`npx ts-node scripts/backfill-sub-categories.ts`) — until NULL `sub_categories` are resolved, `none` is inflated by retriable failures, not real misfit. If it's still high after a full backfill, the sub-list in `src/config/sub-taxonomy.ts` is missing a facet those notes need (or has too-narrow ones) — adjust and re-run the report |
+| Sub-clusters vanish from the constellation each run | The orphan-cleanup guard must accept `<categorySlug>/<sub>` slugs (e.g. `health-body/running`) — this is covered by `isValidClusterSlug`; if you renamed a category slug, re-run `synthesize-topics` so sub-slugs realign |
 
 ## Related
 
 - Design doc: `docs/plans/2026-05-29-content-based-multitopic-clustering-design.md`
 - Implementation plan: `docs/plans/2026-05-29-content-based-multitopic-clustering.md`
 - Original synthesis design: `docs/plans/2026-05-26-synthesis-retrieval-agent-design.md`
+- Sub-categories design: `docs/plans/2026-05-31-sub-categories-design.md` (plan: `docs/plans/2026-06-06-sub-categories-plan.md`)
 - Connected guides: `docs/guides/features/daily-digest.md`, `docs/guides/features/note-annotation.md` (the iPad Notes browse), `docs/guides/features/obsidian-library.md`
 
 ---
-*Last updated: 2026-05-29*
+*Last updated: 2026-06-06*

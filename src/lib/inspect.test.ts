@@ -175,6 +175,76 @@ describe('inspectCounts/inspectCoverage on a migrated two-file DB (raw_notes is 
   });
 });
 
+describe('inspectCoverage subCategoryCoverage', () => {
+  function seedSubs(): DB {
+    const db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE processed_notes (
+        id INTEGER PRIMARY KEY,
+        raw_note_id INTEGER,
+        category TEXT,
+        cross_ref_categories TEXT,
+        sub_categories TEXT,
+        essence TEXT
+      );
+    `);
+    const ins = db.prepare(
+      'INSERT INTO processed_notes (id,raw_note_id,category,cross_ref_categories,sub_categories,essence) VALUES (?,?,?,?,?,?)'
+    );
+    // 1: Health note with sub Running
+    ins.run(1, 1, 'Health & Body', '[]', JSON.stringify({ 'Health & Body': 'Running' }), SENTINEL2);
+    // 2: Health note with empty sub_categories -> none bucket
+    ins.run(2, 2, 'Health & Body', '[]', '{}', SENTINEL2);
+    // 3: Health & Body + cross_ref Projects & Tech, subs Running + Selene
+    ins.run(
+      3, 3, 'Health & Body', JSON.stringify(['Projects & Tech']),
+      JSON.stringify({ 'Health & Body': 'Running', 'Projects & Tech': 'Selene' }), SENTINEL2
+    );
+    return db;
+  }
+
+  it('reports per-category sub-category counts incl a none bucket (counts only)', () => {
+    const db = seedSubs();
+    const cov = inspectCoverage(db).subCategoryCoverage;
+    expect(cov?.['Health & Body']).toEqual({ Running: 2, none: 1 });
+    expect(cov?.['Projects & Tech']).toEqual({ Selene: 1 });
+    db.close();
+  });
+
+  it('is null when the sub_categories column is absent (old DB)', () => {
+    const db = new Database(':memory:');
+    // processed_notes WITHOUT a sub_categories column (legacy shape).
+    db.exec('CREATE TABLE processed_notes (id INTEGER PRIMARY KEY, raw_note_id INTEGER, category TEXT, essence TEXT);');
+    db.prepare('INSERT INTO processed_notes (id,raw_note_id,category,essence) VALUES (?,?,?,?)')
+      .run(1, 1, 'Health & Body', SENTINEL2);
+    expect(inspectCoverage(db).subCategoryCoverage).toBeNull();
+    db.close();
+  });
+
+  it('emits only taxonomy labels + numbers (no note content)', () => {
+    const db = new Database(':memory:');
+    // A processed_notes row whose essence (a content-bearing column) holds the sentinel.
+    db.exec(`
+      CREATE TABLE processed_notes (
+        id INTEGER PRIMARY KEY,
+        raw_note_id INTEGER,
+        category TEXT,
+        cross_ref_categories TEXT,
+        sub_categories TEXT,
+        essence TEXT
+      );
+    `);
+    db.prepare(
+      'INSERT INTO processed_notes (id,raw_note_id,category,cross_ref_categories,sub_categories,essence) VALUES (?,?,?,?,?,?)'
+    ).run(1, 1, 'Health & Body', '[]', JSON.stringify({ 'Health & Body': 'Running' }), SENTINEL);
+    const cov = inspectCoverage(db).subCategoryCoverage;
+    const json = JSON.stringify(cov);
+    expect(json).not.toContain(SENTINEL); // essence text must not leak
+    expect(json).toContain('Running');    // taxonomy labels are fine
+    db.close();
+  });
+});
+
 describe('content-leak invariant', () => {
   it('no inspector report serializes any real note text', () => {
     const db = seed();
