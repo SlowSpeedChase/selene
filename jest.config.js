@@ -7,6 +7,7 @@ module.exports = {
   testMatch: [
     '**/scripts/migrate-to-fact-store.test.ts',
     '**/scripts/backfill-categories.test.ts',
+    '**/scripts/backfill-connections.test.ts',
     '**/src/lib/apple-notes.test.ts',
     '**/src/lib/category-clusters.test.ts',
     '**/src/lib/config.test.ts',
@@ -32,6 +33,7 @@ module.exports = {
     '**/src/lib/sub-taxonomy.test.ts',
     '**/src/lib/synthesis-db.test.ts',
     '**/src/lib/system-map.test.ts',
+    '**/src/lib/vector-similarity.test.ts',
     '**/src/lib/synthesis-digest.test.ts',
     '**/src/lib/view-mode-readers.test.ts',
     '**/src/workflows/synthesize-topics.subcats.db.test.ts',

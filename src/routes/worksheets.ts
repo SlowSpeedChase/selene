@@ -7,6 +7,7 @@ import {
 import { ingest } from '../workflows/ingest';
 import { embed } from '../lib/ollama';
 import { searchSimilarNotes } from '../lib/lancedb';
+import { similarityFromCosineDistance } from '../lib/vector-similarity';
 import { db } from '../lib/db';
 import { testRunFilter } from '../lib/test-run';
 import { logger } from '../lib/logger';
@@ -41,8 +42,7 @@ async function findRelatedNotes(text: string, excludeId: number): Promise<Relate
     maxDistance: 1.0,
   });
 
-  // Convert L2 distance → 0–1 score. nomic-embed-text produces unit vectors,
-  // so L2 ≈ sqrt(2*(1-cosine)). score = max(0, 1 - distance/2) gives intuitive range.
+  // `s.distance` is cosine distance (searchSimilarNotes uses the cosine metric); similarity = 1 - distance.
   return similar.map(s => {
     const row = db.prepare('SELECT content, created_at FROM raw_notes WHERE id = ?').get(s.id) as { content: string; created_at: string } | undefined;
     return {
@@ -50,7 +50,7 @@ async function findRelatedNotes(text: string, excludeId: number): Promise<Relate
       title: s.title,
       snippet: row?.content.slice(0, 120).trimEnd() ?? '',
       date: row?.created_at.slice(0, 10) ?? '',
-      score: Math.max(0, 1 - s.distance / 2),
+      score: Math.max(0, similarityFromCosineDistance(s.distance)),
     };
   });
 }
