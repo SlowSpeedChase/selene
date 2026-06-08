@@ -66,11 +66,25 @@ something useful back.
 ### Conventions
 - **"Latest" = newest file by modified-time** in the inbox. No renaming required;
   lean on the filesystem's timestamps, not a brittle naming scheme.
+- **Overwrite, never accumulate copies.** This is a hard rule:
+  - **Repo keepers overwrite in place.** A given diagram topic is *one* file,
+    `docs/diagrams/<topic>.png`, rewritten each lap — **never** `-v2`/`-v3`
+    suffixes. **Git history is the version store** (`git log -- docs/diagrams/<topic>.png`
+    recovers any past version), so the folder stays clean *and* nothing is lost.
+  - **The seed PNG overwrites** a fixed filename (`seed-<heading>.png`), so
+    re-seeding replaces rather than piles up.
+  - **The iCloud inbox is transient.** Freeform's "Save to Files" tends to
+    auto-number (`IMG_001`, `IMG_002`…). To stop copies accumulating there,
+    Claude **moves** the processed PNG into the repo (not copies) and **clears
+    any leftover PNGs** from the inbox once a lap is captured. The inbox should
+    sit at ~0 files between laps.
 - **Each keeper is a pair** in `docs/diagrams/`: `<topic>.png` + `<topic>.md`
   (Claude's reading + links to any design docs it spawned). A small
   `docs/diagrams/README.md` indexes them — a visual table of contents of the user's
-  own thinking, diffable in git.
-- **No new daemon.** Claude does the copy-into-repo + commit during a lap. A launchd
+  own thinking, diffable in git. Re-drawing an existing topic overwrites *both*
+  files in place (history in git), and updates that topic's existing README row
+  rather than adding a new one.
+- **No new daemon.** Claude does the move-into-repo + commit during a lap. A launchd
   watcher can be added later *only if* the manual step proves annoying.
 
 ### Seed correctness (Option C — the crux of "use the correct doc, kept updated")
