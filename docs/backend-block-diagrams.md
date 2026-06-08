@@ -1,6 +1,6 @@
 # Backend Block Diagrams
 
-**Last Updated:** 2026-05-29
+**Last Updated:** 2026-06-08
 **Purpose:** Visual representations of Selene's backend architecture and data flows
 
 > **Inventory of record:** [docs/SYSTEM-MAP.md](SYSTEM-MAP.md) (generated from code + plists). This file is the *deep* view; if the two ever disagree on which workflows exist or their schedules, SYSTEM-MAP.md wins.
@@ -34,6 +34,12 @@
 │  │  Every 30 min: voice-ingest.ts                           │  │
 │  │  Scan ~/Voice Memos/ for new .m4a → Whisper transcribe   │  │
 │  │  → INSERT INTO raw_notes                                 │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Server routes (iPad): generate-worksheet.ts             │  │
+│  │  GET /api/worksheets/today → build daily review          │  │
+│  │  POST /api/worksheets/:id/answers → INSERT raw_notes     │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                            ↓
@@ -96,6 +102,20 @@
 │  ┌────────────────────────────────────────────────────────┐    │
 │  │  Daily 6am: send-digest.ts                             │    │
 │  │  SELECT daily_summaries → WRITE to Apple Notes         │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │  Daily 2am: synthesize-topics.ts                       │    │
+│  │  SELECT processed_notes → cluster into 8 categories    │    │
+│  │  → Ollama synthesize → INSERT topic_clusters,          │    │
+│  │  topic_note_links, synthesis_meta                      │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │  Every 5 min: folio-feedback.ts                        │    │
+│  │  SELECT Kindle-Scribe annotations → WRITE markdown     │    │
+│  │  feedback files into each Folio project repo           │    │
+│  │  (Folio is a SEPARATE repo — boundary seam only)       │    │
 │  └────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                            ↓
