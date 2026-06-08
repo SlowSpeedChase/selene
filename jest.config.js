@@ -21,6 +21,7 @@ module.exports = {
     '**/src/lib/facts-db.test.ts',
     '**/src/lib/inspect.test.ts',
     '**/src/lib/note-state.test.ts',
+    '**/src/lib/seed-diagram.test.ts',
     '**/src/lib/open-selene-connection.test.ts',
     '**/src/lib/obsidian-render.test.ts',
     '**/src/lib/obsidian-render.db.test.ts',
