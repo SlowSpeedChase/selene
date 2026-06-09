@@ -60,6 +60,11 @@ Selene today (verified 2026-06-09):
 the iOS Shortcut, or a small Swift helper invoked by the Mac — *not* inside the Node workflows, unless the
 new Python SDK / Linux support (see below) proves usable server-side.
 
+> **Likely true home: the Lumen repo.** Selene is being rewritten as an Apple-native app in a separate repo
+> (**Lumen**). The on-device slices below are a natural fit for that rewrite rather than something to bolt onto
+> Selene's TS core. Treat this doc as the *capability map / rationale*; the actual Swift implementation will
+> most likely live in Lumen. (Lumen is outside this repo's scope — cross-reference, don't duplicate.)
+
 ---
 
 ## What iOS/macOS 27 Foundation Models newly enable
@@ -164,6 +169,8 @@ archived. Before any slice becomes Ready it needs:
 
 ## Related
 
+- **Lumen** (separate repo) — the Apple-native rewrite of Selene; the likely implementation home for the
+  on-device slices in this doc.
 - `docs/plans/2026-03-21-codebase-simplification-design.md` (what archived SeleneChat/threads)
 - `docs/plans/2026-05-26-selene-mobile-companion-design.md` (SeleneMarkup — the live Apple surface)
 - `docs/plans/2026-05-31-fact-store-design.md` (the `facts.db`/`selene.db` durability boundary)
