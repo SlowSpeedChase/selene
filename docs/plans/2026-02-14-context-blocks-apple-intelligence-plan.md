@@ -1,5 +1,13 @@
 # Context Blocks + Apple Intelligence Implementation Plan
 
+> ## ⚠️ SUPERSEDED — do not implement (2026-06-09)
+> This 10-task plan targets **`SeleneChat/...`** paths and a **thread-chat / `note_chunks`** system that were
+> **archived in the 2026-03-21 simplification** and do not exist in the current codebase. It is also built on
+> **iOS 26** Foundation Models assumptions (fixed ~3B / 4K context) that **iOS 27 superseded**. Retained for
+> history only. See the revised design doc
+> (`2026-02-14-context-blocks-apple-intelligence-design.md`) for the current Vision-stage re-scope; a fresh
+> plan must be written against real current files before any code.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Replace thread chat's all-notes-truncated context with chunk-based semantic retrieval, add Apple Intelligence as a second LLM provider, and route tasks to the best model.
