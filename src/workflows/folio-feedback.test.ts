@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { redirectSeleneSingleton } from '../lib/test-two-file-db';
+
+// folio-feedback imports the ../lib barrel + open-selene-connection, which open the db
+// singleton on import. Redirect it to throwaway temp files BEFORE importing the module-under-test
+// so these pure-string tests never touch a real DB. (Authored for vitest and never actually ran;
+// converted to jest — vitest's describe/it/expect map directly to jest globals.)
+const { restore } = redirectSeleneSingleton('selene-folio-feedback-test-');
+
 import { parseFolioTitle, buildFeedbackFilename, buildFeedbackContent } from './folio-feedback';
+
+afterAll(() => restore());
 
 describe('parseFolioTitle', () => {
   it('parses a valid folio title into projectDir and filePath', () => {
