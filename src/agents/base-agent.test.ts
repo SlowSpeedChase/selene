@@ -1,16 +1,21 @@
 import assert from 'assert';
+import { redirectSeleneSingleton } from '../lib/test-two-file-db';
 
-async function runTests() {
-  const { BaseAgent } = await import('./base-agent');
+// base-agent imports ../lib/agent-db which imports ./db (opens a real connection on
+// import). Redirect the db.ts singleton to throwaway files BEFORE importing the module
+// under test, so the import is harmless under jest.
+const { restore } = redirectSeleneSingleton('selene-base-agent-test-');
 
-  // Test 1: BaseAgent is a class
-  {
+import { BaseAgent } from './base-agent';
+
+describe('base-agent', () => {
+  afterAll(() => restore());
+
+  it('BaseAgent class is exported', () => {
     assert.strictEqual(typeof BaseAgent, 'function', 'BaseAgent is a constructor');
-    console.log('  ✓ BaseAgent class is exported');
-  }
+  });
 
-  // Test 2: Validates action types against allowed list
-  {
+  it('Action type validation works', () => {
     class TestAgent extends BaseAgent {
       name = 'test-agent';
       allowedActionTypes = ['test.do_something'];
@@ -22,13 +27,5 @@ async function runTests() {
     const agent = new TestAgent();
     assert.ok(agent.validateActionTypes([{ action_type: 'test.do_something', target_id: '1', target_type: 'things_task', payload: {}, rationale: '', confidence: 0.9 }]), 'Valid action passes');
     assert.ok(!agent.validateActionTypes([{ action_type: 'test.forbidden', target_id: '1', target_type: 'things_task', payload: {}, rationale: '', confidence: 0.9 }]), 'Invalid action fails');
-    console.log('  ✓ Action type validation works');
-  }
-
-  console.log('\nAll base-agent tests passed!');
-}
-
-runTests().catch((err) => {
-  console.error('Tests failed:', err);
-  process.exit(1);
+  });
 });

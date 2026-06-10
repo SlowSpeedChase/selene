@@ -46,27 +46,21 @@ seedSchema();
 
 const TEST_RUN = `test-worksheets-${Date.now()}`;
 
-async function runTests() {
-  console.log('Testing worksheet routes...\n');
-  console.log(`Using throwaway DB: ${TEST_DB_PATH}\n`);
-
-  // Lazy import AFTER SELENE_DB_PATH is set so the db singleton resolves correctly.
-  const Fastify = (await import('fastify')).default;
-  const { worksheetRoutes } = await import('./worksheets');
-
-  console.log('Test 1: GET /api/worksheets/today returns a free_capture worksheet');
-  {
+describe('worksheets', () => {
+  it('GET /api/worksheets/today returns a free_capture worksheet', async () => {
+    const Fastify = (await import('fastify')).default;
+    const { worksheetRoutes } = await import('./worksheets');
     const app = Fastify();
     await app.register(worksheetRoutes);
     const res = await app.inject({ method: 'GET', url: '/api/worksheets/today' });
     assert.strictEqual(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
     assert.strictEqual(res.json().fields[0].kind, 'free_capture');
     await app.close();
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 2: POST answers creates a note for non-blank text and skips blanks');
-  {
+  it('POST answers creates a note for non-blank text and skips blanks', async () => {
+    const Fastify = (await import('fastify')).default;
+    const { worksheetRoutes } = await import('./worksheets');
     const app = Fastify();
     await app.register(worksheetRoutes);
     const res = await app.inject({
@@ -87,11 +81,11 @@ async function runTests() {
     assert.strictEqual(typeof body.results[0].noteId, 'number');
     assert.strictEqual(body.results[1].outcome, 'skipped');
     await app.close();
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 3: POST with missing answers array returns 400');
-  {
+  it('POST with missing answers array returns 400', async () => {
+    const Fastify = (await import('fastify')).default;
+    const { worksheetRoutes } = await import('./worksheets');
     const app = Fastify();
     await app.register(worksheetRoutes);
     const res = await app.inject({
@@ -101,13 +95,5 @@ async function runTests() {
     });
     assert.strictEqual(res.statusCode, 400, `expected 400, got ${res.statusCode}`);
     await app.close();
-    console.log('  ✓ PASS');
-  }
-
-  console.log('\nAll worksheet route tests passed ✓');
-}
-
-runTests().catch((err) => {
-  console.error('\nTEST FAILED:', err);
-  process.exit(1);
+  });
 });
