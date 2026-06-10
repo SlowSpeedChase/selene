@@ -63,6 +63,23 @@ export function noteDateStr(createdAt: string): string {
   return new Date(createdAt).toISOString().split('T')[0];
 }
 
+/**
+ * First ~maxLen chars of the note's ACTUAL text, flattened to one line — emitted as the
+ * Obsidian `aliases:` entry so graph surfaces (ExcaliBrain nodes, search, link autocomplete)
+ * show real words from the note instead of the date-slug filename. Leading markdown markers
+ * (#, >, -, *) are stripped per line so the alias reads as prose. Empty content → '' (no alias).
+ */
+export function noteAlias(content: string, maxLen = 80): string {
+  const flat = sanitizeContent(content)
+    .split('\n')
+    .map((line) => line.replace(/^[\s#>*-]+/, ''))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!flat) return '';
+  return flat.length <= maxLen ? flat : `${flat.slice(0, maxLen).trimEnd()}…`;
+}
+
 /** `<date>-<slug>.md` — the vault filename for a note. */
 export function noteFilename(note: { title: string; created_at: string }): string {
   return `${noteDateStr(note.created_at)}-${createSlug(note.title)}.md`;
@@ -90,9 +107,15 @@ export function renderNoteMarkdown(note: RenderableNote, parentClusters: string[
     .map((line) => `> ${line}`)
     .join('\n');
 
+  // Alias = a chunk of the note's own text, so ExcaliBrain/graph nodes read as content cards
+  // instead of date-slug filenames. Escaped for a double-quoted YAML scalar.
+  const alias = noteAlias(cleanContent);
+  const aliasEscaped = alias.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
   const parts: string[] = [
     `---`,
     `title: "${titleEscaped}"`,
+    ...(alias ? [`aliases:`, `  - "${aliasEscaped}"`] : []),
     `date: ${dateStr}`,
     `theme: ${theme}`,
     `concepts:`,

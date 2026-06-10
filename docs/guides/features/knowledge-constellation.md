@@ -8,6 +8,7 @@
 2. Open any note under `Notes/` and launch **ExcaliBrain** (command palette → "ExcaliBrain: Open").
 3. The note shows its **topic cluster as a parent** above it; centering the cluster shows all its member notes as **children**. A note that belongs to several clusters appears under each — click any node to recenter and keep flying through.
 4. The cluster nodes themselves are the `Constellation/` index notes (one per cluster).
+5. **Note nodes read as content cards, not dates:** each exported note carries an `aliases:` frontmatter entry with the first ~80 characters of its actual text, and ExcaliBrain displays the alias instead of the `YYYY-MM-DD-slug` filename. (If you still see date filenames, check ExcaliBrain settings → Display → "Display alias if available" is on, and let the hourly export finish rewriting the corpus.)
 
 This is read-only navigation — you don't maintain the map by hand. Selene regenerates it on every export.
 
@@ -16,6 +17,7 @@ This is read-only navigation — you don't maintain the map by hand. Selene rege
 The hourly export workflow (`src/workflows/export-obsidian.ts`, run by the `com.selene.prod.export-obsidian` launchd agent) does two constellation things, both driven entirely by the synthesis tables — no new computation:
 
 - **`parent::` fields on notes** — for each exported note, it looks up the note's cluster(s) in `topic_note_links` ⋈ `topic_clusters` and writes one `parent:: [[<cluster>]]` Dataview line per cluster (multi-membership safe). `parent::` is ExcaliBrain's default parent field, so no plugin config is needed.
+- **Content-chunk aliases** — `noteAlias()` in `src/lib/obsidian-render.ts` flattens the note's sanitized text to one ~80-char prose line and emits it as YAML `aliases:`; ExcaliBrain (and Obsidian search/link autocomplete) prefer the alias over the filename, so graph nodes show what the note *says*.
 - **`Constellation/` index notes** — one markdown file per cluster (`Constellation/<cluster>.md`), regenerated wholesale each run (idempotent — re-running overwrites identically, no duplicates).
 
 The clusters come from the nightly `synthesize-topics` agent (2am), which builds one cluster per content category from each note's `category`/`cross_ref_categories`. So the constellation reflects the same 8 content categories you see in the Notes browse.
