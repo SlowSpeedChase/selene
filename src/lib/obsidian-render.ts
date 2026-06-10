@@ -68,8 +68,9 @@ export function noteDateStr(createdAt: string): string {
  * Obsidian `aliases:` entry so graph surfaces (ExcaliBrain nodes, search, link autocomplete)
  * show real words from the note instead of the date-slug filename. Leading markdown markers
  * (#, >, -, *) are stripped per line so the alias reads as prose. Empty content → '' (no alias).
+ * Default length is a card-sized chunk (user-tuned 2026-06-10: 80 felt too short).
  */
-export function noteAlias(content: string, maxLen = 80): string {
+export function noteAlias(content: string, maxLen = 180): string {
   const flat = sanitizeContent(content)
     .split('\n')
     .map((line) => line.replace(/^[\s#>*-]+/, ''))
