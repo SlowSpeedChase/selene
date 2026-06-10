@@ -32,8 +32,8 @@ Two rejected alternatives, recorded so they are not re-litigated:
 
 ### Why A is cheap: the fact-store split already did the hard work
 
-- **Re-filing is a DELETE, not a feature.** "Pending" is derivation-absence (fact-store Ph1). Deleting a note's `processed_notes` row (+ its `note_embeddings` row) makes it pending; the existing 5-minute `process-llm` agent re-derives it. No new re-processing code path.
-- **Durability is solved by address.** Human words are precious → `note_feedback` lives in `facts.db`, keyed on `source_uuid`. A `rebuild` wipes all derived data and re-derives every note **with its feedback context already in the prompt** — corrections survive by construction, no merge step.
+- **Re-filing is a one-line status flip, not a feature.** "Pending" is derivation-absence (fact-store Ph1). Setting the note's `note_state.status` back to `'pending'` makes the existing 5-minute `process-llm` agent re-derive it (`INSERT OR REPLACE` overwrites the old derivation). No new re-processing code path. (See §3 for why the flip beats the design's original row-delete.)
+- **Durability is solved by address.** Human words are precious → `note_feedback` lives in `facts.db`, keyed on `captured_notes.id` (see §2 correction). A `rebuild` wipes all derived data and re-derives every note **with its feedback context already in the prompt** — corrections survive by construction, no merge step.
 
 ### Relationship to fact-store Ph3 `category_overrides`
 
@@ -58,37 +58,39 @@ After processing, the user's words are re-rendered as an **applied block**:
 
 **Parse rule (the whole protocol):** within the section, anything *inside* an applied block (blockquote ending in an `— applied … ✓` line) is history; any *other* non-whitespace text is **new feedback**. Multiple rounds accumulate as successive applied blocks.
 
-### 2. File → note identity: `selene_uuid` frontmatter
+### 2. File → note identity: `selene_id` frontmatter
 
-`obsidian-render.ts` adds `selene_uuid: <source_uuid>` to frontmatter. This changes every note's content hash once → a one-time full re-render (the churn guard's job is preventing *pointless* churn; this one is load-bearing). Fallback during transition / for hand-restored files: recompute `noteFilename()` (deterministic `<date>-<slug>.md`) across notes and match.
+`obsidian-render.ts` adds `selene_id: <captured_notes.id>` to frontmatter. This changes every note's content hash once → a one-time full re-render (the churn guard's job is preventing *pointless* churn; this one is load-bearing).
+
+> **Plan-time correction (2026-06-10):** the design originally keyed on `source_uuid`, but older notes have NULL `source_uuid` (the Drafts UUID fix was recent), so it can't be the key. `captured_notes.id` is total AND equally stable: `facts.db` is precious — `rebuild` never touches it, and the fact-store migration was id-preserving.
 
 ### 3. New workflow: `src/workflows/vault-feedback.ts`
 
 Scheduled via a new `com.selene.prod.vault-feedback` launchd agent, **every 15 minutes**. Each run:
 
-1. **Scan** `Notes/*.md` with mtime > last-scan watermark (watermark in `selene.db` bookkeeping — disposable; a lost watermark just causes a full, idempotent rescan).
-2. **Parse** each candidate's `## ✍️ Your note` section by the rule above.
+1. **Scan** all of `Notes/*.md` (no mtime watermark — ~300 small files is trivially cheap, and the dedupe check below makes full rescans idempotent; less state, no lost-watermark edge case. *Plan-time simplification 2026-06-10.*)
+2. **Parse** each file's `## ✍️ Your note` section by the rule above.
 3. For each piece of new feedback:
-   - Map file → `source_uuid` (frontmatter; filename fallback).
-   - **Insert into `note_feedback` (`facts.db`)** — skipping if an identical `(source_uuid, feedback_text)` row exists (idempotency: ingested-but-not-yet-re-exported text will be seen again next scan).
-   - Snapshot the current filing (`theme`, `concepts`, `category`, `cross_ref_categories`, `sub_categories`, essence) into `original_filing` — Phase 2's few-shot raw material, captured *before* the next step destroys it.
-   - **Delete the note's `processed_notes` + `note_embeddings` rows** → pending → `process-llm` re-derives within ~5 min. Downstream (synthesis clusters, export) refresh on their own schedules; the existing orphan-cleanup guards handle stale links.
+   - Map file → note via `selene_id` frontmatter, validated against `facts.captured_notes`.
+   - **Insert into `note_feedback` (`facts.db`)** — skipping if an identical `(raw_note_id, feedback_text)` row exists (idempotency: ingested-but-not-yet-re-exported text will be seen again next scan).
+   - Snapshot the current filing (`theme`, `concepts`, `category`, `cross_ref_categories`, `sub_categories`, essence) into `original_filing` — Phase 2's few-shot raw material, captured *before* the next step replaces it.
+   - **Re-pend the note: `setNoteState(status: 'pending', processed_at: null)`** → `process-llm` re-derives within ~5 min (its writes are `INSERT OR REPLACE`, so the old derivation is overwritten cleanly). *Plan-time correction (2026-06-10): the design originally said "delete the `processed_notes` + `note_embeddings` rows," but the status flip is strictly safer — it preserves the unrelated `note_state` bookkeeping (`status_folio`, `inbox_status`) that row deletion via `note_state` removal would have lost, and the existing pending-query machinery (`COALESCE(ns.status,'pending')`) handles the rest.* Downstream (synthesis clusters, export) refresh on their own schedules.
 
 ```sql
 -- facts.db (precious, Time-Machine-backed, survives rebuild)
 CREATE TABLE note_feedback (
-  id              INTEGER PRIMARY KEY,
-  source_uuid     TEXT NOT NULL,        -- the captured note (stable across rebuilds)
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  raw_note_id     INTEGER NOT NULL,     -- captured_notes.id (stable: facts.db is never rebuilt)
   feedback_text   TEXT NOT NULL,
   original_filing TEXT,                 -- JSON snapshot of the filing being corrected
-  created_at      TEXT NOT NULL,
-  applied_at      TEXT                  -- set when the re-derivation lands
+  created_at      DATETIME NOT NULL,
+  applied_at      DATETIME              -- set when the re-derivation lands
 );
 ```
 
 ### 4. Prompt injection: the re-file
 
-`process-llm.ts`, while building a note's prompts, checks `note_feedback` for the note's `source_uuid`. If rows exist, `EXTRACT_PROMPT` and the essence prompt gain a block:
+`process-llm.ts`, while building a note's prompts, checks `note_feedback` for the note id. If rows exist, `EXTRACT_PROMPT` and the essence prompt gain a block:
 
 > The author has clarified what this note means to them: «…all feedback texts, oldest first…». Weight the author's stated intent over the surface topic when choosing theme, concepts, and category.
 
@@ -96,16 +98,16 @@ On successful processing of a note with pending feedback, `applied_at` is stampe
 
 ### 5. Exporter changes (`export-obsidian.ts` / `obsidian-render.ts`)
 
-- Emit `selene_uuid` frontmatter (§2).
+- Emit `selene_id` frontmatter (§2).
 - Render the `## ✍️ Your note` section: empty, or with applied blocks from `note_feedback` (DB is the source of truth once ingested).
 - **Preserve-on-render (mandatory):** before overwriting a note file, read its existing section; any *unprocessed* user text (per the parse rule) is re-emitted verbatim below the rendered applied blocks. The hourly export can therefore never clobber feedback the scanner hasn't ingested yet, regardless of run ordering.
 - The content hash covers the full rendered output including applied blocks, so the "✓" state writes exactly once and then goes quiet.
 
 ### Error handling
 
-- **Unmatched file** (no `selene_uuid`, no filename match — e.g. a hand-created note): skip + log. Never delete or modify.
+- **Unmatched file** (no `selene_id`, or an id not present in `captured_notes` — e.g. a hand-created note): skip + log. Never delete or modify.
 - **Whitespace-only / empty section:** not feedback.
-- **iCloud conflict copies** (`… 2.md`): no `selene_uuid` collision handling needed — they carry the same uuid, but the filename fails `noteFilename()` shape → treated as unmatched, skipped + logged. (Vault-level conflict hygiene is out of scope.)
+- **iCloud conflict copies** (`… 2.md`): they carry the same `selene_id` as the original, but identical text dedupes and differing text in two copies is rare enough to accept; conflict copies otherwise behave as normal files. (Vault-level conflict hygiene is out of scope.)
 - **Re-derivation fails** (Ollama down / parse failure): the note simply stays pending — the existing retry semantics of derivation-absence apply; feedback is already safe in facts.
 
 ---
@@ -130,7 +132,7 @@ All dev-sandbox (`resolveVaultPath` already isolates the dev vault; dev DB is `~
 
 ## Acceptance Criteria (Phase 1)
 
-- [ ] Every exported note carries `selene_uuid` frontmatter and a `## ✍️ Your note` section.
+- [ ] Every exported note carries `selene_id` frontmatter and a `## ✍️ Your note` section.
 - [ ] Text typed under the section lands in `facts.db note_feedback` (with `original_filing` snapshot) within one scan cycle, and the note is re-derived with the intent in-prompt within ~20 min end-to-end.
 - [ ] The next export shows the new filing AND the feedback as an applied-✓ block; the user's words are never lost by any export/scan ordering (preserve-on-render test proves it).
 - [ ] Feedback survives `rebuild`: post-rebuild, the note's derivation reflects the intent without any manual step.
