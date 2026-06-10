@@ -1,6 +1,12 @@
 import assert from 'assert';
 import { anonymize, deanonymize, anonymizeWithNER } from './anonymize';
 
+// Keep the NER pass hermetic + deterministic: stub the Ollama call so anonymizeWithNER
+// exercises its "structured PII is still replaced even when the NER layer adds nothing"
+// contract WITHOUT a live Ollama. (A real call hangs ~30s when Ollama is down, which
+// blows past jest's 5s timeout — the exact flake this mock removes.)
+jest.mock('./ollama', () => ({ generate: jest.fn(async () => '[]') }));
+
 describe('anonymize', () => {
   it('anonymizes email addresses', () => {
     const result = anonymize('Contact me at chase@example.com please');
