@@ -2,11 +2,9 @@
 
 **What this does for you:** lets you develop freely in `~/selene` without touching what's running, then ship a tested, compiled build to production simply by merging to `main` — automatically, with a notification when it's done.
 
-> **Status: built & tested, not yet live.** The release tooling on this branch is complete and integration-tested, but it **activates at a one-time cutover** that has not run yet. Until then, production still runs the old `com.selene.*` agents from `~/selene` via ts-node, exactly as before. Everything below describes how releases work **once the cutover happens** — see the design doc in [Related](#related). The backend architecture diagram (`docs/backend-block-diagrams.md`) is intentionally not updated yet; it changes at cutover, when the live launchd layout actually changes.
+> **Status: LIVE since 2026-05-29.** Production runs the `com.selene.prod.*` agents from compiled `dist/` in `~/selene-prod`; the old `com.selene.*` ts-node agents are retired. **Merging to `main` and pushing to origin auto-deploys within ~5 minutes.**
 
 ## Using it
-
-*(All of this applies after the one-time cutover.)*
 
 **Cut a release — merge to `main`.** That's the whole gesture. A launchd deploy-watcher checks `origin/main` every ~5 minutes; when the commit on `main` moves, it builds the new code in a scratch clone, and **only if the build passes** ships it to production. You get a macOS notification either way:
 
@@ -54,7 +52,7 @@ This restores the previous `dist/`, restarts the prod agents in place (`launchct
 
 ## The one-time fact-store cutover
 
-> **Separate from the prod/dev split above.** This is a **one-time DB migration**, not a code release. It moves production's database from a single `selene.db` to the two-file **fact-store** layout (`facts.db` = the precious append-only captured notes + your review state; `selene.db` = the regenerable derived layer). It is run **once, by hand, at a quiet moment**, then you never run it again. Status: built & validated on `feat/fact-store`, **not yet run against prod**.
+> **Separate from the prod/dev split above.** This is a **one-time DB migration**, not a code release. It moves production's database from a single `selene.db` to the two-file **fact-store** layout (`facts.db` = the precious append-only captured notes + your review state; `selene.db` = the regenerable derived layer). It is run **once, by hand, at a quiet moment**, then you never run it again. Status: **ran against prod — production is on the two-file layout** (verified content-free via `selene-inspect schema`: separate `facts.db`, `raw_notes_legacy_backup`, `note_state`). The procedure below is kept as the recovery path (e.g. a rolled-back deploy landing fact-store code on an un-migrated restore).
 
 **Why it can't just be a merge.** The fact-store code reads `raw_notes` as a per-connection view over `facts.captured_notes`. If you merged the fact-store branch and let the deploy-watcher auto-ship it (code-only) onto an **un-migrated** prod DB, prod wouldn't crash — it would silently *split*: new captures would land in `facts.captured_notes` while reads still hit the old physical `raw_notes` table. So the DB must be migrated **in lockstep** with the code, by a supervised script — never by the auto-deploy path.
 
@@ -201,4 +199,4 @@ Validated end-to-end by `scripts/verify-rebuild.sh` (real Ollama on a `/tmp` cop
 - Watcher agent: `launchd/com.selene.prod.deploy-watcher.plist`
 
 ---
-*Last updated: 2026-06-01*
+*Last updated: 2026-06-09*
