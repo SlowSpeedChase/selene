@@ -2,15 +2,12 @@ import assert from 'assert';
 import { buildTodayWorksheet, applyWorksheetAnswers } from './generate-worksheet';
 import type { WorksheetSubmission, ReviewNote } from '../types/worksheets';
 
-async function runTests() {
-  console.log('Testing generate-worksheet...\n');
-
+describe('generate-worksheet', () => {
   // -------------------------------------------------------------------------
   // buildTodayWorksheet
   // -------------------------------------------------------------------------
 
-  console.log('Test 1: buildTodayWorksheet always includes two free_capture fields');
-  {
+  it('buildTodayWorksheet always includes two free_capture fields', async () => {
     const ws = await buildTodayWorksheet(new Date('2026-05-26T09:00:00'));
     const captureFields = ws.fields.filter((f) => f.kind === 'free_capture');
     assert.strictEqual(captureFields.length, 2, 'expected 2 free_capture fields');
@@ -18,11 +15,9 @@ async function runTests() {
     assert.deepStrictEqual(captureFields[1].binding, { action: 'new_note' });
     assert.strictEqual(ws.id, 'ws_2026-05-26');
     assert.ok(ws.title.includes('2026-05-26'), 'title should contain date');
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 2: buildTodayWorksheet appends note_review field when notes returned');
-  {
+  it('buildTodayWorksheet appends note_review field when notes returned', async () => {
     const reviewNotes: ReviewNote[] = [
       { id: 1, title: 'dentist', snippet: 'keep forgetting', date: '2026-04-03' },
     ];
@@ -33,11 +28,9 @@ async function runTests() {
     assert.ok(reviewField, 'expected a note_review field');
     assert.deepStrictEqual(reviewField!.notes, reviewNotes);
     assert.deepStrictEqual(reviewField!.binding, { action: 'acknowledge' });
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 3: buildTodayWorksheet omits note_review field when no notes');
-  {
+  it('buildTodayWorksheet omits note_review field when no notes', async () => {
     const ws = await buildTodayWorksheet(new Date('2026-05-26T09:00:00'), {
       fetchReviewNotes: async () => [],
     });
@@ -45,15 +38,13 @@ async function runTests() {
       ws.fields.every((f) => f.kind !== 'note_review'),
       'should not contain a note_review field'
     );
-    console.log('  ✓ PASS');
-  }
+  });
 
   // -------------------------------------------------------------------------
   // applyWorksheetAnswers
   // -------------------------------------------------------------------------
 
-  console.log('Test 4: applyWorksheetAnswers creates notes for non-blank, skips blanks');
-  {
+  it('applyWorksheetAnswers creates notes for non-blank, skips blanks', async () => {
     const created: string[] = [];
     const deps = {
       createNote: async (text: string) => {
@@ -75,11 +66,9 @@ async function runTests() {
     assert.deepStrictEqual(result.results[0], { fieldId: 'f1', outcome: 'applied', noteId: 1 });
     assert.deepStrictEqual(result.results[1], { fieldId: 'f2', outcome: 'skipped', reason: 'empty' });
     assert.deepStrictEqual(result.relatedNotes, []);
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 5: applyWorksheetAnswers marks failed when createNote throws, continues batch');
-  {
+  it('applyWorksheetAnswers marks failed when createNote throws, continues batch', async () => {
     const deps = {
       createNote: async (text: string) => {
         if (text === 'boom') throw new Error('db error');
@@ -98,11 +87,9 @@ async function runTests() {
 
     assert.strictEqual(result.results[0].outcome, 'failed');
     assert.deepStrictEqual(result.results[1], { fieldId: 'f2', outcome: 'applied', noteId: 42 });
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 6: applyWorksheetAnswers records acknowledged outcome');
-  {
+  it('applyWorksheetAnswers records acknowledged outcome', async () => {
     const deps = { createNote: async () => 1 };
     const submission: WorksheetSubmission = {
       worksheetId: 'ws_x',
@@ -112,11 +99,9 @@ async function runTests() {
     const result = await applyWorksheetAnswers(submission, deps);
 
     assert.deepStrictEqual(result.results[0], { fieldId: 'f3', outcome: 'acknowledged' });
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 7: applyWorksheetAnswers calls findRelatedNotes for applied new_note answers');
-  {
+  it('applyWorksheetAnswers calls findRelatedNotes for applied new_note answers', async () => {
     const related = [
       { noteId: 99, title: 'dentist', snippet: 'keep forgetting', date: '2026-04-03', score: 0.92 },
     ];
@@ -132,11 +117,9 @@ async function runTests() {
     const result = await applyWorksheetAnswers(submission, deps);
 
     assert.deepStrictEqual(result.relatedNotes, [{ fieldId: 'f1', matches: related }]);
-    console.log('  ✓ PASS');
-  }
+  });
 
-  console.log('Test 8: applyWorksheetAnswers returns empty relatedNotes when findRelatedNotes throws');
-  {
+  it('applyWorksheetAnswers returns empty relatedNotes when findRelatedNotes throws', async () => {
     const deps = {
       createNote: async () => 42,
       findRelatedNotes: async () => {
@@ -152,13 +135,5 @@ async function runTests() {
 
     assert.strictEqual(result.results[0].outcome, 'applied');
     assert.deepStrictEqual(result.relatedNotes, []);
-    console.log('  ✓ PASS');
-  }
-
-  console.log('\nAll generate-worksheet tests passed ✓');
-}
-
-runTests().catch((err) => {
-  console.error('\nTEST FAILED:', err);
-  process.exit(1);
+  });
 });

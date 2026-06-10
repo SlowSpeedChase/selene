@@ -1,33 +1,55 @@
 #!/bin/bash
-# pre-push: refuse to push a stale system map.
+# pre-push gate: refuse to push code that doesn't type-check, fails tests, or has a stale
+# system map. This is the local "can't push broken code" net (no cloud CI by design —
+# personal app). Gates run cheap→expensive and fail fast.
 #
-# docs/SYSTEM-MAP.md is generated from src/workflows/*.ts + launchd plists.
-# The session-end reminder only catches drift in *uncommitted* changes, so a
-# workflow edited AND committed within one session slips past it. This hook
-# closes that gap: it runs the generator's --check on every push and blocks
-# the push if the committed map no longer matches the code.
-#
-# Bypass (not recommended): git push --no-verify
+# Bypass (not recommended, use only for a docs-only emergency): git push --no-verify
 
 # Git runs hooks from the repo root, so relative paths resolve here.
-# Only meaningful on branches that actually contain the generator.
-if [ ! -f scripts/gen-system-map.ts ]; then
-  exit 0
+
+# --- gate 1: TypeScript type-check (fast; catches build breakage the tests might miss) ---
+if [ -f tsconfig.json ]; then
+  echo "pre-push: type-checking (tsc --noEmit)…" >&2
+  if ! npx tsc -p tsconfig.json --noEmit; then
+    echo "" >&2
+    echo "✗ Push blocked: TypeScript errors (see above). Fix them, or:" >&2
+    echo "  Bypass (not recommended):  git push --no-verify" >&2
+    echo "" >&2
+    exit 1
+  fi
 fi
 
-if ! npx ts-node scripts/gen-system-map.ts --check >/dev/null 2>&1; then
-  echo "" >&2
-  echo "✗ Push blocked: docs/SYSTEM-MAP.md is OUT OF DATE." >&2
-  echo "  The workflow inventory no longer matches src/workflows + launchd plists." >&2
-  echo "" >&2
-  echo "  Fix:" >&2
-  echo "    npx ts-node scripts/gen-system-map.ts" >&2
-  echo "    git add docs/SYSTEM-MAP.md && git commit -m 'docs(system-map): regenerate'" >&2
-  echo "    git push          # try again" >&2
-  echo "" >&2
-  echo "  Bypass (not recommended):  git push --no-verify" >&2
-  echo "" >&2
-  exit 1
+# --- gate 2: jest suite (default PARALLEL mode — rebuild-core.db.test.ts has a known
+#     cross-suite flake under --runInBand only; do not add --runInBand here) ---
+if [ -f jest.config.js ]; then
+  echo "pre-push: running tests (npm test)…" >&2
+  if ! npm test >/dev/null 2>&1; then
+    echo "" >&2
+    echo "✗ Push blocked: tests are failing. See what broke:" >&2
+    echo "    npm test" >&2
+    echo "  Bypass (not recommended):  git push --no-verify" >&2
+    echo "" >&2
+    exit 1
+  fi
+fi
+
+# --- gate 3: system-map drift (docs/SYSTEM-MAP.md is generated from src/workflows + plists;
+#     the session-end reminder only catches uncommitted drift, this closes the committed gap) ---
+if [ -f scripts/gen-system-map.ts ]; then
+  if ! npx ts-node scripts/gen-system-map.ts --check >/dev/null 2>&1; then
+    echo "" >&2
+    echo "✗ Push blocked: docs/SYSTEM-MAP.md is OUT OF DATE." >&2
+    echo "  The workflow inventory no longer matches src/workflows + launchd plists." >&2
+    echo "" >&2
+    echo "  Fix:" >&2
+    echo "    npx ts-node scripts/gen-system-map.ts" >&2
+    echo "    git add docs/SYSTEM-MAP.md && git commit -m 'docs(system-map): regenerate'" >&2
+    echo "    git push          # try again" >&2
+    echo "" >&2
+    echo "  Bypass (not recommended):  git push --no-verify" >&2
+    echo "" >&2
+    exit 1
+  fi
 fi
 
 exit 0
