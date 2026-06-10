@@ -833,6 +833,10 @@ fi
 
 ## Related Context
 
-@workflows/01-ingestion/scripts/test-with-markers.sh
-@database/schema.sql
 @README.md
+
+> NOTE (2026-06-09): Much of this file still describes the **removed n8n/Docker stack**
+> (start-n8n-local.sh, manage-workflow.sh, import-workflows.sh, test-ingest.sh, etc. — all
+> deleted in the Jan 2026 TypeScript migration / 2026-03-21 simplification). Treat those
+> sections as historical. The live scripts are whatever is actually in `scripts/`; the live
+> workflow/agent inventory is `docs/SYSTEM-MAP.md`. This file is queued for a full rewrite.
