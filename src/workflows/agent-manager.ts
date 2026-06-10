@@ -1,6 +1,16 @@
 // @map purpose: Run background agents, deliver their pending reports, and escalate stale approvals
 // @map reads: agent_jobs, agent_reports
 // @map writes: agent_reports (delivery state), Apple Notes, Obsidian vault
+//
+// PARKED / DORMANT (intentional — not a bug). This scheduled heartbeat (every 15 min,
+// com.selene.agent-manager) registers known agents, delivers any pending reports, and
+// escalates stale approvals — but it does NOT call agent.run(), so no agent currently
+// executes on its own. The framework (BaseAgent → jobs → actions → approval route →
+// ActionExecutor → Things) is wired end-to-end and reachable only by running a concrete
+// agent manually (e.g. `ts-node src/agents/things-metadata-enricher.ts`). It is parked
+// for the future executive-assistant feature; to ACTIVATE, call run() here for each
+// enabled agent in agent_registry (gated on its `schedule`). Until then this layer
+// produces no output — there is nothing to observe in the dashboard yet by design.
 import { createWorkflowLogger } from '../lib/logger';
 import {
   runAgentMigrations,

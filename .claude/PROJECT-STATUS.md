@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
 **Last Updated:** 2026-06-01
-**Status:** Simplified Core | Agent Layer Active | Synthesis Layer Shipped | Note Annotation (iPad) Shipped | Dev/Prod Boundary Hardened (guard + corpus) | Content Clustering Rolled Out (8 categories, multi-membership) | Knowledge Constellation Phase A Shipped | PKM Browse Dashboard Shipped (`/pkm/*`) | **Fact Store LIVE (two-file split: `facts.db` + `selene.db`)**
+**Status:** Simplified Core | Agent Layer (scaffolded, dormant — see note) | Synthesis Layer Shipped | Note Annotation (iPad) Shipped | Dev/Prod Boundary Hardened (guard + corpus) | Content Clustering Rolled Out (8 categories, multi-membership) | Knowledge Constellation Phase A Shipped | PKM Browse Dashboard Shipped (`/pkm/*`) | **Fact Store LIVE (two-file split: `facts.db` + `selene.db`)**
 
 > **2026-06-01 session — Fact Store cutover (Ph1 LIVE in prod):** Migrated prod's single DB to the two-file fact store (`facts.db` PRECIOUS captured notes + review state; `selene.db` DISPOSABLE derived layer; `raw_notes` is now a per-connection view). The gated `cutover-prod.sh` ran against prod: two attempts **auto-rolled-back cleanly** (zero data risk) on real prod-data cruft the clean dev DB couldn't surface (6 orphaned `processed_notes`, 61 pre-existing FK violations), then succeeded — 295 notes migrated, prod healthy. Migration hardened to TOLERATE pre-existing referential cruft (faithful: fail only on what it INTRODUCES). High-effort code review (9 findings) resolved; dev-tooling made two-file-aware (`reset-dev-data.sh`, `cleanup-tests.sh`); dev→prod vault-path bug FIXED (`resolveVaultPath`). All merged to `main`; 206 tests. Lesson: validate the migration on a `.backup` copy of REAL prod before merging. Remaining: fact-store Ph2 (`rebuild`) + Ph3 (`category_overrides`); PKM Track 3; Constellation Phase B.
 
@@ -26,49 +26,14 @@ Notes are captured, processed by LLM for concept extraction, distilled into esse
 
 On 2026-03-21, the codebase was simplified from ~20,000 lines to ~3,500 lines. The core capture-process-browse pipeline was preserved. Everything else was shelved to `archive/shelved-2026-03-21/` with a README. All design docs remain in `docs/plans/` and git history preserves everything.
 
-### Active Workflows (6)
+### Live inventory — see the generated map (do not hand-maintain counts here)
 
-| Workflow | Schedule | What It Does |
-|----------|----------|-------------|
-| `ingest.ts` | Webhook trigger | Note ingestion with duplicate detection |
-| `process-llm.ts` | Every 5 min | LLM concept extraction via Ollama |
-| `distill-essences.ts` | Every 5 min | Essence backfill (1-2 sentence distillations) |
-| `export-obsidian.ts` | Hourly | Sync notes to Obsidian vault |
-| `daily-summary.ts` | Daily at midnight | Aggregate daily insights |
-| `send-digest.ts` | Daily at 6am | Post summary to pinned Apple Note |
+The 2026-03-21 simplification cut the core to 6 workflows; **the system has grown since** (synthesis, the agent layer, eink/voice ingest, worksheets, folio feedback, …). To prevent drift, this doc no longer hard-codes counts — each fact lives in exactly one generated/source place:
 
-### Active Launchd Agents (6)
-
-| Agent | Type |
-|-------|------|
-| `com.selene.server` | Always running (KeepAlive) |
-| `com.selene.process-llm` | Every 5 minutes |
-| `com.selene.distill-essences` | Every 5 minutes |
-| `com.selene.export-obsidian` | Hourly |
-| `com.selene.daily-summary` | Daily at midnight |
-| `com.selene.send-digest` | Daily at 6am |
-
-### Active Scripts (6)
-
-- `install-launchd.sh` - Install/reload launchd agents
-- `uninstall-launchd.sh` - Remove launchd agents
-- `cleanup-tests.sh` - Remove test data
-- `create-dev-db.sh` - Set up dev database
-- `dev-process-batch.sh` - Run dev batch processing
-- `test-ingest.sh` - Test ingestion endpoint
-
-### Server
-
-Fastify webhook server on port 5678 with 3 routes:
-- `GET /health` - Health check
-- `POST /webhook/api/drafts` - Note ingestion
-- `POST /trigger/export-obsidian` - Trigger Obsidian export
-
-Plus registered route plugins: `agentRoutes`, `dashboardRoutes`, and `notesRoutes` (note annotation — `GET /api/clusters`, `GET /api/clusters/:id/notes`, `GET /api/notes/:id`, `POST /api/notes/:id/annotations`, in `src/routes/notes.ts`).
-
-### Libraries (src/lib/)
-
-All shared libraries remain active: db, ollama, config, logger, prompts, auth, lancedb, context-builder.
+- **Workflows, launchd agents, schedules, reads/writes:** `docs/SYSTEM-MAP.md` — generated from `src/workflows/` + `launchd/` by `scripts/gen-system-map.ts`. A pre-push git hook and the session-end Stop hook run `--check` to catch drift.
+- **HTTP routes:** see `src/server.ts` (`server.register(...)`); route plugins live in `src/routes/` (agents, dashboard, notes, pkm, worksheets).
+- **Scripts:** `scripts/` (documented in `scripts/CLAUDE.md`).
+- **Shared libraries:** `src/lib/` (db, ollama, config, logger, prompts, auth, lancedb, …).
 
 ---
 
