@@ -159,6 +159,9 @@ export interface ReconcileResult {
    *  backfill hasn't fully drained — the next run will continue it. */
   deferred: number;
   errors: number;
+  /** First few per-note failures (noteId + exception message, NO note content) so an errors>0
+   *  exit is diagnosable from logs. A silent catch here once cost a debugging session. */
+  errorSamples: Array<{ id: number; message: string }>;
 }
 
 interface ReconcileRow extends RenderableNote {
@@ -202,6 +205,7 @@ export function reconcileExportedNotes(
   let skipped = 0;
   let deferred = 0;
   let errors = 0;
+  const errorSamples: Array<{ id: number; message: string }> = [];
 
   for (const note of notes) {
     try {
@@ -234,10 +238,13 @@ export function reconcileExportedNotes(
         exported_at: new Date().toISOString(),
       });
       written++;
-    } catch {
+    } catch (err) {
       errors++;
+      if (errorSamples.length < 5) {
+        errorSamples.push({ id: note.id, message: (err as Error).message });
+      }
     }
   }
 
-  return { written, skipped, deferred, errors };
+  return { written, skipped, deferred, errors, errorSamples };
 }

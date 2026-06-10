@@ -81,6 +81,10 @@ function exportNotes(vaultPath: string): { exported: number; errors: number } {
     { written: result.written, skipped: result.skipped, deferred: result.deferred, errors: result.errors },
     'Reconciled notes for export'
   );
+  if (result.errors > 0) {
+    // noteId + exception message only — never note content.
+    log.error({ errorSamples: result.errorSamples }, 'Per-note export failures');
+  }
   if (result.deferred > 0) {
     log.info({ deferred: result.deferred }, 'Backfill not fully drained — next run will continue');
   }
