@@ -273,3 +273,23 @@ describe('removeOrphanClusters', () => {
     expect(clusterBySlug(db, 'health-body/running')).toBeDefined();
   });
 });
+
+describe('module-load sub_categories migration (deploy-order safety)', () => {
+  // At a prod deploy, kickstart -k force-runs every agent at once, so this workflow can
+  // fire against an existing DB BEFORE process-llm's identical migration has landed.
+  // The module's own import-time guard must add the column it reads.
+  it('importing the workflow adds processed_notes.sub_categories when absent', () => {
+    const mockedDb = (jest.requireMock('../lib') as { db: DB }).db;
+    // Simulate the pre-deploy prod shape: processed_notes exists WITHOUT sub_categories.
+    mockedDb.exec('DROP TABLE IF EXISTS processed_notes');
+    mockedDb.exec('CREATE TABLE processed_notes (raw_note_id INTEGER PRIMARY KEY, category TEXT)');
+
+    jest.isolateModules(() => {
+      require('./synthesize-topics'); // re-run module scope (initSynthesisSchema + column guard)
+    });
+
+    const cols = (mockedDb.prepare('PRAGMA table_info(processed_notes)').all() as Array<{ name: string }>)
+      .map((c) => c.name);
+    expect(cols).toContain('sub_categories');
+  });
+});
