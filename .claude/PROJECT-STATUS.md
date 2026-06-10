@@ -310,13 +310,12 @@ Release flow: merge to `main` → a launchd deploy-watcher (`com.selene.prod.dep
 
 **Must Read:**
 - `docs/plans/INDEX.md` - Design documents for implementation
-- `database/schema.sql` - Database structure
+- Live schema is built in code by `src/lib/ensure-migrated.ts` + `src/lib/facts-db.ts` (two-file fact store). The old single-DB `database/` SQL migrations are archived under `archive/legacy-2026-06-09/`.
 
 **Source Code:**
 - `src/server.ts` - Webhook server entry point
 - `src/lib/` - Shared utilities
-- `src/workflows/` - Background processing scripts (6 active)
-- `launchd/` - macOS launch agent configurations (6 active)
+- `src/workflows/` + `launchd/` - workflows & launchd agents (live inventory: `docs/SYSTEM-MAP.md`)
 
 **Archive:**
 - `archive/shelved-2026-03-21/` - All shelved features with README
