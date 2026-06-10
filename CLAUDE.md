@@ -117,7 +117,6 @@ src/
     logger.ts         # Pino structured logging
     ollama.ts         # Ollama API client
     auth.ts           # Bearer token auth middleware
-    context-builder.ts    # Tiered context assembly utility
     lancedb.ts        # LanceDB vector utilities
     prompts.ts        # LLM prompt templates
   workflows/            # CORE PIPELINE shown below — full live inventory + schedules + reads/writes: docs/SYSTEM-MAP.md

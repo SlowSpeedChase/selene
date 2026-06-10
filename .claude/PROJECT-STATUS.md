@@ -1,7 +1,7 @@
 # Selene Project - Current Status
 
 **Last Updated:** 2026-06-01
-**Status:** Simplified Core | Agent Layer Active | Synthesis Layer Shipped | Note Annotation (iPad) Shipped | Dev/Prod Boundary Hardened (guard + corpus) | Content Clustering Rolled Out (8 categories, multi-membership) | Knowledge Constellation Phase A Shipped | PKM Browse Dashboard Shipped (`/pkm/*`) | Fact Store LIVE (two-file split) | **Sub-categories Phase 1 merged to main (taxonomy facets under the 8)**
+**Status:** Simplified Core | Agent Layer (scaffolded, dormant — see note) | Synthesis Layer Shipped | Note Annotation (iPad) Shipped | Dev/Prod Boundary Hardened (guard + corpus) | Content Clustering Rolled Out (8 categories, multi-membership) | Knowledge Constellation Phase A Shipped | PKM Browse Dashboard Shipped (`/pkm/*`) | Fact Store LIVE (two-file split) | **Sub-categories Phase 1 merged to main (taxonomy facets under the 8)**
 
 > **2026-06-06 session — Sub-categories Phase 1 (merged to `main`, not yet pushed/deployed):** Added a second taxonomy level (facets) under the 8 fixed categories, subagent-driven (11 TDD tasks, two-stage review). Git-tracked seed taxonomy at `src/config/sub-taxonomy.ts` (the file you edit to curate; survives a fact-store `rebuild`). `process-llm` assigns a closed-set sub-category per note (NULL on Ollama failure → retriable by `scripts/backfill-sub-categories.ts`). `synthesize-topics` materializes sub-clusters (`topic_clusters` rows with `parent_id` + `health-body/running` slugs) in a **separate pass after the category loop** (decoupled from the `unchanged` short-circuit — a TRAP test guards it); orphan-cleanup rewritten as a structural `isValidClusterSlug` guard (fixes the silent-wipe landmine). Constellation `parent::` edges work with zero code change. Content-free curation dial: `backfill-sub-categories.ts --report` + `selene-inspect coverage` → per-category `none%`. `/api/clusters` (iPad) stays top-level (sub-clusters excluded in Ph1). 233 tests, tsc clean; reviewed per-task + Ollama-contract + whole-branch (the whole-branch pass caught the `/api/clusters` leak). **Next (operator):** dev smoke (process-llm→backfill→`--report`→synthesize→eyeball vault, needs Ollama); then push origin main to deploy; then run the prod backfill. Curate the v0 taxonomy names by reading `none%`. Ph2 (emergent tail + curator agent + firmness) remains. Pre-existing unrelated flake noted: `rebuild-core.db.test.ts` fails only under `jest --runInBand` (cross-suite isolation), green in default parallel runs. Plan: `docs/plans/2026-06-06-sub-categories-plan.md`.
 
@@ -28,49 +28,14 @@ Notes are captured, processed by LLM for concept extraction, distilled into esse
 
 On 2026-03-21, the codebase was simplified from ~20,000 lines to ~3,500 lines. The core capture-process-browse pipeline was preserved. Everything else was shelved to `archive/shelved-2026-03-21/` with a README. All design docs remain in `docs/plans/` and git history preserves everything.
 
-### Active Workflows (6)
+### Live inventory — see the generated map (do not hand-maintain counts here)
 
-| Workflow | Schedule | What It Does |
-|----------|----------|-------------|
-| `ingest.ts` | Webhook trigger | Note ingestion with duplicate detection |
-| `process-llm.ts` | Every 5 min | LLM concept extraction via Ollama |
-| `distill-essences.ts` | Every 5 min | Essence backfill (1-2 sentence distillations) |
-| `export-obsidian.ts` | Hourly | Sync notes to Obsidian vault |
-| `daily-summary.ts` | Daily at midnight | Aggregate daily insights |
-| `send-digest.ts` | Daily at 6am | Post summary to pinned Apple Note |
+The 2026-03-21 simplification cut the core to 6 workflows; **the system has grown since** (synthesis, the agent layer, eink/voice ingest, worksheets, folio feedback, …). To prevent drift, this doc no longer hard-codes counts — each fact lives in exactly one generated/source place:
 
-### Active Launchd Agents (6)
-
-| Agent | Type |
-|-------|------|
-| `com.selene.server` | Always running (KeepAlive) |
-| `com.selene.process-llm` | Every 5 minutes |
-| `com.selene.distill-essences` | Every 5 minutes |
-| `com.selene.export-obsidian` | Hourly |
-| `com.selene.daily-summary` | Daily at midnight |
-| `com.selene.send-digest` | Daily at 6am |
-
-### Active Scripts (6)
-
-- `install-launchd.sh` - Install/reload launchd agents
-- `uninstall-launchd.sh` - Remove launchd agents
-- `cleanup-tests.sh` - Remove test data
-- `create-dev-db.sh` - Set up dev database
-- `dev-process-batch.sh` - Run dev batch processing
-- `test-ingest.sh` - Test ingestion endpoint
-
-### Server
-
-Fastify webhook server on port 5678 with 3 routes:
-- `GET /health` - Health check
-- `POST /webhook/api/drafts` - Note ingestion
-- `POST /trigger/export-obsidian` - Trigger Obsidian export
-
-Plus registered route plugins: `agentRoutes`, `dashboardRoutes`, and `notesRoutes` (note annotation — `GET /api/clusters`, `GET /api/clusters/:id/notes`, `GET /api/notes/:id`, `POST /api/notes/:id/annotations`, in `src/routes/notes.ts`).
-
-### Libraries (src/lib/)
-
-All shared libraries remain active: db, ollama, config, logger, prompts, auth, lancedb, context-builder.
+- **Workflows, launchd agents, schedules, reads/writes:** `docs/SYSTEM-MAP.md` — generated from `src/workflows/` + `launchd/` by `scripts/gen-system-map.ts`. A pre-push git hook and the session-end Stop hook run `--check` to catch drift.
+- **HTTP routes:** see `src/server.ts` (`server.register(...)`); route plugins live in `src/routes/` (agents, dashboard, notes, pkm, worksheets).
+- **Scripts:** `scripts/` (documented in `scripts/CLAUDE.md`).
+- **Shared libraries:** `src/lib/` (db, ollama, config, logger, prompts, auth, lancedb, …).
 
 ---
 
