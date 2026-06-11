@@ -109,6 +109,7 @@ On successful processing of a note with pending feedback, `applied_at` is stampe
 - **Whitespace-only / empty section:** not feedback.
 - **iCloud conflict copies** (`… 2.md`): they carry the same `selene_id` as the original, but identical text dedupes and differing text in two copies is rare enough to accept; conflict copies otherwise behave as normal files. (Vault-level conflict hygiene is out of scope.)
 - **Re-derivation fails** (Ollama down / parse failure): the note simply stays pending — the existing retry semantics of derivation-absence apply; feedback is already safe in facts.
+- **Unparseable LLM response during re-derivation:** the long-standing fallback (defaults + mark processed) still applies, but `applied_at` is NOT stamped — the feedback renders as still-pending in the vault rather than falsely "applied ✓". (Deferred, pre-existing: whether the fallback should skip the INSERT entirely for already-processed notes; the feedback loop made that wipe more visible. Sub-category choice also doesn't yet see intent — Phase 2 candidate.)
 
 ---
 

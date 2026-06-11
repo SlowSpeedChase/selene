@@ -71,6 +71,7 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
 
       // Try to parse JSON response
       let extracted;
+      let parsed = true;
       try {
         // Find JSON in response (Ollama sometimes adds extra text)
         const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -81,6 +82,7 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         }
       } catch (parseErr) {
         log.warn({ noteId: note.id, response }, 'Failed to parse LLM response as JSON');
+        parsed = false;
         extracted = {
           concepts: [],
           primary_theme: null,
@@ -134,7 +136,8 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
       // Mark note as processed
       markProcessed(note.id);
 
-      if (intents.length > 0) {
+      // Feedback stays visibly pending in the vault when extraction degraded to defaults — never falsely "applied ✓".
+      if (parsed && intents.length > 0) {
         markFeedbackApplied(db, note.id, new Date().toISOString());
       }
 
