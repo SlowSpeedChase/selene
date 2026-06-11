@@ -39,8 +39,8 @@ the feedback back as an applied-✓ block (preserve-on-render guard).
 ### Testing
 - [ ] Unit tests pass
 - [ ] Integration tests pass (if applicable)
-- [ ] Manual testing completed (dev-sandbox e2e — plan Task 9)
-- [ ] Edge cases verified
+- [x] Manual testing completed (dev-sandbox e2e — plan Task 9)
+- [x] Edge cases verified (idempotent re-scan after apply; feedback text rendered exactly once)
 - [ ] Verified with superpowers:verification-before-completion
 
 ### Docs
@@ -56,3 +56,15 @@ the feedback back as an applied-✓ block (preserve-on-render guard).
 - [ ] Final verification gate green (tsc + jest + map-drift)
 - [ ] Merge decision (superpowers:finishing-a-development-branch)
 - [ ] Post-merge operator step recorded: `./scripts/install-prod.sh` to load the NEW com.selene.prod.vault-feedback agent (deploy-prod.sh only restarts existing agents)
+
+---
+
+## E2E result (2026-06-11)
+
+Dev-sandbox full-loop verification (plan Task 9), note `2026-02-28-half-marathon-training-day-1.md` (selene_id 21):
+
+- **Typed feedback** appended under `## ✍️ Your note`: "This is actually about a skill I possess and enjoy using — remember it as a personal strength."
+- **Scan**: `vault-feedback` → `ingested: 1` (scanned 61); `note_feedback` row created (pending_apply=1), note_state re-pended to `pending`.
+- **Re-derive**: process-llm re-filed the note — theme `Physical fitness` → `Training and Personal Growth`; concepts `[Half-marathon training, Adaptation, Sleep quality]` → `[Physical Fitness, Healthy Lifestyle, Self-Improvement]`; new essence reflects the strength framing.
+- **Applied stamp**: `note_feedback.applied_at = 2026-06-11T06:12:45.115Z`; exporter rendered the feedback as a blockquote ending `— applied 2026-06-11 ✓`, appearing exactly once (no trailing plain-text duplicate).
+- **Idempotency**: second `vault-feedback` run → `ingested: 0, duplicates: 0` (applied block correctly ignored by parser); `note_feedback` count stayed 1.
