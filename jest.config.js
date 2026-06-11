@@ -15,6 +15,7 @@ module.exports = {
     '<rootDir>/archive/',
     '<rootDir>/dist/',
     '<rootDir>/.claude/',
+    '<rootDir>/.worktrees/',
   ],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
@@ -32,5 +33,5 @@ module.exports = {
   // absent-column tolerance throws instead of being caught). The parent repo's jest
   // must never scan sibling worktrees. (Do NOT delete the worktrees — they're locked
   // on live feature branches.)
-  modulePathIgnorePatterns: ['<rootDir>/.claude/'],
+  modulePathIgnorePatterns: ['<rootDir>/.claude/', '<rootDir>/.worktrees/'],
 };
