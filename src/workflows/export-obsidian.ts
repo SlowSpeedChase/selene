@@ -201,10 +201,12 @@ async function generateMocs(vaultPath: string, hasNewNotes: boolean): Promise<{ 
             .join('\n')
         : '(none)';
 
+      // Replacer functions: notesList/crossRefList contain user-authored titles/essences —
+      // string replacements would interpret $-patterns in them (see buildEssencePrompt).
       const prompt = MOC_PROMPT
-        .replace('{category}', category)
-        .replace('{notes_list}', notesList)
-        .replace('{cross_ref_notes}', crossRefList);
+        .replace('{category}', () => category)
+        .replace('{notes_list}', () => notesList)
+        .replace('{cross_ref_notes}', () => crossRefList);
 
       const body = await generate(prompt, { timeoutMs: 120000 });
 
