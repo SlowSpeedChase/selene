@@ -109,7 +109,8 @@ On successful processing of a note with pending feedback, `applied_at` is stampe
 - **Whitespace-only / empty section:** not feedback.
 - **iCloud conflict copies** (`… 2.md`): they carry the same `selene_id` as the original, but identical text dedupes and differing text in two copies is rare enough to accept; conflict copies otherwise behave as normal files. (Vault-level conflict hygiene is out of scope.)
 - **Re-derivation fails** (Ollama down / parse failure): the note simply stays pending — the existing retry semantics of derivation-absence apply; feedback is already safe in facts.
-- **Unparseable LLM response during re-derivation:** the long-standing fallback (defaults + mark processed) still applies, but `applied_at` is NOT stamped — the feedback renders as still-pending in the vault rather than falsely "applied ✓". (Deferred, pre-existing: whether the fallback should skip the INSERT entirely for already-processed notes; the feedback loop made that wipe more visible. Sub-category choice also doesn't yet see intent — Phase 2 candidate.)
+- **Unparseable LLM response during re-derivation:** the long-standing fallback (defaults + mark processed) still applies, but `applied_at` is NOT stamped — the feedback renders as still-pending in the vault rather than falsely "applied ✓" — and the end-of-pass straggler guard (`rependIfUnappliedFeedback`) re-pends the note, so it IS retried on the next process-llm cycle. (Deferred, pre-existing: whether the fallback should skip the INSERT entirely for already-processed notes; the feedback loop made that wipe more visible. Sub-category choice also doesn't yet see intent — Phase 2 candidate.)
+- **Feedback ingested mid-derivation:** `applied_at` is stamped **by row id** — only the rows actually read at prompt time. A row a concurrent scan ingests after the prompt was built (the derivation window spans two LLM calls) stays un-applied, and the same straggler guard re-pends the note (its own re-pend was overwritten by mark-processed), so it influences the very next derivation instead of being silently dropped behind the dedupe index.
 
 ---
 
@@ -118,6 +119,8 @@ On successful processing of a note with pending feedback, `applied_at` is stampe
 The classification prompt (`EXTRACT_PROMPT`) gains a corrections block: the **~5 most recent applied corrections**, each rendered as *original text (truncated) → original filing → what the author said → corrected filing* (corrected filing read from the note's current `processed_notes` row at prompt-build time). Capped and recency-ordered to respect mistral:7b's context window. Ships only after Phase 1's loop is proven on real corrections — the accumulated `note_feedback` rows are the training set, so Phase 1 is generating Phase 2's input from day one.
 
 Out of scope for Phase 2 (deliberately): weighting corrections by similarity to the incoming note (embedding-match few-shot selection). Recency-N first; get fancy only if the simple version misses.
+
+Also out of scope / deferred: surfacing `note_feedback` in `selene-inspect counts`. A plain `KNOWN_TABLES` addition in `src/lib/inspect.ts` would silently never match — the table lives in the attached `facts` schema and `relationExists` checks only `main.sqlite_master` and `temp.sqlite_master`. Needs a schema-aware relation lookup (small, separate change), not a list edit.
 
 ---
 

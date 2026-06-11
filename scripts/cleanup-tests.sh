@@ -50,6 +50,9 @@ cleanup_derived() {
     # deleted. Two-file only — needs facts.captured_notes attached to see surviving ids.
     if [ "$CAPTURES_TABLE" = "captured_notes" ]; then
         sqlite3 "$DB_PATH" "ATTACH '${FACTS_PATH}' AS facts; DELETE FROM note_state WHERE raw_note_id NOT IN (SELECT id FROM facts.captured_notes);" 2>/dev/null || true
+        # note_feedback is facts-side and also keyed by raw_note_id (no test_run); prune rows
+        # orphaned by the capture delete (both tables live in facts.db — no ATTACH needed).
+        sqlite3 "$FACTS_PATH" "DELETE FROM note_feedback WHERE raw_note_id NOT IN (SELECT id FROM captured_notes);" 2>/dev/null || true
     fi
 }
 
