@@ -11,6 +11,10 @@
  * Takes an explicit `db` (no module singleton) so it is unit-testable via makeTwoFileTestDb,
  * matching obsidian-render.ts / note-state.ts.
  */
+import type { Database as DB } from 'better-sqlite3';
+import { readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { setNoteState } from './note-state';
 
 export const YOUR_NOTE_HEADING = '## ✍️ Your note';
 
@@ -41,4 +45,93 @@ export function parseYourNoteSection(markdown: string): ParsedSection {
 export function extractSeleneId(markdown: string): number | null {
   const m = markdown.match(/^selene_id: (\d+)$/m);
   return m ? parseInt(m[1], 10) : null;
+}
+
+export interface ScanResult {
+  scanned: number;     // files inspected
+  ingested: number;    // new feedback rows written (note re-pended)
+  duplicates: number;  // identical (note, text) already ingested — awaiting re-export
+  unmatched: number;   // no selene_id / id not in captured_notes — skipped, file untouched
+  errors: number;      // per-file read/parse exceptions
+}
+
+/**
+ * Scan every Notes/*.md for new "Your note" text and ingest it. Full scan each run, no
+ * watermark: ~300 small files is trivially cheap and the (raw_note_id, feedback_text) dedupe
+ * makes rescans idempotent. Never writes to any vault file.
+ */
+export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanResult {
+  const result: ScanResult = { scanned: 0, ingested: 0, duplicates: 0, unmatched: 0, errors: 0 };
+
+  let files: string[];
+  try {
+    files = readdirSync(notesDir).filter((f) => f.endsWith('.md'));
+  } catch {
+    return result; // vault dir missing (fresh dev sandbox) — nothing to scan
+  }
+
+  for (const file of files) {
+    result.scanned++;
+    try {
+      const markdown = readFileSync(join(notesDir, file), 'utf-8');
+      const { newFeedback } = parseYourNoteSection(markdown);
+      if (!newFeedback) continue;
+
+      const noteId = extractSeleneId(markdown);
+      const known = noteId !== null
+        && db.prepare(`SELECT 1 FROM facts.captured_notes WHERE id = ?`).get(noteId);
+      if (!known || noteId === null) {
+        result.unmatched++;
+        continue;
+      }
+
+      const dup = db
+        .prepare(`SELECT 1 FROM facts.note_feedback WHERE raw_note_id = ? AND feedback_text = ?`)
+        .get(noteId, newFeedback);
+      if (dup) {
+        result.duplicates++;
+        continue;
+      }
+
+      // Snapshot the filing being corrected BEFORE re-derivation replaces it (Phase 2's
+      // few-shot raw material). NULL when the note was never processed.
+      const filing = db
+        .prepare(
+          `SELECT category, cross_ref_categories, sub_categories, primary_theme, concepts, essence
+           FROM processed_notes WHERE raw_note_id = ?`
+        )
+        .get(noteId) as Record<string, unknown> | undefined;
+
+      db.prepare(
+        `INSERT INTO facts.note_feedback (raw_note_id, feedback_text, original_filing, created_at)
+         VALUES (?, ?, ?, ?)`
+      ).run(noteId, newFeedback, filing ? JSON.stringify(filing) : null, now);
+
+      // Re-pend: derivation-absence machinery does the rest (process-llm INSERT OR REPLACEs).
+      // Partial UPSERT preserves unrelated bookkeeping (status_folio, inbox_status, export hash).
+      setNoteState(db, noteId, { status: 'pending', processed_at: null });
+      result.ingested++;
+    } catch {
+      result.errors++;
+    }
+  }
+  return result;
+}
+
+/** ALL of a note's feedback texts, oldest first — every (re-)derivation carries full intent history. */
+export function getIntentTexts(db: DB, rawNoteId: number): string[] {
+  const rows = db
+    .prepare(
+      `SELECT feedback_text FROM facts.note_feedback
+       WHERE raw_note_id = ? ORDER BY created_at ASC, id ASC`
+    )
+    .all(rawNoteId) as Array<{ feedback_text: string }>;
+  return rows.map((r) => r.feedback_text);
+}
+
+/** Stamp this note's un-applied feedback as applied (called after a successful re-derivation). */
+export function markFeedbackApplied(db: DB, rawNoteId: number, now: string): void {
+  db.prepare(
+    `UPDATE facts.note_feedback SET applied_at = ? WHERE raw_note_id = ? AND applied_at IS NULL`
+  ).run(now, rawNoteId);
 }
