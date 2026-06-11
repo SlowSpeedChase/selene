@@ -45,9 +45,14 @@ JSON response:`;
  * EXTRACT_PROMPT's {intent} slot (and the essence context). Empty input -> '' so notes
  * without feedback get today's prompt byte-for-byte (minus the blank placeholder line).
  */
+/** Flatten internal whitespace/newlines so author intent renders as a single clean line. */
+function normalizeIntent(t: string): string {
+  return t.replace(/\s+/g, ' ').trim();
+}
+
 export function buildIntentBlock(intents: string[]): string {
   if (intents.length === 0) return '';
-  const bullets = intents.map((t) => `- "${t.replace(/\s+/g, ' ').trim()}"`).join('\n');
+  const bullets = intents.map((t) => `- "${normalizeIntent(t)}"`).join('\n');
   return [
     ``,
     `The author has clarified what this note means to them:`,
@@ -85,16 +90,18 @@ export function buildEssencePrompt(
     contextParts.push(`Theme: ${primaryTheme}`);
   }
   if (intents.length > 0) {
-    contextParts.push(`The author says this note means: ${intents.map((t) => `"${t.replace(/\s+/g, ' ').trim()}"`).join(' | ')}`);
+    contextParts.push(`The author says this note means: ${intents.map((t) => `"${normalizeIntent(t)}"`).join(' | ')}`);
   }
   const contextStr = contextParts.length > 0
     ? contextParts.join('\n')
     : '';
 
+  // Replacer functions: a plain string replacement arg has $-pattern semantics
+  // ($&, $`, $', $$), so user-authored text would corrupt the prompt.
   return ESSENCE_PROMPT
-    .replace('{title}', title)
-    .replace('{content}', content)
-    .replace('{context}', contextStr);
+    .replace('{title}', () => title)
+    .replace('{content}', () => content)
+    .replace('{context}', () => contextStr);
 }
 
 export const MOC_PROMPT = `You are a librarian organizing a personal knowledge library.

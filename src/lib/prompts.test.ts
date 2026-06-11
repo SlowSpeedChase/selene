@@ -20,6 +20,20 @@ describe('EXTRACT_PROMPT {intent} placeholder', () => {
   });
 });
 
+describe('$-pattern safety (user text in replacement args)', () => {
+  it('intent text containing $-patterns survives essence substitution verbatim', () => {
+    const p = buildEssencePrompt('t', 'c', null, null, [`costs $' per unit and $& more`]);
+    expect(p).toContain(`costs $' per unit and $& more`);
+    // the prompt tail must appear exactly once (no duplication)
+    expect(p.split('Respond with ONLY the 1-2 sentence distillation')).toHaveLength(2);
+  });
+  it('title/content containing $-patterns survive substitution', () => {
+    const p = buildEssencePrompt(`a $& title`, `body with $' inside`, null, null);
+    expect(p).toContain('a $& title');
+    expect(p).toContain(`body with $' inside`);
+  });
+});
+
 describe('buildEssencePrompt with intents', () => {
   it('includes author intent in the context block', () => {
     const p = buildEssencePrompt('t', 'c', null, null, ['a skill I enjoy']);
