@@ -55,6 +55,14 @@ export function initFactsSchema(db: DB): void {
       applied_at      DATETIME
     );
     CREATE INDEX IF NOT EXISTS idx_note_feedback_note ON note_feedback(raw_note_id);
+    -- UNIQUE dedupe guard: two scanners run scanVaultFeedback concurrently (15-min vault-feedback
+    -- agent + hourly export's pre-render scan); a SELECT-then-INSERT check alone lets both pass
+    -- and double-insert into this never-rebuilt store. The captured_notes indexes below are
+    -- non-unique to tolerate historical duplicates in migrated data — that rationale does NOT
+    -- apply here: note_feedback is brand-new with no prod rows, so adding UNIQUE via IF NOT
+    -- EXISTS cannot hit existing dups (it would throw at init if a table somehow had them).
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_note_feedback_dedupe
+      ON note_feedback(raw_note_id, feedback_text);
 
     -- Non-unique lookup indexes (dedup/lookup parity). NON-unique on purpose so the later
     -- data migration can't fail on any historical duplicates.

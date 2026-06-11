@@ -88,6 +88,17 @@ describe('note_feedback (obsidian feedback loop)', () => {
     db.close();
   });
 
+  it('has a UNIQUE dedupe index on (raw_note_id, feedback_text)', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    const idx = db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_note_feedback_dedupe'`)
+      .get() as { sql: string } | undefined;
+    expect(idx).toBeDefined();
+    expect(idx?.sql).toMatch(/UNIQUE/i);
+    db.close();
+  });
+
   it('is idempotent (second init does not throw or drop rows)', () => {
     const db = new Database(':memory:');
     initFactsSchema(db);

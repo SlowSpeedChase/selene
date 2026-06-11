@@ -71,6 +71,35 @@ describe('scanVaultFeedback', () => {
     expect(db.prepare(`SELECT COUNT(*) AS n FROM facts.note_feedback`).get()).toEqual({ n: 1 });
   });
 
+  it('schema pins dedupe: raw duplicate INSERT throws; INSERT OR IGNORE reports changes 0', () => {
+    seedNote(db, 7, 'a note');
+    const raw = `INSERT INTO facts.note_feedback (raw_note_id, feedback_text, created_at) VALUES (7, 'twice', '2026-06-10')`;
+    db.prepare(raw).run();
+    // The UNIQUE index is the authoritative guard under concurrent scanners.
+    expect(() => db.prepare(raw).run()).toThrow(/UNIQUE/i);
+    const ignored = db
+      .prepare(`INSERT OR IGNORE INTO facts.note_feedback (raw_note_id, feedback_text, created_at) VALUES (7, 'twice', '2026-06-10')`)
+      .run();
+    expect(ignored.changes).toBe(0);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM facts.note_feedback`).get()).toEqual({ n: 1 });
+  });
+
+  it('already-ingested text (even applied) counts as duplicate and does NOT re-pend the note', () => {
+    seedNote(db, 7, 'a note');
+    db.prepare(
+      `INSERT INTO facts.note_feedback (raw_note_id, feedback_text, created_at, applied_at)
+       VALUES (7, 'old words', '2026-06-01', '2026-06-02')`
+    ).run();
+    db.prepare(`INSERT INTO note_state (raw_note_id, status) VALUES (7, 'processed')`).run();
+    writeFileSync(join(vaultDir, 'n7.md'), noteFile(7, 'old words'));
+
+    const r = scanVaultFeedback(db, vaultDir, '2026-06-10T12:00:00.000Z');
+    expect(r).toMatchObject({ scanned: 1, ingested: 0, duplicates: 1, errors: 0 });
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM facts.note_feedback`).get()).toEqual({ n: 1 });
+    const state = db.prepare(`SELECT status FROM note_state WHERE raw_note_id = 7`).get() as { status: string };
+    expect(state.status).toBe('processed'); // duplicate must NOT re-pend
+  });
+
   it('skips files with no selene_id or an unknown id (unmatched, untouched)', () => {
     writeFileSync(join(vaultDir, 'alien.md'), `# hand-made\n${YOUR_NOTE_HEADING}\nsome text\n`);
     writeFileSync(join(vaultDir, 'ghost.md'), noteFile(999, 'text'));

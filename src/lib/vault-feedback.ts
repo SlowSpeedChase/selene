@@ -85,6 +85,35 @@ export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanRe
     return result; // vault dir missing (fresh dev sandbox) — nothing to scan
   }
 
+  // One file's ingest (filing snapshot + INSERT + re-pend) as a single transaction, invoked
+  // .immediate() so BEGIN IMMEDIATE takes the write lock up front: two concurrent scanners
+  // (15-min agent + hourly export pre-scan) serialize instead of racing, and a crash can never
+  // record feedback without its re-pend (which would dedupe-skip it forever). Returns false
+  // when the UNIQUE dedupe index ignored the row — duplicate, must NOT re-pend.
+  const ingestOne = db.transaction((noteId: number, text: string): boolean => {
+    // Snapshot the filing being corrected BEFORE re-derivation replaces it (Phase 2's
+    // few-shot raw material). NULL when the note was never processed.
+    const filing = db
+      .prepare(
+        `SELECT category, cross_ref_categories, sub_categories, primary_theme, concepts, essence
+         FROM processed_notes WHERE raw_note_id = ?`
+      )
+      .get(noteId) as Record<string, unknown> | undefined;
+
+    // OR IGNORE against idx_note_feedback_dedupe is the authoritative concurrent-scanner
+    // guard (the SELECT outside is just the cheap no-write-lock common path).
+    const inserted = db.prepare(
+      `INSERT OR IGNORE INTO facts.note_feedback (raw_note_id, feedback_text, original_filing, created_at)
+       VALUES (?, ?, ?, ?)`
+    ).run(noteId, text, filing ? JSON.stringify(filing) : null, now);
+    if (inserted.changes === 0) return false;
+
+    // Re-pend: derivation-absence machinery does the rest (process-llm INSERT OR REPLACEs).
+    // Partial UPSERT preserves unrelated bookkeeping (status_folio, inbox_status, export hash).
+    setNoteState(db, noteId, { status: 'pending', processed_at: null });
+    return true;
+  });
+
   for (const file of files) {
     result.scanned++;
     try {
@@ -100,6 +129,8 @@ export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanRe
         continue;
       }
 
+      // Cheap dup check (belt): counts duplicates without burning a write lock. The
+      // authoritative guard (suspenders) is the OR IGNORE inside ingestOne.
       const dup = db
         .prepare(`SELECT 1 FROM facts.note_feedback WHERE raw_note_id = ? AND feedback_text = ?`)
         .get(noteId, newFeedback);
@@ -108,24 +139,8 @@ export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanRe
         continue;
       }
 
-      // Snapshot the filing being corrected BEFORE re-derivation replaces it (Phase 2's
-      // few-shot raw material). NULL when the note was never processed.
-      const filing = db
-        .prepare(
-          `SELECT category, cross_ref_categories, sub_categories, primary_theme, concepts, essence
-           FROM processed_notes WHERE raw_note_id = ?`
-        )
-        .get(noteId) as Record<string, unknown> | undefined;
-
-      db.prepare(
-        `INSERT INTO facts.note_feedback (raw_note_id, feedback_text, original_filing, created_at)
-         VALUES (?, ?, ?, ?)`
-      ).run(noteId, newFeedback, filing ? JSON.stringify(filing) : null, now);
-
-      // Re-pend: derivation-absence machinery does the rest (process-llm INSERT OR REPLACEs).
-      // Partial UPSERT preserves unrelated bookkeeping (status_folio, inbox_status, export hash).
-      setNoteState(db, noteId, { status: 'pending', processed_at: null });
-      result.ingested++;
+      if (ingestOne.immediate(noteId, newFeedback)) result.ingested++;
+      else result.duplicates++; // concurrent scanner won the race between belt and suspenders
     } catch (err) {
       result.errors++;
       if (result.errorSamples.length < 5) {
