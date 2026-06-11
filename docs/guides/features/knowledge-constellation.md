@@ -26,6 +26,30 @@ The clusters come from the nightly `synthesize-topics` agent (2am), which builds
 
 The pure logic lives in `src/lib/constellation.ts` (unit-tested in `constellation.test.ts` / `constellation.db.test.ts`); `export-obsidian.ts` just calls it.
 
+## Note-to-note connections (Phase B)
+
+Beyond the cluster hierarchy, each note also shows its **closest related notes** as `friend::` Dataview fields. ExcaliBrain renders these as lateral edges — note↔note flight alongside the cluster→note parent edges from Phase A.
+
+**How they appear.** Each exported note carries up to 5 `friend::` lines, one per connected note:
+
+```
+friend:: [[2026-04-12-an-evening-in-the-garden]]
+friend:: [[2026-03-07-running-reflections]]
+```
+
+These are sorted by cosine similarity score (highest first). The wikilink basename is the same `YYYY-MM-DD-slug` used as the note's filename, so ExcaliBrain resolves the link to the actual note in your vault.
+
+**What powers the edges.** The `note_connections` table (in `selene.db`) stores pairwise similarity scores between notes. Connections are created in two ways:
+
+- **Live** — `process-llm.ts` computes cosine similarity against stored embeddings each time a new note is processed, and writes a connection row for every pair scoring ≥ 0.75 (`CONNECTION_THRESHOLD`).
+- **Batch backfill** — `scripts/backfill-connections.ts` does a full all-pairs pass over existing embeddings (same 0.75 floor by default; overridable via `--threshold=`). The initial corpus backfill (2026-06-11) produced 6,794 edges across 336 notes.
+
+**Bidirectional by design.** Each connection is stored once (one `source_note_id` / `target_note_id` pair), but the export query uses a `UNION ALL` to walk both directions — so both the source and target note get a `friend::` line pointing at the other.
+
+**Clean export for unconnected notes.** A note with no connection rows (either because no pair scored ≥ 0.75, or because it was captured before the backfill ran) exports cleanly with no `friend::` block at all. There is no placeholder or empty section.
+
+**Top-5 cap.** `loadNoteFriends` in `src/lib/constellation.ts` caps each note at its 5 highest-scoring friends (the `topN = 5` default). Notes with more than 5 connections above the threshold show only the top 5 in the vault; all connections remain in the database.
+
 ## Configure & customize
 
 - **Vault location:** `SELENE_VAULT_PATH` (prod = the iCloud Obsidian vault). The `Notes/` and `Constellation/` directories live there.
@@ -49,7 +73,8 @@ The pure logic lives in `src/lib/constellation.ts` (unit-tested in `constellatio
 - Research: `docs/plans/2026-05-29-excalidraw-excalibrain-research.md`
 - Sub-categories (the category → sub-cluster → note level): `docs/plans/2026-05-31-sub-categories-design.md`, plan `docs/plans/2026-06-06-sub-categories-plan.md`
 - Connected guides: `docs/guides/features/synthesis-layer.md` (where the clusters come from)
-- **Phase B (not yet built):** note↔note `friend::` edges, gated on the empty `note_connections` table.
+- Phase B design: `docs/plans/2026-06-11-constellation-phase-b-design.md`
+- Phase B plan: `docs/plans/2026-06-11-constellation-phase-b-plan.md`
 
 ---
-*Last updated: 2026-06-06*
+*Last updated: 2026-06-11*

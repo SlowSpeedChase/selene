@@ -151,6 +151,58 @@ describe('friend edges', () => {
   let db: DatabaseType;
   afterEach(() => db.close());
 
+  it('exports note with no friend:: field when note has no connections', () => {
+    db = seed();
+    // Seed a second processed note (note 20) and a third (note 30).
+    // note_connections has one edge: 10↔20. Note 30 has zero connection rows.
+    // The test asserts note 30's exported file contains no friend:: line,
+    // even though note_connections exists and is populated.
+    // This pins against a query regression where unconnected notes leak into the friend map.
+    db.prepare(
+      `INSERT INTO facts.captured_notes (id, title, content, content_hash, created_at)
+       VALUES (?,?,?,?,?)`
+    ).run(20, 'Evening notes', 'Other lines.', 'hash-20', '2026-05-02T08:00:00.000Z');
+    db.prepare('INSERT INTO note_state (raw_note_id, status) VALUES (?, ?)').run(20, 'processed');
+    db.prepare(
+      `INSERT INTO processed_notes (raw_note_id, primary_theme, concepts, essence, category, cross_ref_categories)
+       VALUES (?,?,?,?,?,?)`
+    ).run(20, 'reflection', '[]', null, 'Daily Systems', '[]');
+
+    db.prepare(
+      `INSERT INTO facts.captured_notes (id, title, content, content_hash, created_at)
+       VALUES (?,?,?,?,?)`
+    ).run(30, 'Solo thoughts', 'Standing alone.', 'hash-30', '2026-05-03T08:00:00.000Z');
+    db.prepare('INSERT INTO note_state (raw_note_id, status) VALUES (?, ?)').run(30, 'processed');
+    db.prepare(
+      `INSERT INTO processed_notes (raw_note_id, primary_theme, concepts, essence, category, cross_ref_categories)
+       VALUES (?,?,?,?,?,?)`
+    ).run(30, 'solitude', '[]', null, 'Daily Systems', '[]');
+
+    db.exec(`
+      CREATE TABLE note_connections (
+        id TEXT PRIMARY KEY,
+        source_note_id INTEGER NOT NULL,
+        target_note_id INTEGER NOT NULL,
+        similarity_score REAL NOT NULL,
+        found_at TEXT NOT NULL
+      );
+    `);
+    // Edge between note 10 and note 20 — note 30 has no connections.
+    db.prepare(
+      `INSERT INTO note_connections (id, source_note_id, target_note_id, similarity_score, found_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run('conn-1', 10, 20, 0.92, new Date().toISOString());
+
+    const dir = vault();
+    reconcileExportedNotes(db, dir);
+
+    // Note 30: title='Solo thoughts', created_at='2026-05-03T08:00:00.000Z'
+    // noteFilename → '2026-05-03-solo-thoughts.md'
+    const note30File = join(dir, '2026-05-03-solo-thoughts.md');
+    const md = readFileSync(note30File, 'utf-8');
+    expect(md).not.toContain('friend::');
+  });
+
   it('note with a connection in note_connections has friend:: in its exported file', () => {
     db = seed();
     // Add a second note that will be the friend target (needs a raw_notes row only — no
