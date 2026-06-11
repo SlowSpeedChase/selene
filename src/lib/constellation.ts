@@ -74,6 +74,39 @@ export function loadClusters(database: DB): Array<{ name: string; parentName?: s
   return rows.map((r) => ({ name: r.name, parentName: r.parentName ?? undefined }));
 }
 
+/** Map each note id -> top-N most-similar connected notes (bidirectional), sorted by
+ *  similarity_score DESC. Returns raw note data; callers convert to wikilink basenames. */
+export function loadNoteFriends(
+  database: DB,
+  topN = 5
+): Map<number, Array<{ title: string; created_at: string }>> {
+  const rows = database
+    .prepare(
+      `SELECT nc.source_note_id AS noteId,
+              rn.title AS title, rn.created_at AS createdAt,
+              nc.similarity_score AS score
+       FROM note_connections nc
+       JOIN raw_notes rn ON rn.id = nc.target_note_id
+       UNION ALL
+       SELECT nc.target_note_id AS noteId,
+              rn.title AS title, rn.created_at AS createdAt,
+              nc.similarity_score AS score
+       FROM note_connections nc
+       JOIN raw_notes rn ON rn.id = nc.source_note_id
+       ORDER BY noteId, score DESC`
+    )
+    .all() as Array<{ noteId: number; title: string; createdAt: string; score: number }>;
+  const map = new Map<number, Array<{ title: string; created_at: string }>>();
+  for (const r of rows) {
+    const list = map.get(r.noteId) ?? [];
+    if (list.length < topN) {
+      list.push({ title: r.title, created_at: r.createdAt });
+      map.set(r.noteId, list);
+    }
+  }
+  return map;
+}
+
 /** Regenerate the `Constellation/` directory: one index note per cluster. Idempotent —
  *  a re-run overwrites identically. Returns the number of cluster notes written. */
 export function exportClusterNotes(database: DB, vaultPath: string): number {

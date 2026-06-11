@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { existsSync, readdirSync, readFileSync, mkdtempSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadNoteClusters, loadClusters, exportClusterNotes, buildClusterNote } from './constellation';
+import { loadNoteClusters, loadClusters, exportClusterNotes, buildClusterNote, loadNoteFriends } from './constellation';
 
 type DB = InstanceType<typeof Database>;
 
@@ -70,5 +70,68 @@ describe('exportClusterNotes', () => {
     expect(readdirSync(join(vault, 'Constellation')).length).toBe(2);
     expect(readFileSync(join(vault, 'Constellation', 'Relationships & Social.md'), 'utf-8'))
       .toContain('# Relationships & Social');
+  });
+});
+
+function seedFriends(): DB {
+  const db = new Database(':memory:');
+  db.exec(`
+    CREATE TABLE raw_notes (id INTEGER PRIMARY KEY, title TEXT, created_at TEXT);
+    CREATE TABLE note_connections (
+      id TEXT PRIMARY KEY,
+      source_note_id INTEGER NOT NULL,
+      target_note_id INTEGER NOT NULL,
+      similarity_score REAL NOT NULL,
+      found_at TEXT NOT NULL
+    );
+  `);
+  const note = db.prepare('INSERT INTO raw_notes VALUES (?,?,?)');
+  note.run(1, 'Grammar Intuition', '2025-11-01T00:00:00.000Z');
+  note.run(2, 'Sentence Diagramming', '2025-11-02T00:00:00.000Z');
+  note.run(3, 'Running Notes', '2025-11-03T00:00:00.000Z');
+  note.run(4, 'Unconnected Note', '2025-11-04T00:00:00.000Z');
+  const conn = db.prepare('INSERT INTO note_connections VALUES (?,?,?,?,?)');
+  conn.run('c1', 1, 2, 0.92, 'now');  // note 1 ↔ note 2 (high)
+  conn.run('c2', 1, 3, 0.80, 'now');  // note 1 ↔ note 3 (lower)
+  conn.run('c3', 3, 2, 0.78, 'now');  // note 3 ↔ note 2 (stored as 3→2)
+  return db;
+}
+
+describe('loadNoteFriends', () => {
+  it('maps note 1 to its two friends ordered by descending similarity', () => {
+    const map = loadNoteFriends(seedFriends());
+    const friends = map.get(1);
+    expect(friends).toHaveLength(2);
+    expect(friends![0].title).toBe('Sentence Diagramming'); // 0.92 first
+    expect(friends![1].title).toBe('Running Notes');        // 0.80 second
+  });
+
+  it('is bidirectional — note 2 includes note 1 (stored as source=1)', () => {
+    const map = loadNoteFriends(seedFriends());
+    const titles = (map.get(2) ?? []).map((f) => f.title);
+    expect(titles).toContain('Grammar Intuition');
+  });
+
+  it('respects topN cap', () => {
+    const db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE raw_notes (id INTEGER PRIMARY KEY, title TEXT, created_at TEXT);
+      CREATE TABLE note_connections (id TEXT PRIMARY KEY, source_note_id INTEGER NOT NULL,
+        target_note_id INTEGER NOT NULL, similarity_score REAL NOT NULL, found_at TEXT NOT NULL);
+    `);
+    db.prepare('INSERT INTO raw_notes VALUES (?,?,?)').run(1, 'Hub', '2025-01-01T00:00:00.000Z');
+    for (let i = 2; i <= 11; i++) {
+      db.prepare('INSERT INTO raw_notes VALUES (?,?,?)').run(i, `Note ${i}`, '2025-01-01T00:00:00.000Z');
+      db.prepare('INSERT INTO note_connections VALUES (?,?,?,?,?)').run(
+        `c${i}`, 1, i, 0.75 + i / 100, 'now'
+      );
+    }
+    const map = loadNoteFriends(db, 5);
+    expect(map.get(1)).toHaveLength(5);
+  });
+
+  it('returns nothing for a note with no connections', () => {
+    const map = loadNoteFriends(seedFriends());
+    expect(map.get(4)).toBeUndefined();
   });
 });
