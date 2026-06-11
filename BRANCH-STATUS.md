@@ -3,7 +3,7 @@
 **Created:** 2026-06-10
 **Design Doc:** docs/plans/2026-06-10-obsidian-feedback-loop-design.md
 **Plan:** docs/plans/2026-06-10-obsidian-feedback-loop-plan.md
-**Current Stage:** dev
+**Current Stage:** review
 **Last Rebased:** 2026-06-10 (branched from local main @ 1c5e535)
 
 ## Overview
@@ -30,11 +30,11 @@ the feedback back as an applied-✓ block (preserve-on-render guard).
 - [x] Implementation plan written (superpowers:writing-plans)
 
 ### Dev
-- [ ] Tests written first (superpowers:test-driven-development)
-- [ ] Core implementation complete
-- [ ] All tests passing
-- [ ] No linting/type errors
-- [ ] Code follows project patterns
+- [x] Tests written first (superpowers:test-driven-development)
+- [x] Core implementation complete
+- [x] All tests passing (jest 49/49 suites, 340/340 tests — 2026-06-11)
+- [x] No linting/type errors (`npx tsc --noEmit` clean — 2026-06-11)
+- [x] Code follows project patterns
 
 ### Testing
 - [ ] Unit tests pass
@@ -44,9 +44,9 @@ the feedback back as an applied-✓ block (preserve-on-render guard).
 - [ ] Verified with superpowers:verification-before-completion
 
 ### Docs
-- [ ] User guide created (docs/guides/features/obsidian-feedback.md) + hub link
-- [ ] SYSTEM-MAP regenerated
-- [ ] docs/plans/INDEX.md status updated
+- [x] User guide created (docs/guides/features/obsidian-feedback.md) + hub link in docs/USER-EXPERIENCE.md
+- [x] SYSTEM-MAP regenerated (commit 3799877, with the workflow + agent)
+- [x] docs/plans/INDEX.md status updated (Ready → In Progress; backend-block-diagrams.md also updated)
 
 ### Review
 - [ ] Code review requested (superpowers:requesting-code-review)

@@ -1,6 +1,6 @@
 # Backend Block Diagrams
 
-**Last Updated:** 2026-05-29
+**Last Updated:** 2026-06-11
 **Purpose:** Visual representations of Selene's backend architecture and data flows
 
 > **Inventory of record:** [docs/SYSTEM-MAP.md](SYSTEM-MAP.md) (generated from code + plists). This file is the *deep* view; if the two ever disagree on which workflows exist or their schedules, SYSTEM-MAP.md wins.
@@ -75,6 +75,13 @@
 │  │       ↓ (user reviews and approves)                    │    │
 │  │  ActionExecutor: run approved actions                  │    │
 │  │    → INSERT INTO action_execution_log                  │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │  Every 15 min: vault-feedback.ts                       │    │
+│  │  Scan vault "Your note" sections → new author feedback │    │
+│  │  → INSERT facts.note_feedback + re-pend the note       │    │
+│  │  (export-obsidian also scans right before rendering)   │    │
 │  └────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  ┌────────────────────────────────────────────────────────┐    │
@@ -197,6 +204,24 @@ T+60 min    export-obsidian.ts runs
             UPDATE 8-category MOC indexes
             UPDATE vault/Dashboard.md
             ✓ Status: Exported to Obsidian
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(any time)  User types intent under "## ✍️ Your note" in the vault note
+                        ↓
++≤15 min    vault-feedback.ts runs (launchd, every 15 min;
+            export-obsidian also scans right before rendering)
+                        ↓
+            Match file → note via selene_id frontmatter
+            INSERT INTO facts.note_feedback (precious, deduped)
+            Re-pend note (note_state.status → 'pending')
+                        ↓
++~5 min     process-llm.ts re-derives with the intent in-prompt
+            applied_at stamped (only if extraction parsed)
+                        ↓
++≤1 hour    export-obsidian.ts re-renders the note —
+            feedback now a blockquote "— applied YYYY-MM-DD ✓"
+            ✓ Status: Feedback applied
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -426,6 +451,6 @@ launchd label prefix (`com.selene.*` → `com.selene.prod.*`) differ.
 
 ---
 
-*These diagrams reflect the system as of 2026-05-29. For historical architecture
+*These diagrams reflect the system as of 2026-06-11. For historical architecture
 (embedding pipeline, thread detection, LanceDB), see the archived design docs in
 `docs/plans/_archived/` and `archive/shelved-2026-03-21/`.*
