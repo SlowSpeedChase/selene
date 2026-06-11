@@ -29,6 +29,7 @@ See the [block diagrams](backend-block-diagrams.md) for the full picture.
 | [process-llm](../src/workflows/process-llm.ts) | every 5 min | raw_notes | processed_notes, note_embeddings, note_connections | LLM-extract concepts/themes/category from pending notes, plus essence, embedding & connections |
 | [send-digest](../src/workflows/send-digest.ts) | daily 06:00 | digest .txt file, topic_clusters | Apple Notes, TRMNL | Deliver the daily digest (plus synthesis sections) to the "Selene Daily" Apple Note and TRMNL |
 | [synthesize-topics](../src/workflows/synthesize-topics.ts) | daily 02:00 | raw_notes, processed_notes | topic_clusters, topic_note_links, synthesis_meta | Group processed notes into the 8 category clusters and LLM-synthesize each topic + evolution |
+| [vault-feedback](../src/workflows/vault-feedback.ts) | every 15 min | Obsidian vault, raw_notes, processed_notes | note_feedback (facts.db), note_state | Scan vault "Your note" sections → ingest author intent into facts.note_feedback + re-pend notes for re-derivation |
 | [voice-ingest](../src/workflows/voice-ingest.ts) | every 30 min | Apple Voice Memos library, voice_transcriptions | raw_notes (via ingest), voice_transcriptions, voice-memo archive | Transcribe Apple Voice Memos with Whisper and ingest each as a note |
 <!-- GENERATED:workflows END -->
 
