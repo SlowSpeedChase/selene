@@ -3,7 +3,14 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import type { Database as DB } from 'better-sqlite3';
 import { makeTwoFileTestDb } from './test-two-file-db';
-import { scanVaultFeedback, getIntentTexts, markFeedbackApplied, YOUR_NOTE_HEADING } from './vault-feedback';
+import {
+  scanVaultFeedback,
+  getIntentTexts,
+  getIntentRows,
+  markFeedbackApplied,
+  rependIfUnappliedFeedback,
+  YOUR_NOTE_HEADING,
+} from './vault-feedback';
 
 function seedNote(db: DB, id: number, title: string): void {
   db.prepare(
@@ -132,21 +139,93 @@ describe('scanVaultFeedback', () => {
 });
 
 describe('intent helpers', () => {
-  it('getIntentTexts returns ALL feedback oldest-first; markFeedbackApplied stamps only un-applied rows', () => {
+  let db: DB;
+  let dir: string;
+
+  beforeEach(() => {
     const t = makeTwoFileTestDb();
-    const ins = t.db.prepare(`INSERT INTO facts.note_feedback (raw_note_id, feedback_text, created_at, applied_at) VALUES (?, ?, ?, ?)`);
-    ins.run(7, 'first', '2026-06-01', '2026-06-02');
-    ins.run(7, 'second', '2026-06-09', null);
-    ins.run(8, 'other note', '2026-06-09', null);
+    db = t.db;
+    dir = t.dir;
+  });
 
-    expect(getIntentTexts(t.db, 7)).toEqual(['first', 'second']);
+  afterEach(() => {
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
 
-    markFeedbackApplied(t.db, 7, '2026-06-10T12:00:00.000Z');
-    const rows = t.db.prepare(`SELECT feedback_text, applied_at FROM facts.note_feedback ORDER BY id`).all() as Array<{ feedback_text: string; applied_at: string | null }>;
-    expect(rows[0].applied_at).toBe('2026-06-02');               // untouched
-    expect(rows[1].applied_at).toBe('2026-06-10T12:00:00.000Z'); // stamped
-    expect(rows[2].applied_at).toBeNull();                       // other note untouched
-    t.db.close();
-    rmSync(t.dir, { recursive: true, force: true });
+  function insertFeedback(rawNoteId: number, text: string, createdAt: string, appliedAt: string | null = null): number {
+    const r = db
+      .prepare(`INSERT INTO facts.note_feedback (raw_note_id, feedback_text, created_at, applied_at) VALUES (?, ?, ?, ?)`)
+      .run(rawNoteId, text, createdAt, appliedAt);
+    return Number(r.lastInsertRowid);
+  }
+
+  function appliedAtById(id: number): string | null {
+    const row = db.prepare(`SELECT applied_at FROM facts.note_feedback WHERE id = ?`).get(id) as { applied_at: string | null };
+    return row.applied_at;
+  }
+
+  it('getIntentRows returns ids + texts oldest-first; getIntentTexts is its text projection', () => {
+    const a = insertFeedback(7, 'first', '2026-06-01', '2026-06-02');
+    const b = insertFeedback(7, 'second', '2026-06-09');
+    insertFeedback(8, 'other note', '2026-06-09');
+
+    expect(getIntentRows(db, 7)).toEqual([
+      { id: a, feedback_text: 'first' },
+      { id: b, feedback_text: 'second' },
+    ]);
+    expect(getIntentTexts(db, 7)).toEqual(['first', 'second']);
+  });
+
+  it('markFeedbackApplied stamps ONLY the given ids — a row ingested mid-derivation stays un-applied', () => {
+    const readAtPromptTime = insertFeedback(7, 'read at prompt time', '2026-06-01');
+    const arrivedMidDerivation = insertFeedback(7, 'arrived mid-derivation', '2026-06-09');
+    const otherNote = insertFeedback(8, 'other note', '2026-06-09');
+
+    // Caller stamps exactly what it read; also try smuggling another note's id past the guard.
+    markFeedbackApplied(db, 7, '2026-06-10T12:00:00.000Z', [readAtPromptTime, otherNote]);
+
+    expect(appliedAtById(readAtPromptTime)).toBe('2026-06-10T12:00:00.000Z');
+    expect(appliedAtById(arrivedMidDerivation)).toBeNull(); // no false ✓ for the straggler
+    expect(appliedAtById(otherNote)).toBeNull();            // raw_note_id guard holds
+  });
+
+  it('markFeedbackApplied with empty ids is a no-op', () => {
+    const a = insertFeedback(7, 'pending', '2026-06-01');
+    markFeedbackApplied(db, 7, '2026-06-10T12:00:00.000Z', []);
+    expect(appliedAtById(a)).toBeNull();
+  });
+
+  it('markFeedbackApplied never re-stamps an already-applied row', () => {
+    const a = insertFeedback(7, 'already done', '2026-06-01', '2026-06-02');
+    markFeedbackApplied(db, 7, '2026-06-10T12:00:00.000Z', [a]);
+    expect(appliedAtById(a)).toBe('2026-06-02');
+  });
+
+  it('rependIfUnappliedFeedback re-pends the note and returns true when an un-applied row exists', () => {
+    db.prepare(`INSERT INTO note_state (raw_note_id, status, processed_at, status_folio) VALUES (7, 'processed', '2026-06-10T11:00:00.000Z', 'sent')`).run();
+    insertFeedback(7, 'straggler', '2026-06-10');
+
+    expect(rependIfUnappliedFeedback(db, 7)).toBe(true);
+
+    const state = db
+      .prepare(`SELECT status, processed_at, status_folio FROM note_state WHERE raw_note_id = 7`)
+      .get() as { status: string; processed_at: string | null; status_folio: string };
+    expect(state.status).toBe('pending');
+    expect(state.processed_at).toBeNull();
+    expect(state.status_folio).toBe('sent'); // unrelated bookkeeping preserved
+    expect(appliedAtById(getIntentRows(db, 7)[0].id)).toBeNull(); // it re-pends, never stamps
+  });
+
+  it('rependIfUnappliedFeedback is a no-op returning false when all feedback is applied', () => {
+    db.prepare(`INSERT INTO note_state (raw_note_id, status, processed_at) VALUES (7, 'processed', '2026-06-10T11:00:00.000Z')`).run();
+    insertFeedback(7, 'done', '2026-06-01', '2026-06-02');
+    insertFeedback(8, 'someone else is pending', '2026-06-09'); // other note must not trigger 7
+
+    expect(rependIfUnappliedFeedback(db, 7)).toBe(false);
+
+    const state = db.prepare(`SELECT status, processed_at FROM note_state WHERE raw_note_id = 7`).get() as { status: string; processed_at: string | null };
+    expect(state.status).toBe('processed');
+    expect(state.processed_at).toBe('2026-06-10T11:00:00.000Z');
   });
 });

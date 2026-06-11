@@ -151,20 +151,52 @@ export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanRe
   return result;
 }
 
-/** ALL of a note's feedback texts, oldest first — every (re-)derivation carries full intent history. */
-export function getIntentTexts(db: DB, rawNoteId: number): string[] {
-  const rows = db
-    .prepare(
-      `SELECT feedback_text FROM facts.note_feedback
-       WHERE raw_note_id = ? ORDER BY created_at ASC, id ASC`
-    )
-    .all(rawNoteId) as Array<{ feedback_text: string }>;
-  return rows.map((r) => r.feedback_text);
+export interface IntentRow {
+  id: number;
+  feedback_text: string;
 }
 
-/** Stamp this note's un-applied feedback as applied (called after a successful re-derivation). */
-export function markFeedbackApplied(db: DB, rawNoteId: number, now: string): void {
+/** ALL of a note's feedback rows (id + text), oldest first — every (re-)derivation carries full intent history. */
+export function getIntentRows(db: DB, rawNoteId: number): IntentRow[] {
+  return db
+    .prepare(
+      `SELECT id, feedback_text FROM facts.note_feedback
+       WHERE raw_note_id = ? ORDER BY created_at ASC, id ASC`
+    )
+    .all(rawNoteId) as IntentRow[];
+}
+
+/** Text-only projection of getIntentRows (prompt builders don't need ids). */
+export function getIntentTexts(db: DB, rawNoteId: number): string[] {
+  return getIntentRows(db, rawNoteId).map((r) => r.feedback_text);
+}
+
+/**
+ * Stamp EXACTLY these feedback rows as applied — the ids the caller actually read at prompt
+ * time. Stamping by note alone would falsely ✓ a row a concurrent scan ingested AFTER the
+ * prompt was built (the derivation window spans two LLM calls): that row's re-pend would then
+ * be overwritten by markProcessed and the dedupe index would block re-ingest — silently never
+ * influencing the filing. See rependIfUnappliedFeedback for the other half of the guard.
+ */
+export function markFeedbackApplied(db: DB, rawNoteId: number, now: string, ids: number[]): void {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
   db.prepare(
-    `UPDATE facts.note_feedback SET applied_at = ? WHERE raw_note_id = ? AND applied_at IS NULL`
-  ).run(now, rawNoteId);
+    `UPDATE facts.note_feedback SET applied_at = ?
+     WHERE raw_note_id = ? AND applied_at IS NULL AND id IN (${placeholders})`
+  ).run(now, rawNoteId, ...ids);
+}
+
+/**
+ * Straggler guard: if the note still has un-applied feedback (ingested mid-derivation, or left
+ * un-stamped by a degraded parse), re-pend it so the next process-llm cycle re-derives with
+ * that feedback in the prompt. Returns true when it re-pended.
+ */
+export function rependIfUnappliedFeedback(db: DB, rawNoteId: number): boolean {
+  const unapplied = db
+    .prepare(`SELECT 1 FROM facts.note_feedback WHERE raw_note_id = ? AND applied_at IS NULL LIMIT 1`)
+    .get(rawNoteId);
+  if (!unapplied) return false;
+  setNoteState(db, rawNoteId, { status: 'pending', processed_at: null });
+  return true;
 }
