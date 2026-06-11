@@ -168,7 +168,7 @@ export interface SimilarNote {
   title: string;
   primary_theme: string | null;
   note_type: string | null;
-  distance: number;  // L2 distance (lower = more similar)
+  distance: number;  // cosine distance (1 - cos, range [0,2]; lower = more similar)
 }
 
 /**
@@ -212,8 +212,12 @@ export async function searchSimilarNotes(
     filters.push(`actionability = '${filterActionability}'`);
   }
 
-  // Build and execute query
-  let query = table.vectorSearch(queryVector);
+  // Build and execute query.
+  // Use COSINE distance: nomic-embed-text returns un-normalized vectors (norm ~20), so the
+  // default (squared-L2) metric ranks by magnitude, not meaning. Cosine is magnitude-invariant.
+  // `distance` in results is therefore cosine distance (1 - cos, range [0,2]); convert with
+  // similarityFromCosineDistance().
+  let query = table.vectorSearch(queryVector).distanceType('cosine');
 
   if (filters.length > 0) {
     query = query.where(filters.join(' AND '));

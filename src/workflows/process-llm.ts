@@ -15,6 +15,7 @@ import {
 import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
 import { buildAllowedFor, buildSubCategoryPrompt, parseSubCategories } from '../lib/category-clusters';
 import { initSynthesisSchema, writeConnection } from '../lib/synthesis-db';
+import { similarityFromCosineDistance } from '../lib/vector-similarity';
 import type { WorkflowResult } from '../types';
 
 // --- Migration (harmless no-op if columns exist) ---
@@ -179,17 +180,17 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         });
 
         for (const candidate of similar) {
-          // L2-to-cosine approximation for unit vectors; accurate for d < ~0.8
-          const approxSimilarity = 1 - (candidate.distance * candidate.distance) / 2;
-          if (approxSimilarity < CONNECTION_THRESHOLD) continue;
+          // `candidate.distance` is cosine distance (searchSimilarNotes uses the cosine metric).
+          const similarity = similarityFromCosineDistance(candidate.distance);
+          if (similarity < CONNECTION_THRESHOLD) continue;
 
           const isOlderThanSevenDays = db.prepare(
             'SELECT 1 FROM raw_notes WHERE id = ? AND created_at < ?'
           ).get(candidate.id, sevenDaysAgo);
 
           if (isOlderThanSevenDays) {
-            writeConnection(db, note.id, candidate.id, approxSimilarity);
-            log.info({ sourceId: note.id, targetId: candidate.id, similarity: approxSimilarity }, 'Connection found');
+            writeConnection(db, note.id, candidate.id, similarity);
+            log.info({ sourceId: note.id, targetId: candidate.id, similarity }, 'Connection found');
           }
         }
       } catch (embedErr) {
