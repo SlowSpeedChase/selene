@@ -17,7 +17,7 @@ import type { Database as DB } from 'better-sqlite3';
 import { createHash } from 'crypto';
 import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { buildParentFields, buildFriendFields, loadNoteClusters } from './constellation';
+import { buildParentFields, buildFriendFields, loadNoteClusters, loadNoteFriends } from './constellation';
 import { setNoteState } from './note-state';
 import { YOUR_NOTE_HEADING, parseYourNoteSection } from './vault-feedback';
 
@@ -227,6 +227,13 @@ export function reconcileExportedNotes(
 
   const noteClusters = loadNoteClusters(database);
 
+  let noteFriends = new Map<number, Array<{ title: string; created_at: string }>>();
+  try {
+    noteFriends = loadNoteFriends(database);
+  } catch {
+    // note_connections table absent (fresh DB or test environment) — no friend edges
+  }
+
   // Applied author feedback renders as blockquoted history in each note's Your-note section.
   // Loaded once per run (not per note); every connection that reaches here has facts attached
   // (production wiring + makeTwoFileTestDb both ATTACH facts.db with note_feedback).
@@ -253,7 +260,9 @@ export function reconcileExportedNotes(
     try {
       const parentClusters = noteClusters.get(note.id) ?? [];
       const applied = feedbackByNote.get(note.id) ?? [];
-      const markdown = renderNoteMarkdown(note, parentClusters, applied);
+      const friendNotes = noteFriends.get(note.id) ?? [];
+      const friendBasenames = friendNotes.map((f) => noteFilename(f).replace(/\.md$/, ''));
+      const markdown = renderNoteMarkdown(note, parentClusters, applied, friendBasenames);
       const hash = exportHash(markdown);
       const filePath = join(notesDir, noteFilename(note));
 
