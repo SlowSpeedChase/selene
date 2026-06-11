@@ -65,6 +65,29 @@ describe('note_feedback (obsidian feedback loop)', () => {
     db.close();
   });
 
+  it('enforces NOT NULL on each of raw_note_id/feedback_text/created_at', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+
+    const required = ['raw_note_id', 'feedback_text', 'created_at'] as const;
+    const values: Record<(typeof required)[number], string> = {
+      raw_note_id: '1',
+      feedback_text: "'f'",
+      created_at: "datetime('now')",
+    };
+
+    // For each required column, insert a row that supplies ALL required columns
+    // EXCEPT that one — each omission must independently violate NOT NULL.
+    for (const omit of required) {
+      const cols = required.filter((c) => c !== omit);
+      const sql = `INSERT INTO note_feedback (${cols.join(', ')}) VALUES (${cols
+        .map((c) => values[c])
+        .join(', ')})`;
+      expect(() => db.prepare(sql).run()).toThrow();
+    }
+    db.close();
+  });
+
   it('is idempotent (second init does not throw or drop rows)', () => {
     const db = new Database(':memory:');
     initFactsSchema(db);

@@ -1,9 +1,10 @@
 /**
  * facts.db — schema for the precious, immutable fact store.
  *
- * `facts.db` owns two tables: `captured_notes` (the immutable note facts — the durable
- * subset of today's `raw_notes`) and `review_state` (human review flags, migrated later
- * from today's `pkm_review_state`). A later task ATTACHes `facts.db` and calls this once;
+ * `facts.db` owns three tables: `captured_notes` (the immutable note facts — the durable
+ * subset of today's `raw_notes`), `review_state` (human review flags, migrated later
+ * from today's `pkm_review_state`), and `note_feedback` (free-text author intent from the
+ * Obsidian feedback loop). A later task ATTACHes `facts.db` and calls this once;
  * this module is pure schema with NO connection logic and touches NO real data.
  *
  * Takes an explicit `db` (no module singleton) so it's unit-testable in-memory, matching
