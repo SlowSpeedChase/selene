@@ -1,9 +1,10 @@
 /**
  * facts.db — schema for the precious, immutable fact store.
  *
- * `facts.db` owns two tables: `captured_notes` (the immutable note facts — the durable
- * subset of today's `raw_notes`) and `review_state` (human review flags, migrated later
- * from today's `pkm_review_state`). A later task ATTACHes `facts.db` and calls this once;
+ * `facts.db` owns three tables: `captured_notes` (the immutable note facts — the durable
+ * subset of today's `raw_notes`), `review_state` (human review flags, migrated later
+ * from today's `pkm_review_state`), and `note_feedback` (free-text author intent from the
+ * Obsidian feedback loop). A later task ATTACHes `facts.db` and calls this once;
  * this module is pure schema with NO connection logic and touches NO real data.
  *
  * Takes an explicit `db` (no module singleton) so it's unit-testable in-memory, matching
@@ -41,6 +42,27 @@ export function initFactsSchema(db: DB): void {
       surface_count    INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (entity_type, entity_id)
     );
+
+    -- Obsidian feedback loop (2026-06-10 design): free-text author intent captured from the
+    -- vault's "Your note" sections. PRECIOUS — human words; survives rebuild by living here.
+    -- raw_note_id = captured_notes.id (facts.db is never rebuilt, so the id is stable).
+    CREATE TABLE IF NOT EXISTS note_feedback (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      raw_note_id     INTEGER NOT NULL,
+      feedback_text   TEXT NOT NULL,
+      original_filing TEXT,
+      created_at      DATETIME NOT NULL,
+      applied_at      DATETIME
+    );
+    CREATE INDEX IF NOT EXISTS idx_note_feedback_note ON note_feedback(raw_note_id);
+    -- UNIQUE dedupe guard: two scanners run scanVaultFeedback concurrently (15-min vault-feedback
+    -- agent + hourly export's pre-render scan); a SELECT-then-INSERT check alone lets both pass
+    -- and double-insert into this never-rebuilt store. The captured_notes indexes below are
+    -- non-unique to tolerate historical duplicates in migrated data — that rationale does NOT
+    -- apply here: note_feedback is brand-new with no prod rows, so adding UNIQUE via IF NOT
+    -- EXISTS cannot hit existing dups (it would throw at init if a table somehow had them).
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_note_feedback_dedupe
+      ON note_feedback(raw_note_id, feedback_text);
 
     -- Non-unique lookup indexes (dedup/lookup parity). NON-unique on purpose so the later
     -- data migration can't fail on any historical duplicates.

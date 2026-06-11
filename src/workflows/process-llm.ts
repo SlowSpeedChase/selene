@@ -1,6 +1,6 @@
 // @map purpose: LLM-extract concepts/themes/category from pending notes, plus essence, embedding & connections
-// @map reads: raw_notes
-// @map writes: processed_notes, note_embeddings, note_connections
+// @map reads: raw_notes, note_feedback
+// @map writes: processed_notes, note_embeddings, note_connections, note_feedback
 import {
   createWorkflowLogger,
   getPendingNotes,
@@ -12,7 +12,8 @@ import {
   indexNote,
   searchSimilarNotes,
 } from '../lib';
-import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
+import { EXTRACT_PROMPT, buildEssencePrompt, buildIntentBlock } from '../lib/prompts';
+import { getIntentRows, markFeedbackApplied, rependIfUnappliedFeedback } from '../lib/vault-feedback';
 import { buildAllowedFor, buildSubCategoryPrompt, parseSubCategories } from '../lib/category-clusters';
 import { initSynthesisSchema, writeConnection } from '../lib/synthesis-db';
 import { similarityFromCosineDistance } from '../lib/vector-similarity';
@@ -58,15 +59,21 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
     try {
       log.info({ noteId: note.id, title: note.title }, 'Processing note');
 
-      const prompt = EXTRACT_PROMPT.replace('{title}', note.title).replace(
-        '{content}',
-        note.content
-      );
+      // Obsidian feedback loop: if the author has clarified this note's meaning, carry it
+      // into every (re-)derivation — including rebuilds (note_feedback is facts-side).
+      // Replacer functions: note text is user-authored — string replacements would
+      // interpret $-patterns in it (see buildEssencePrompt in lib/prompts.ts).
+      const intentRows = getIntentRows(db, note.id);
+      const intents = intentRows.map((r) => r.feedback_text);
+      const prompt = EXTRACT_PROMPT.replace('{title}', () => note.title)
+        .replace('{content}', () => note.content)
+        .replace('{intent}', () => buildIntentBlock(intents));
 
       const response = await generate(prompt);
 
       // Try to parse JSON response
       let extracted;
+      let parsed = true;
       try {
         // Find JSON in response (Ollama sometimes adds extra text)
         const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -77,6 +84,7 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
         }
       } catch (parseErr) {
         log.warn({ noteId: note.id, response }, 'Failed to parse LLM response as JSON');
+        parsed = false;
         extracted = {
           concepts: [],
           primary_theme: null,
@@ -130,13 +138,28 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
       // Mark note as processed
       markProcessed(note.id);
 
+      // Feedback stays visibly pending in the vault when extraction degraded to defaults — never
+      // falsely "applied ✓". Stamp by id: ONLY the rows that were actually in the prompt — a row
+      // a concurrent scan ingested mid-derivation must not be stamped (it never influenced this filing).
+      if (parsed && intentRows.length > 0) {
+        markFeedbackApplied(db, note.id, new Date().toISOString(), intentRows.map((r) => r.id));
+      }
+
+      // Straggler guard (always, regardless of parse): any still-unapplied feedback — ingested
+      // mid-derivation (its re-pend was just overwritten by markProcessed) or left un-stamped by
+      // a degraded parse — re-pends the note so the next cycle re-derives with it.
+      if (rependIfUnappliedFeedback(db, note.id)) {
+        log.info({ noteId: note.id }, 'New feedback arrived mid-derivation — re-pended');
+      }
+
       // Compute essence inline
       try {
         const essencePrompt = buildEssencePrompt(
           note.title,
           note.content,
           JSON.stringify(extracted.concepts || []),
-          extracted.primary_theme || null
+          extracted.primary_theme || null,
+          intents
         );
         const essenceResponse = await generate(essencePrompt);
         const essence = essenceResponse.trim();

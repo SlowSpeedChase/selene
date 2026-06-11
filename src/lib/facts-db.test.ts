@@ -55,6 +55,60 @@ describe('initFactsSchema', () => {
   });
 });
 
+describe('note_feedback (obsidian feedback loop)', () => {
+  it('initFactsSchema creates note_feedback with the expected columns', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    const cols = (db.prepare(`PRAGMA table_info(note_feedback)`).all() as { name: string }[])
+      .map((c) => c.name);
+    expect(cols).toEqual(['id', 'raw_note_id', 'feedback_text', 'original_filing', 'created_at', 'applied_at']);
+    db.close();
+  });
+
+  it('enforces NOT NULL on each of raw_note_id/feedback_text/created_at', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+
+    const required = ['raw_note_id', 'feedback_text', 'created_at'] as const;
+    const values: Record<(typeof required)[number], string> = {
+      raw_note_id: '1',
+      feedback_text: "'f'",
+      created_at: "datetime('now')",
+    };
+
+    // For each required column, insert a row that supplies ALL required columns
+    // EXCEPT that one — each omission must independently violate NOT NULL.
+    for (const omit of required) {
+      const cols = required.filter((c) => c !== omit);
+      const sql = `INSERT INTO note_feedback (${cols.join(', ')}) VALUES (${cols
+        .map((c) => values[c])
+        .join(', ')})`;
+      expect(() => db.prepare(sql).run()).toThrow();
+    }
+    db.close();
+  });
+
+  it('has a UNIQUE dedupe index on (raw_note_id, feedback_text)', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    const idx = db
+      .prepare(`SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_note_feedback_dedupe'`)
+      .get() as { sql: string } | undefined;
+    expect(idx).toBeDefined();
+    expect(idx?.sql).toMatch(/UNIQUE/i);
+    db.close();
+  });
+
+  it('is idempotent (second init does not throw or drop rows)', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    db.prepare(`INSERT INTO note_feedback (raw_note_id, feedback_text, created_at) VALUES (1, 'x', '2026-06-10')`).run();
+    initFactsSchema(db);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM note_feedback`).get()).toEqual({ n: 1 });
+    db.close();
+  });
+});
+
 describe('two-file wiring', () => {
   it('raw_notes view joins facts.captured_notes + note_state, defaulting status to pending', () => {
     const dir = mkdtempSync(join(tmpdir(), 'factstore-'));

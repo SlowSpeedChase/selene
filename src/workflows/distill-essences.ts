@@ -1,9 +1,10 @@
 // @map purpose: Backfill/retry LLM essences for processed notes that still lack one
-// @map reads: processed_notes, raw_notes
+// @map reads: processed_notes, raw_notes, note_feedback
 // @map writes: processed_notes
 import { createWorkflowLogger, db, generate, isAvailable } from '../lib';
 import { testRunFilter } from '../lib/test-run';
 import { buildEssencePrompt } from '../lib/prompts';
+import { getIntentTexts } from '../lib/vault-feedback';
 import type { WorkflowResult } from '../types';
 
 const log = createWorkflowLogger('distill-essences');
@@ -80,11 +81,15 @@ export async function distillEssences(limit = 10): Promise<WorkflowResult> {
 
   for (const note of notes) {
     try {
+      // Obsidian feedback loop: retried/backfilled essences must carry the author's
+      // stated intent, same as the inline essence path in process-llm.
+      const intents = getIntentTexts(db, note.raw_note_id);
       const prompt = buildEssencePrompt(
         note.title,
         note.content,
         note.concepts,
-        note.primary_theme
+        note.primary_theme,
+        intents
       );
 
       const response = await generate(prompt);
