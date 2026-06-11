@@ -21,6 +21,14 @@ const log = createWorkflowLogger('synthesize-topics');
 
 initSynthesisSchema(db);
 
+// Deploy-order safety: loadClassifiedNotes() reads pn.sub_categories, but on an existing
+// prod DB that column only arrives via process-llm's migration — and a deploy kickstarts
+// ALL agents at once, so this workflow can fire before process-llm has landed it. Each
+// workflow ensures its own columns (house idiom — see process-llm.ts, distill-essences.ts).
+try {
+  db.exec('ALTER TABLE processed_notes ADD COLUMN sub_categories TEXT');
+} catch { /* column already exists (or table not yet created on a fresh DB) */ }
+
 interface CategoryMember {
   noteId: number;
   title: string;

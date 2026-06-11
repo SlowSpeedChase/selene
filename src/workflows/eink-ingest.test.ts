@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { redirectSeleneSingleton } from '../lib/test-two-file-db';
+
+// eink-ingest imports the ../lib barrel + ./ingest, which open the db singleton on import.
+// Redirect that singleton to throwaway temp files BEFORE importing the module-under-test so
+// this pure-parser test never touches a real DB. (This file was authored for vitest and never
+// actually ran under any runner; converted to jest — vitest's describe/it/expect are jest globals.)
+const { restore } = redirectSeleneSingleton('selene-eink-ingest-test-');
+
 import { parseFolioMetadata } from './eink-ingest';
+
+afterAll(() => restore());
 
 describe('parseFolioMetadata', () => {
   it('returns null for a regular notebook filename', () => {

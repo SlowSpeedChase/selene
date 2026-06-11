@@ -117,7 +117,6 @@ src/
     logger.ts         # Pino structured logging
     ollama.ts         # Ollama API client
     auth.ts           # Bearer token auth middleware
-    context-builder.ts    # Tiered context assembly utility
     lancedb.ts        # LanceDB vector utilities
     prompts.ts        # LLM prompt templates
   workflows/            # CORE PIPELINE shown below — full live inventory + schedules + reads/writes: docs/SYSTEM-MAP.md
@@ -279,7 +278,7 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 ./scripts/cleanup-tests.sh test-123
 ```
 
-### Releases (prod/dev split — applies AFTER the one-time cutover)
+### Releases (prod/dev split — LIVE since 2026-05-29)
 ```bash
 # Cut a release: merge to main. A launchd deploy-watcher
 # (com.selene.prod.*) build-gates and deploys within ~5 min, then notifies.
@@ -291,7 +290,7 @@ curl -X POST http://localhost:5678/webhook/api/drafts \
 ./scripts/rollback-prod.sh           # newest archived release
 ./scripts/rollback-prod.sh <sha>     # a specific archived sha
 ```
-Prod agents are `com.selene.prod.*` (compiled `dist/`). The cutover retires the old `com.selene.*` agents entirely; dev (`~/selene`) then runs NO scheduled agents — its workflows are manual via `./scripts/dev-process-batch.sh`. Not yet live — activates at the one-time cutover. See `docs/guides/features/releases.md`.
+Prod agents are `com.selene.prod.*` (compiled `dist/`); the old `com.selene.*` workflow agents are retired. Dev (`~/selene`) runs no scheduled workflow agents (only `com.selene.dev.server` for remote iPad dev) — dev workflows are manual via `./scripts/dev-process-batch.sh`. **Pushing `main` to origin IS a prod deploy** (the watcher reacts to the `origin/main` sha within ~5 min). See `docs/guides/features/releases.md`.
 
 **Full command reference:** `@.claude/OPERATIONS.md`
 

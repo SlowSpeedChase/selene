@@ -40,3 +40,39 @@ describe('renderNoteMarkdown', () => {
     expect(md).toContain('*Showing up daily matters more than the words.*');
   });
 });
+
+describe('noteAlias (content-chunk node labels)', () => {
+  const { noteAlias } = require('./obsidian-render') as typeof import('./obsidian-render');
+
+  it('flattens multi-line content to one prose line', () => {
+    expect(noteAlias('# Heading\n> quoted\n- bullet line')).toBe('Heading quoted bullet line');
+  });
+
+  it('truncates long content at the cap with an ellipsis', () => {
+    const alias = noteAlias('word '.repeat(40), 80);
+    expect(alias.length).toBeLessThanOrEqual(81); // 80 + ellipsis char
+    expect(alias.endsWith('…')).toBe(true);
+  });
+
+  it('returns empty string for empty/whitespace content', () => {
+    expect(noteAlias('')).toBe('');
+    expect(noteAlias('   \n  ')).toBe('');
+  });
+
+  it('renderNoteMarkdown emits the alias in frontmatter with quotes escaped', () => {
+    const md = renderNoteMarkdown(
+      { id: 1, title: '2026-06-09', content: 'She said "do the thing" today', created_at: '2026-06-09T10:00:00Z', primary_theme: null, concepts: null, essence: null },
+      []
+    );
+    expect(md).toContain('aliases:');
+    expect(md).toContain('  - "She said \\"do the thing\\" today"');
+  });
+
+  it('renderNoteMarkdown omits the aliases block entirely when content is empty', () => {
+    const md = renderNoteMarkdown(
+      { id: 1, title: 'x', content: '', created_at: '2026-06-09T10:00:00Z', primary_theme: null, concepts: null, essence: null },
+      []
+    );
+    expect(md).not.toContain('aliases:');
+  });
+});

@@ -2,43 +2,20 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  // Only run test files that use proper Jest describe/it format.
-  // Existing tests use a custom runTests() + assert pattern and are excluded.
-  testMatch: [
-    '**/scripts/migrate-to-fact-store.test.ts',
-    '**/scripts/backfill-categories.test.ts',
-    '**/scripts/backfill-connections.test.ts',
-    '**/src/lib/apple-notes.test.ts',
-    '**/src/lib/category-clusters.test.ts',
-    '**/src/lib/config.test.ts',
-    '**/src/lib/constellation.test.ts',
-    '**/src/lib/constellation.db.test.ts',
-    '**/src/lib/db-capture.test.ts',
-    '**/src/lib/db-config.test.ts',
-    '**/src/lib/db-guard.test.ts',
-    '**/src/lib/db-legacy-columns.test.ts',
-    '**/src/lib/db-pending.test.ts',
-    '**/src/lib/ensure-migrated.test.ts',
-    '**/src/lib/facts-db.test.ts',
-    '**/src/lib/inspect.test.ts',
-    '**/src/lib/note-state.test.ts',
-    '**/src/lib/open-selene-connection.test.ts',
-    '**/src/lib/obsidian-render.test.ts',
-    '**/src/lib/obsidian-render.db.test.ts',
-    '**/src/lib/pkm-db.test.ts',
-    '**/src/lib/rebuild-core.test.ts',
-    '**/src/lib/rebuild-core.db.test.ts',
-    '**/src/lib/pkm-queries.test.ts',
-    '**/src/lib/pkm-render.test.ts',
-    '**/src/lib/sub-taxonomy.test.ts',
-    '**/src/lib/synthesis-db.test.ts',
-    '**/src/lib/system-map.test.ts',
-    '**/src/lib/vector-similarity.test.ts',
-    '**/src/lib/synthesis-digest.test.ts',
-    '**/src/lib/view-mode-readers.test.ts',
-    '**/src/workflows/synthesize-topics.subcats.db.test.ts',
-    '**/src/routes/notes.test.ts',
-    '**/src/routes/pkm.test.ts',
+  // Run EVERY *.test.ts under one convention. This deliberately REPLACES the old
+  // hand-maintained allowlist: with a glob, a newly-added test can never be silently
+  // forgotten (the old allowlist had silently dropped real tests). The legacy custom
+  // runTests()/vitest test files were migrated to jest describe/it in 2026-06.
+  testMatch: ['**/*.test.ts'],
+  // Never run tests outside the live source tree: node_modules, the archived shelved-*
+  // trees (they import deleted modules), build output, and sibling git worktrees under
+  // .claude/ (see the modulePathIgnorePatterns note below).
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/archive/',
+    '<rootDir>/dist/',
+    '<rootDir>/.claude/',
+    '<rootDir>/.worktrees/',
   ],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
@@ -56,5 +33,5 @@ module.exports = {
   // absent-column tolerance throws instead of being caught). The parent repo's jest
   // must never scan sibling worktrees. (Do NOT delete the worktrees — they're locked
   // on live feature branches.)
-  modulePathIgnorePatterns: ['<rootDir>/.claude/'],
+  modulePathIgnorePatterns: ['<rootDir>/.claude/', '<rootDir>/.worktrees/'],
 };
