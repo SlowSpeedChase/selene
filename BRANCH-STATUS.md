@@ -37,8 +37,8 @@ the feedback back as an applied-✓ block (preserve-on-render guard).
 - [x] Code follows project patterns
 
 ### Testing
-- [ ] Unit tests pass
-- [ ] Integration tests pass (if applicable)
+- [x] Unit tests pass (npm test 340/340, verified twice — 2026-06-11)
+- [x] Integration tests pass (covered by dev-sandbox e2e — plan Task 9)
 - [x] Manual testing completed (dev-sandbox e2e — plan Task 9)
 - [x] Edge cases verified (idempotent re-scan after apply; feedback text rendered exactly once)
 - [ ] Verified with superpowers:verification-before-completion
