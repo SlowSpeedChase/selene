@@ -78,6 +78,47 @@ describe('noteAlias (content-chunk node labels)', () => {
   });
 });
 
+describe('friend:: block rendering', () => {
+  const friendNote: RenderableNote = {
+    id: 1,
+    title: 'Morning pages',
+    content: 'A few lines about the day.',
+    created_at: '2026-05-01T08:00:00.000Z',
+    primary_theme: 'reflection',
+    concepts: JSON.stringify(['journaling', 'habits']),
+    essence: null,
+  };
+
+  it('injects friend:: lines when friendBasenames are provided', () => {
+    const md = renderNoteMarkdown(
+      friendNote,
+      [],   // parentClusters
+      [],   // appliedFeedback
+      ['2025-11-02-sentence-diagramming', '2025-11-03-running-notes']
+    );
+    expect(md).toContain('friend:: [[2025-11-02-sentence-diagramming]]');
+    expect(md).toContain('friend:: [[2025-11-03-running-notes]]');
+  });
+
+  it('friend block appears before the Your note heading', () => {
+    const md = renderNoteMarkdown(
+      friendNote,
+      [],
+      [],
+      ['2025-11-02-sentence-diagramming']
+    );
+    const friendPos = md.indexOf('friend::');
+    const yourNotePos = md.indexOf('## ✍️ Your note');
+    expect(friendPos).toBeGreaterThan(-1);
+    expect(friendPos).toBeLessThan(yourNotePos);
+  });
+
+  it('renders cleanly with no friend basenames (default param)', () => {
+    const md = renderNoteMarkdown(friendNote, []);
+    expect(md).not.toContain('friend::');
+  });
+});
+
 describe('feedback loop rendering', () => {
   const fbNote: RenderableNote = {
     id: 42, title: 'T', content: 'body', created_at: '2026-06-01T00:00:00.000Z',

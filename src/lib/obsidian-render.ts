@@ -17,7 +17,7 @@ import type { Database as DB } from 'better-sqlite3';
 import { createHash } from 'crypto';
 import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { buildParentFields, loadNoteClusters } from './constellation';
+import { buildParentFields, buildFriendFields, loadNoteClusters } from './constellation';
 import { setNoteState } from './note-state';
 import { YOUR_NOTE_HEADING, parseYourNoteSection } from './vault-feedback';
 
@@ -103,7 +103,8 @@ export interface AppliedFeedback {
 export function renderNoteMarkdown(
   note: RenderableNote,
   parentClusters: string[],
-  appliedFeedback: AppliedFeedback[] = []
+  appliedFeedback: AppliedFeedback[] = [],
+  friendBasenames: string[] = []
 ): string {
   const concepts = parseJson<string[]>(note.concepts, []);
   const dateStr = noteDateStr(note.created_at);
@@ -155,6 +156,9 @@ export function renderNoteMarkdown(
 
   const parentBlock = buildParentFields(parentClusters);
   if (parentBlock) parts.push(``, parentBlock);
+
+  const friendBlock = buildFriendFields(friendBasenames);
+  if (friendBlock) parts.push(``, friendBlock);
 
   // Feedback loop capture surface: ALWAYS present (an empty invitation costs nothing; a missing
   // heading would make the user add it by hand on iPad — friction). Applied history renders as
