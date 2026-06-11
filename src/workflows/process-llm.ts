@@ -12,7 +12,8 @@ import {
   indexNote,
   searchSimilarNotes,
 } from '../lib';
-import { EXTRACT_PROMPT, buildEssencePrompt } from '../lib/prompts';
+import { EXTRACT_PROMPT, buildEssencePrompt, buildIntentBlock } from '../lib/prompts';
+import { getIntentTexts, markFeedbackApplied } from '../lib/vault-feedback';
 import { buildAllowedFor, buildSubCategoryPrompt, parseSubCategories } from '../lib/category-clusters';
 import { initSynthesisSchema, writeConnection } from '../lib/synthesis-db';
 import type { WorkflowResult } from '../types';
@@ -57,10 +58,14 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
     try {
       log.info({ noteId: note.id, title: note.title }, 'Processing note');
 
-      const prompt = EXTRACT_PROMPT.replace('{title}', note.title).replace(
-        '{content}',
-        note.content
-      );
+      // Obsidian feedback loop: if the author has clarified this note's meaning, carry it
+      // into every (re-)derivation — including rebuilds (note_feedback is facts-side).
+      // Replacer functions: note text is user-authored — string replacements would
+      // interpret $-patterns in it (see buildEssencePrompt in lib/prompts.ts).
+      const intents = getIntentTexts(db, note.id);
+      const prompt = EXTRACT_PROMPT.replace('{title}', () => note.title)
+        .replace('{content}', () => note.content)
+        .replace('{intent}', () => buildIntentBlock(intents));
 
       const response = await generate(prompt);
 
@@ -129,13 +134,18 @@ export async function processLlm(limit = 10): Promise<WorkflowResult> {
       // Mark note as processed
       markProcessed(note.id);
 
+      if (intents.length > 0) {
+        markFeedbackApplied(db, note.id, new Date().toISOString());
+      }
+
       // Compute essence inline
       try {
         const essencePrompt = buildEssencePrompt(
           note.title,
           note.content,
           JSON.stringify(extracted.concepts || []),
-          extracted.primary_theme || null
+          extracted.primary_theme || null,
+          intents
         );
         const essenceResponse = await generate(essencePrompt);
         const essence = essenceResponse.trim();
