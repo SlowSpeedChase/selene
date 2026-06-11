@@ -15,6 +15,7 @@ export const EXTRACT_PROMPT = `Analyze this note and extract key information.
 
 Note Title: {title}
 Note Content: {content}
+{intent}
 
 Categories (pick the BEST fit for "category", optionally 1-2 others for "cross_ref_categories"):
 - Personal Growth
@@ -39,6 +40,23 @@ Respond in JSON format:
 
 JSON response:`;
 
+/**
+ * Obsidian feedback loop: the author's own statement of what a note means, injected into
+ * EXTRACT_PROMPT's {intent} slot (and the essence context). Empty input -> '' so notes
+ * without feedback get today's prompt byte-for-byte (minus the blank placeholder line).
+ */
+export function buildIntentBlock(intents: string[]): string {
+  if (intents.length === 0) return '';
+  const bullets = intents.map((t) => `- "${t.replace(/\s+/g, ' ').trim()}"`).join('\n');
+  return [
+    ``,
+    `The author has clarified what this note means to them:`,
+    bullets,
+    `Weight the author's stated intent over the surface topic when choosing concepts, category, and primary_theme.`,
+    ``,
+  ].join('\n');
+}
+
 export const ESSENCE_PROMPT = `Distill this note into 1-2 sentences capturing what it means to the person who wrote it. Focus on the core insight, decision, or question — not a summary of the text.
 
 Title: {title}
@@ -51,7 +69,8 @@ export function buildEssencePrompt(
   title: string,
   content: string,
   concepts: string | null,
-  primaryTheme: string | null
+  primaryTheme: string | null,
+  intents: string[] = []
 ): string {
   const contextParts: string[] = [];
   if (concepts) {
@@ -64,6 +83,9 @@ export function buildEssencePrompt(
   }
   if (primaryTheme) {
     contextParts.push(`Theme: ${primaryTheme}`);
+  }
+  if (intents.length > 0) {
+    contextParts.push(`The author says this note means: ${intents.map((t) => `"${t.replace(/\s+/g, ' ').trim()}"`).join(' | ')}`);
   }
   const contextStr = contextParts.length > 0
     ? contextParts.join('\n')
