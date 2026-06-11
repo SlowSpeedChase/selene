@@ -28,6 +28,11 @@ export function buildParentFields(clusterNames: string[]): string {
     .join('\n');
 }
 
+/** One `friend:: [[basename]]` line per connected note (top-N, pre-sorted by caller). */
+export function buildFriendFields(basenames: string[]): string {
+  return basenames.map((b) => `friend:: [[${b}]]`).join('\n');
+}
+
 /** Markdown for a cluster index note. `parent::` only when the cluster itself has a parent
  *  (flat today since parent_id is NULL; future-proof for sub-clusters). */
 export function buildClusterNote(cluster: { name: string }, parentName?: string): string {

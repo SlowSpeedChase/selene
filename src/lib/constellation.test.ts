@@ -2,6 +2,7 @@ import {
   clusterNoteFilename,
   buildParentFields,
   buildClusterNote,
+  buildFriendFields,
 } from './constellation';
 
 describe('clusterNoteFilename', () => {
@@ -33,6 +34,22 @@ describe('buildParentFields', () => {
   });
   it('passes names through clusterNoteFilename so links resolve', () => {
     expect(buildParentFields(['AI / Tools'])).toBe('parent:: [[AI Tools]]');
+  });
+});
+
+describe('buildFriendFields', () => {
+  it('returns empty string for empty input', () => {
+    expect(buildFriendFields([])).toBe('');
+  });
+
+  it('emits one friend:: line for a single basename', () => {
+    expect(buildFriendFields(['2025-11-01-grammar-intuition']))
+      .toBe('friend:: [[2025-11-01-grammar-intuition]]');
+  });
+
+  it('emits one line per basename, joined by newline', () => {
+    expect(buildFriendFields(['2025-11-01-foo', '2025-11-02-bar']))
+      .toBe('friend:: [[2025-11-01-foo]]\nfriend:: [[2025-11-02-bar]]');
   });
 });
 
