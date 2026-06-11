@@ -184,6 +184,36 @@ describe('feedback preserve-on-render', () => {
     expect(after).toContain('— applied 2026-06-10 ✓');
   });
 
+  it('composed loop: applied feedback is rendered as a blockquote ONCE, not re-preserved as plain text', () => {
+    db = seed();
+    const dir = vault();
+    // 1. first reconcile writes the canonical file
+    reconcileExportedNotes(db, dir);
+    const file = join(dir, readdirSync(dir)[0]);
+
+    // 2. user types feedback into the vault file (plain text in the Your-note section tail)
+    writeFileSync(file, readFileSync(file, 'utf-8') + '\na skill I enjoy\n', 'utf-8');
+
+    // 3. the scan→re-derive pipeline ingested it and stamped it applied
+    db.prepare(
+      `INSERT INTO facts.note_feedback (raw_note_id, feedback_text, created_at, applied_at)
+       VALUES (?, 'a skill I enjoy', '2026-06-10', '2026-06-10T12:00:00.000Z')`
+    ).run(10);
+
+    // 4. re-derivation changed the filing so the hash flips and the file rewrites
+    db.prepare(`UPDATE processed_notes SET essence = 'rederived essence' WHERE raw_note_id = ?`).run(10);
+    const result = reconcileExportedNotes(db, dir);
+    expect(result.written).toBe(1);
+
+    // 5. the feedback text appears EXACTLY ONCE (the applied ✓ blockquote) — the old file's
+    //    plain copy must NOT be re-appended below it (that copy would freeze forever and
+    //    compound into later feedback blobs).
+    const after = readFileSync(file, 'utf-8');
+    expect(after.split('a skill I enjoy').length).toBe(2); // one occurrence
+    expect(after).toContain('> a skill I enjoy');
+    expect(after.trimEnd().endsWith('a skill I enjoy')).toBe(false); // not dangling as plain text
+  });
+
   it('does NOT rewrite an unchanged note even when the file holds new user feedback (no clobber)', () => {
     db = seed();
     const dir = vault();

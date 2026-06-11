@@ -248,7 +248,8 @@ export function reconcileExportedNotes(
   for (const note of notes) {
     try {
       const parentClusters = noteClusters.get(note.id) ?? [];
-      const markdown = renderNoteMarkdown(note, parentClusters, feedbackByNote.get(note.id) ?? []);
+      const applied = feedbackByNote.get(note.id) ?? [];
+      const markdown = renderNoteMarkdown(note, parentClusters, applied);
       const hash = exportHash(markdown);
       const filePath = join(notesDir, noteFilename(note));
 
@@ -268,12 +269,23 @@ export function reconcileExportedNotes(
 
       // Preserve-on-render: the hash (and skip decision) covers the CANONICAL render only;
       // un-ingested user feedback in the existing file is an additive passthrough, re-appended
-      // verbatim so no export/scan ordering can ever clobber the author's words. (It lands back
-      // inside the Your-note section because that section is the document's tail.)
+      // verbatim so no export/scan ordering can ever clobber the author's words (on this
+      // machine's view of the file; cross-device iCloud sync races are narrowed by the export
+      // workflow scanning immediately before reconcile, with conflict-copy ingestion as the
+      // backstop). (It lands back inside the Your-note section because that section is the
+      // document's tail.)
+      //
+      // Skip text that is string-equal to an APPLIED feedback being rendered for this note:
+      // after the scan→re-derive loop completes, the old file's plain copy is now rendered as
+      // an applied ✓ blockquote — re-appending it would duplicate it forever and compound into
+      // later feedback blobs. Pending (un-applied) rows are deliberately NOT consulted: the
+      // parsed=false degraded-extraction path must keep plain text visible in the file.
       let toWrite = markdown;
       if (existsSync(filePath)) {
         const { newFeedback } = parseYourNoteSection(readFileSync(filePath, 'utf-8'));
-        if (newFeedback) toWrite = `${markdown}\n\n${newFeedback}`;
+        if (newFeedback && !applied.some((f) => f.feedback_text === newFeedback)) {
+          toWrite = `${markdown}\n\n${newFeedback}`;
+        }
       }
       writeFileSync(filePath, toWrite, 'utf-8');
       // Fact-store split: export bookkeeping is derived → note_state (NOT the read-only raw_notes
