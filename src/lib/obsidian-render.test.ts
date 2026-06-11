@@ -1,4 +1,5 @@
 import { renderNoteMarkdown, exportHash, RenderableNote } from './obsidian-render';
+import { parseYourNoteSection } from './vault-feedback';
 
 const note: RenderableNote = {
   id: 1,
@@ -74,5 +75,35 @@ describe('noteAlias (content-chunk node labels)', () => {
       []
     );
     expect(md).not.toContain('aliases:');
+  });
+});
+
+describe('feedback loop rendering', () => {
+  const fbNote: RenderableNote = {
+    id: 42, title: 'T', content: 'body', created_at: '2026-06-01T00:00:00.000Z',
+    primary_theme: 'theme', concepts: null, essence: null,
+  };
+
+  it('emits selene_id in frontmatter', () => {
+    expect(renderNoteMarkdown(fbNote, [])).toMatch(/^selene_id: 42$/m);
+  });
+
+  it('always ends with an empty Your-note section (the invitation)', () => {
+    const md = renderNoteMarkdown(fbNote, []);
+    expect(md.trimEnd().endsWith('## ✍️ Your note')).toBe(true);
+  });
+
+  it('renders applied feedback as blockquote + applied-date line', () => {
+    const md = renderNoteMarkdown(fbNote, [], [
+      { feedback_text: 'a skill I enjoy\nremember it', applied_at: '2026-06-10T12:00:00.000Z' },
+    ]);
+    expect(md).toContain('> a skill I enjoy\n> remember it\n> — applied 2026-06-10 ✓');
+  });
+
+  it('round-trips with the parser: applied blocks are not re-ingested as new feedback', () => {
+    const md = renderNoteMarkdown(fbNote, [], [
+      { feedback_text: 'old', applied_at: '2026-06-10T12:00:00.000Z' },
+    ]);
+    expect(parseYourNoteSection(md)).toEqual({ hasSection: true, newFeedback: null });
   });
 });

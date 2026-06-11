@@ -19,6 +19,7 @@ import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { buildParentFields, loadNoteClusters } from './constellation';
 import { setNoteState } from './note-state';
+import { YOUR_NOTE_HEADING } from './vault-feedback';
 
 export interface RenderableNote {
   id: number;
@@ -86,13 +87,24 @@ export function noteFilename(note: { title: string; created_at: string }): strin
   return `${noteDateStr(note.created_at)}-${createSlug(note.title)}.md`;
 }
 
+/** One row of applied author feedback (facts.note_feedback WHERE applied_at IS NOT NULL),
+ *  rendered into the Your-note section as a blockquoted history block. */
+export interface AppliedFeedback {
+  feedback_text: string;
+  applied_at: string;
+}
+
 /**
  * Render a note's FULL Obsidian markdown — frontmatter, body blockquote, essence, links, and the
  * `parent:: [[cluster]]` block. The hash is taken over THIS entire string, so a cluster-membership
  * change (which only touches the parent block) still flips the hash and triggers a rewrite. Hashing
  * only the body would re-freeze the exact edges this module exists to fix.
  */
-export function renderNoteMarkdown(note: RenderableNote, parentClusters: string[]): string {
+export function renderNoteMarkdown(
+  note: RenderableNote,
+  parentClusters: string[],
+  appliedFeedback: AppliedFeedback[] = []
+): string {
   const concepts = parseJson<string[]>(note.concepts, []);
   const dateStr = noteDateStr(note.created_at);
   const theme = note.primary_theme || 'uncategorized';
@@ -118,6 +130,7 @@ export function renderNoteMarkdown(note: RenderableNote, parentClusters: string[
     `title: "${titleEscaped}"`,
     ...(alias ? [`aliases:`, `  - "${aliasEscaped}"`] : []),
     `date: ${dateStr}`,
+    `selene_id: ${note.id}`,
     `theme: ${theme}`,
     `concepts:`,
     conceptsYaml,
@@ -142,6 +155,15 @@ export function renderNoteMarkdown(note: RenderableNote, parentClusters: string[
 
   const parentBlock = buildParentFields(parentClusters);
   if (parentBlock) parts.push(``, parentBlock);
+
+  // Feedback loop capture surface: ALWAYS present (an empty invitation costs nothing; a missing
+  // heading would make the user add it by hand on iPad — friction). Applied history renders as
+  // blockquotes, which the parser ignores — only plain text below counts as new feedback.
+  parts.push(``, YOUR_NOTE_HEADING);
+  for (const fb of appliedFeedback) {
+    const quoted = fb.feedback_text.split('\n').map((l) => `> ${l}`).join('\n');
+    parts.push(``, `${quoted}\n> — applied ${fb.applied_at.slice(0, 10)} ✓`);
+  }
 
   return parts.join('\n');
 }
