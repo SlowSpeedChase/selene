@@ -25,7 +25,7 @@ export interface ParsedSection {
 
 /** Apply the section protocol to a note file's markdown. */
 export function parseYourNoteSection(markdown: string): ParsedSection {
-  const lines = markdown.split('\n');
+  const lines = markdown.split(/\r?\n/); // CRLF-tolerant; feedback_text never carries \r
   const start = lines.findIndex((l) => l.trim() === YOUR_NOTE_HEADING);
   if (start === -1) return { hasSection: false, newFeedback: null };
 
@@ -41,10 +41,20 @@ export function parseYourNoteSection(markdown: string): ParsedSection {
   return { hasSection: true, newFeedback: fresh.length > 0 ? fresh : null };
 }
 
-/** The note's captured_notes.id from the `selene_id:` frontmatter line. */
+/**
+ * The note's captured_notes.id from the `selene_id:` frontmatter line. Bounded to the LEADING
+ * `---` fenced block only: body text mentioning "selene_id: N" in a hand-made file must never
+ * mis-attribute feedback (and re-pend) note N.
+ */
 export function extractSeleneId(markdown: string): number | null {
-  const m = markdown.match(/^selene_id: (\d+)$/m);
-  return m ? parseInt(m[1], 10) : null;
+  const lines = markdown.split(/\r?\n/);
+  if (lines[0]?.trim() !== '---') return null;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') break; // closing fence — id not found
+    const m = lines[i].match(/^selene_id:\s*(\d+)\s*$/);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
 }
 
 export interface ScanResult {
@@ -53,6 +63,9 @@ export interface ScanResult {
   duplicates: number;  // identical (note, text) already ingested — awaiting re-export
   unmatched: number;   // no selene_id / id not in captured_notes — skipped, file untouched
   errors: number;      // per-file read/parse exceptions
+  /** First few per-file failures (filename + exception message, NO note content) so an errors>0
+   *  exit is diagnosable from logs — same precedent as obsidian-render's reconcile errorSamples. */
+  errorSamples: Array<{ file: string; message: string }>;
 }
 
 /**
@@ -61,7 +74,9 @@ export interface ScanResult {
  * makes rescans idempotent. Never writes to any vault file.
  */
 export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanResult {
-  const result: ScanResult = { scanned: 0, ingested: 0, duplicates: 0, unmatched: 0, errors: 0 };
+  const result: ScanResult = {
+    scanned: 0, ingested: 0, duplicates: 0, unmatched: 0, errors: 0, errorSamples: [],
+  };
 
   let files: string[];
   try {
@@ -111,8 +126,11 @@ export function scanVaultFeedback(db: DB, notesDir: string, now: string): ScanRe
       // Partial UPSERT preserves unrelated bookkeeping (status_folio, inbox_status, export hash).
       setNoteState(db, noteId, { status: 'pending', processed_at: null });
       result.ingested++;
-    } catch {
+    } catch (err) {
       result.errors++;
+      if (result.errorSamples.length < 5) {
+        result.errorSamples.push({ file, message: (err as Error).message });
+      }
     }
   }
   return result;

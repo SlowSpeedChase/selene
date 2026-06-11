@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync, rmSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import type { Database as DB } from 'better-sqlite3';
@@ -89,6 +89,16 @@ describe('scanVaultFeedback', () => {
   it('missing vault dir -> zero result, no throw', () => {
     expect(scanVaultFeedback(db, join(vaultDir, 'nope'), '2026-06-10T12:00:00.000Z'))
       .toMatchObject({ scanned: 0, ingested: 0, errors: 0 });
+  });
+
+  it('per-file read failure is counted AND sampled (filename + message, no content)', () => {
+    // A subdirectory named *.md makes readFileSync throw EISDIR — a reliable error trigger.
+    mkdirSync(join(vaultDir, 'trap.md'));
+    const r = scanVaultFeedback(db, vaultDir, '2026-06-10T12:00:00.000Z');
+    expect(r).toMatchObject({ scanned: 1, errors: 1 });
+    expect(r.errorSamples).toHaveLength(1);
+    expect(r.errorSamples[0].file).toBe('trap.md');
+    expect(r.errorSamples[0].message).toMatch(/EISDIR/);
   });
 });
 

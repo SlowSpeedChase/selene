@@ -34,6 +34,13 @@ describe('parseYourNoteSection', () => {
     const md = `${YOUR_NOTE_HEADING}\nfeedback here\n## Other\nnot feedback`;
     expect(parseYourNoteSection(md).newFeedback).toBe('feedback here');
   });
+
+  it('CRLF document parses identically to LF (no \\r in feedback_text)', () => {
+    const lf = `# T\n\n${YOUR_NOTE_HEADING}\n\nThis is a skill I enjoy.\nRemember it.\n`;
+    const crlf = lf.replace(/\n/g, '\r\n');
+    expect(parseYourNoteSection(crlf)).toEqual(parseYourNoteSection(lf));
+    expect(parseYourNoteSection(crlf).newFeedback).toBe('This is a skill I enjoy.\nRemember it.');
+  });
 });
 
 describe('extractSeleneId', () => {
@@ -42,5 +49,17 @@ describe('extractSeleneId', () => {
   });
   it('returns null when absent', () => {
     expect(extractSeleneId('---\ntitle: "x"\n---\n')).toBeNull();
+  });
+  it('ignores selene_id in the BODY after frontmatter (no mis-attribution)', () => {
+    expect(extractSeleneId('---\ntitle: "x"\n---\n\nbody mentions\nselene_id: 12\nin passing\n')).toBeNull();
+  });
+  it('ignores selene_id when the document has no frontmatter at all', () => {
+    expect(extractSeleneId('# hand-made note\nselene_id: 12\n')).toBeNull();
+  });
+  it('tolerates extra whitespace around the id inside frontmatter', () => {
+    expect(extractSeleneId('---\ntitle: "x"\nselene_id:  42 \n---\n')).toBe(42);
+  });
+  it('reads frontmatter in a CRLF document', () => {
+    expect(extractSeleneId('---\r\ntitle: "x"\r\nselene_id: 42\r\n---\r\n')).toBe(42);
   });
 });
