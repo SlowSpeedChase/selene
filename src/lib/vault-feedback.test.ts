@@ -30,9 +30,19 @@ describe('parseYourNoteSection', () => {
     expect(parseYourNoteSection(md).newFeedback).toBeNull();
   });
 
-  it('stops at the next ## heading (section is bounded)', () => {
-    const md = `${YOUR_NOTE_HEADING}\nfeedback here\n## Other\nnot feedback`;
-    expect(parseYourNoteSection(md).newFeedback).toBe('feedback here');
+  it('consumes to EOF: a ## heading inside the section is PART of the feedback (no silent word loss)', () => {
+    // The canonical render guarantees the Your-note section is the document TAIL, so a `## ` break
+    // protects nothing — it only drops everything the author wrote below their own subheading.
+    const md = `${YOUR_NOTE_HEADING}\nfeedback here\n## a subheading\nmore words below it`;
+    expect(parseYourNoteSection(md).newFeedback).toBe(
+      'feedback here\n## a subheading\nmore words below it'
+    );
+  });
+
+  it('multi-line feedback containing a ## heading round-trips intact through parse', () => {
+    const feedback = 'first thought\n\n## a subheading\n\nsecond thought under it';
+    const md = `# T\n\n${YOUR_NOTE_HEADING}\n\n${feedback}\n`;
+    expect(parseYourNoteSection(md).newFeedback).toBe(feedback);
   });
 
   it('CRLF document parses identically to LF (no \\r in feedback_text)', () => {

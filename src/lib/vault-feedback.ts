@@ -29,11 +29,11 @@ export function parseYourNoteSection(markdown: string): ParsedSection {
   const start = lines.findIndex((l) => l.trim() === YOUR_NOTE_HEADING);
   if (start === -1) return { hasSection: false, newFeedback: null };
 
-  const section: string[] = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    if (lines[i].startsWith('## ')) break;
-    section.push(lines[i]);
-  }
+  // Consume to EOF: the canonical render guarantees the Your-note section is the document TAIL,
+  // so breaking at a `## ` line protected nothing — it silently dropped (and the next
+  // preserve-on-render rewrite permanently lost) everything an author wrote below their own
+  // markdown subheading inside their feedback.
+  const section = lines.slice(start + 1);
   const fresh = section
     .filter((l) => !l.trimStart().startsWith('>'))
     .join('\n')

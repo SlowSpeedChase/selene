@@ -8,6 +8,7 @@ import { testRunFilter } from '../lib/test-run';
 import { MOC_PROMPT, CATEGORIES } from '../lib/prompts';
 import { exportClusterNotes } from '../lib/constellation';
 import { reconcileExportedNotes, createSlug } from '../lib/obsidian-render';
+import { scanVaultFeedback } from '../lib/vault-feedback';
 
 const log = createWorkflowLogger('export-obsidian');
 
@@ -76,6 +77,12 @@ function ensureDir(dirPath: string): void {
 // `exported` here means "rewritten this run" — it drives MOC regeneration below.
 function exportNotes(vaultPath: string): { exported: number; errors: number } {
   const notesDir = join(vaultPath, 'Notes');
+  // Scan-before-clobber: ingest any vault feedback FIRST so the reconcile rewrites below can't
+  // race text that hasn't reached the scanner yet (narrows the cross-device iCloud sync window;
+  // DB idempotency can't protect words it never saw). Log-only — scan errors never fail the
+  // export, and errorSamples is already content-free.
+  const feedbackScan = scanVaultFeedback(db, notesDir, new Date().toISOString());
+  log.info({ ...feedbackScan }, 'Pre-export vault feedback scan (scan-before-clobber ordering)');
   const result = reconcileExportedNotes(db, notesDir, testRunFilter('rn'));
   log.info(
     { written: result.written, skipped: result.skipped, deferred: result.deferred, errors: result.errors },
