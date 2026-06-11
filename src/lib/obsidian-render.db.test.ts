@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import type { Database as DatabaseType } from 'better-sqlite3';
@@ -144,5 +144,59 @@ describe('reconcileExportedNotes', () => {
     const md = readFileSync(file, 'utf-8');
     expect(md).toContain('parent:: [[Daily Systems]]');
     expect(md).toContain('parent:: [[Creativity & Expression]]');
+  });
+});
+
+describe('feedback preserve-on-render', () => {
+  let db: DatabaseType;
+  afterEach(() => db.close());
+
+  it('a rewrite re-appends unprocessed user text from the existing file', () => {
+    db = seed();
+    const dir = vault();
+    // seed one processed note; first reconcile writes the file
+    reconcileExportedNotes(db, dir);
+    const file = join(dir, readdirSync(dir)[0]);
+
+    // user types feedback into the vault file
+    writeFileSync(file, readFileSync(file, 'utf-8') + '\nmy new feedback\n', 'utf-8');
+
+    // force a content change so the hash flips and the file rewrites
+    db.prepare(`UPDATE processed_notes SET essence = 'new essence' WHERE raw_note_id = ?`).run(10);
+    const result = reconcileExportedNotes(db, dir);
+    expect(result.written).toBe(1);
+
+    const after = readFileSync(file, 'utf-8');
+    expect(after).toContain('new essence');
+    expect(after.trimEnd().endsWith('my new feedback')).toBe(true); // user text survived the rewrite
+  });
+
+  it('renders applied feedback from facts.note_feedback', () => {
+    db = seed();
+    const dir = vault();
+    db.prepare(
+      `INSERT INTO facts.note_feedback (raw_note_id, feedback_text, created_at, applied_at)
+       VALUES (?, 'a skill I enjoy', '2026-06-10', '2026-06-10T12:00:00.000Z')`
+    ).run(10);
+    reconcileExportedNotes(db, dir);
+    const after = readFileSync(join(dir, readdirSync(dir)[0]), 'utf-8');
+    expect(after).toContain('> a skill I enjoy');
+    expect(after).toContain('— applied 2026-06-10 ✓');
+  });
+
+  it('does NOT rewrite an unchanged note even when the file holds new user feedback (no clobber)', () => {
+    db = seed();
+    const dir = vault();
+    reconcileExportedNotes(db, dir);
+    const file = join(dir, readdirSync(dir)[0]);
+
+    writeFileSync(file, readFileSync(file, 'utf-8') + '\nmy new feedback\n', 'utf-8');
+    const withFeedback = readFileSync(file, 'utf-8');
+
+    // hash still matches + file exists → skip path; the user's text is untouched
+    const result = reconcileExportedNotes(db, dir);
+    expect(result.written).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(readFileSync(file, 'utf-8')).toBe(withFeedback);
   });
 });

@@ -15,11 +15,11 @@
  */
 import type { Database as DB } from 'better-sqlite3';
 import { createHash } from 'crypto';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { buildParentFields, loadNoteClusters } from './constellation';
 import { setNoteState } from './note-state';
-import { YOUR_NOTE_HEADING } from './vault-feedback';
+import { YOUR_NOTE_HEADING, parseYourNoteSection } from './vault-feedback';
 
 export interface RenderableNote {
   id: number;
@@ -223,6 +223,22 @@ export function reconcileExportedNotes(
 
   const noteClusters = loadNoteClusters(database);
 
+  // Applied author feedback renders as blockquoted history in each note's Your-note section.
+  // Loaded once per run (not per note); every connection that reaches here has facts attached
+  // (production wiring + makeTwoFileTestDb both ATTACH facts.db with note_feedback).
+  const feedbackRows = database
+    .prepare(
+      `SELECT raw_note_id, feedback_text, applied_at FROM facts.note_feedback
+       WHERE applied_at IS NOT NULL ORDER BY applied_at ASC, id ASC`
+    )
+    .all() as Array<{ raw_note_id: number; feedback_text: string; applied_at: string }>;
+  const feedbackByNote = new Map<number, AppliedFeedback[]>();
+  for (const r of feedbackRows) {
+    const list = feedbackByNote.get(r.raw_note_id) ?? [];
+    list.push({ feedback_text: r.feedback_text, applied_at: r.applied_at });
+    feedbackByNote.set(r.raw_note_id, list);
+  }
+
   let written = 0;
   let skipped = 0;
   let deferred = 0;
@@ -232,7 +248,7 @@ export function reconcileExportedNotes(
   for (const note of notes) {
     try {
       const parentClusters = noteClusters.get(note.id) ?? [];
-      const markdown = renderNoteMarkdown(note, parentClusters);
+      const markdown = renderNoteMarkdown(note, parentClusters, feedbackByNote.get(note.id) ?? []);
       const hash = exportHash(markdown);
       const filePath = join(notesDir, noteFilename(note));
 
@@ -250,7 +266,16 @@ export function reconcileExportedNotes(
         continue;
       }
 
-      writeFileSync(filePath, markdown, 'utf-8');
+      // Preserve-on-render: the hash (and skip decision) covers the CANONICAL render only;
+      // un-ingested user feedback in the existing file is an additive passthrough, re-appended
+      // verbatim so no export/scan ordering can ever clobber the author's words. (It lands back
+      // inside the Your-note section because that section is the document's tail.)
+      let toWrite = markdown;
+      if (existsSync(filePath)) {
+        const { newFeedback } = parseYourNoteSection(readFileSync(filePath, 'utf-8'));
+        if (newFeedback) toWrite = `${markdown}\n\n${newFeedback}`;
+      }
+      writeFileSync(filePath, toWrite, 'utf-8');
       // Fact-store split: export bookkeeping is derived → note_state (NOT the read-only raw_notes
       // view). Same three columns as before; setNoteState's partial UPSERT leaves status etc.
       // intact so the note keeps matching `WHERE rn.status = 'processed'` on the next run.
