@@ -55,6 +55,26 @@ describe('initFactsSchema', () => {
   });
 });
 
+describe('note_feedback (obsidian feedback loop)', () => {
+  it('initFactsSchema creates note_feedback with the expected columns', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    const cols = (db.prepare(`PRAGMA table_info(note_feedback)`).all() as { name: string }[])
+      .map((c) => c.name);
+    expect(cols).toEqual(['id', 'raw_note_id', 'feedback_text', 'original_filing', 'created_at', 'applied_at']);
+    db.close();
+  });
+
+  it('is idempotent (second init does not throw or drop rows)', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    db.prepare(`INSERT INTO note_feedback (raw_note_id, feedback_text, created_at) VALUES (1, 'x', '2026-06-10')`).run();
+    initFactsSchema(db);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM note_feedback`).get()).toEqual({ n: 1 });
+    db.close();
+  });
+});
+
 describe('two-file wiring', () => {
   it('raw_notes view joins facts.captured_notes + note_state, defaulting status to pending', () => {
     const dir = mkdtempSync(join(tmpdir(), 'factstore-'));

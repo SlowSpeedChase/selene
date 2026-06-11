@@ -42,6 +42,19 @@ export function initFactsSchema(db: DB): void {
       PRIMARY KEY (entity_type, entity_id)
     );
 
+    -- Obsidian feedback loop (2026-06-10 design): free-text author intent captured from the
+    -- vault's "Your note" sections. PRECIOUS — human words; survives rebuild by living here.
+    -- raw_note_id = captured_notes.id (facts.db is never rebuilt, so the id is stable).
+    CREATE TABLE IF NOT EXISTS note_feedback (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      raw_note_id     INTEGER NOT NULL,
+      feedback_text   TEXT NOT NULL,
+      original_filing TEXT,
+      created_at      DATETIME NOT NULL,
+      applied_at      DATETIME
+    );
+    CREATE INDEX IF NOT EXISTS idx_note_feedback_note ON note_feedback(raw_note_id);
+
     -- Non-unique lookup indexes (dedup/lookup parity). NON-unique on purpose so the later
     -- data migration can't fail on any historical duplicates.
     CREATE INDEX IF NOT EXISTS idx_captured_content_hash ON captured_notes(content_hash);
