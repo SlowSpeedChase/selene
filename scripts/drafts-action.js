@@ -15,7 +15,7 @@ const PROCESS_URL = "http://Chases-Mac-mini.local:5678/webhook/api/drafts";
 const payload = {
     title: draft.displayTitle || "Untitled",
     content: draft.content,
-    created_at: new Date().toISOString(),
+    created_at: draft.createdAt.toISOString(),
     capture_type: "drafts",
     source_uuid: draft.uuid,
 };
