@@ -26,7 +26,8 @@ function seed(): DatabaseType {
       concepts TEXT,
       essence TEXT,
       category TEXT,
-      cross_ref_categories TEXT
+      cross_ref_categories TEXT,
+      processed_at TEXT
     );
     CREATE TABLE topic_clusters (id TEXT PRIMARY KEY, name TEXT, parent_id TEXT);
     CREATE TABLE topic_note_links (topic_id TEXT, note_id INTEGER, added_at TEXT,

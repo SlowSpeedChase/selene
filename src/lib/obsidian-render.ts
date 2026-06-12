@@ -29,6 +29,7 @@ export interface RenderableNote {
   primary_theme: string | null;
   concepts: string | null;
   essence: string | null;
+  processed_at?: string | null;
 }
 
 // --- Pure helpers (shared shape with export-obsidian.ts; kept identical so the rendered
@@ -126,13 +127,18 @@ export function renderNoteMarkdown(
   const alias = noteAlias(cleanContent);
   const aliasEscaped = alias.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
+  const updatedStr = note.processed_at ? noteDateStr(note.processed_at) : dateStr;
+  const essenceEscaped = note.essence ? note.essence.replace(/\\/g, '\\\\').replace(/"/g, '\\"') : null;
+
   const parts: string[] = [
     `---`,
     `title: "${titleEscaped}"`,
     ...(alias ? [`aliases:`, `  - "${aliasEscaped}"`] : []),
     `date: ${dateStr}`,
+    `updated: ${updatedStr}`,
     `selene_id: ${note.id}`,
     `theme: ${theme}`,
+    ...(essenceEscaped !== null ? [`essence: "${essenceEscaped}"`] : []),
     `concepts:`,
     conceptsYaml,
     `---`,
@@ -192,6 +198,7 @@ export interface ReconcileResult {
 
 interface ReconcileRow extends RenderableNote {
   obsidian_export_hash: string | null;
+  processed_at: string | null;
 }
 
 /**
@@ -216,7 +223,7 @@ export function reconcileExportedNotes(
     .prepare(
       `SELECT
         rn.id, rn.title, rn.content, rn.created_at, rn.obsidian_export_hash,
-        pn.primary_theme, pn.concepts, pn.essence
+        pn.primary_theme, pn.concepts, pn.essence, pn.processed_at
       FROM raw_notes rn
       JOIN processed_notes pn ON rn.id = pn.raw_note_id
       WHERE rn.status = 'processed'

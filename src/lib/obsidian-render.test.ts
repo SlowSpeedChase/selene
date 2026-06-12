@@ -119,6 +119,49 @@ describe('friend:: block rendering', () => {
   });
 });
 
+describe('frontmatter fields — essence and updated', () => {
+  it('includes essence in frontmatter when present', () => {
+    const md = renderNoteMarkdown(
+      { ...note, essence: 'a thought', processed_at: null },
+      []
+    );
+    expect(md).toMatch(/^essence: "a thought"$/m);
+  });
+
+  it('omits essence from frontmatter when essence is null', () => {
+    const md = renderNoteMarkdown(
+      { ...note, essence: null, processed_at: null },
+      []
+    );
+    expect(md).not.toMatch(/^essence: /m);
+  });
+
+  it('sets updated from processed_at when present', () => {
+    const md = renderNoteMarkdown(
+      { ...note, processed_at: '2026-05-15T10:00:00.000Z' },
+      []
+    );
+    expect(md).toMatch(/^updated: 2026-05-15$/m);
+  });
+
+  it('falls back to created_at date for updated when processed_at is null', () => {
+    const md = renderNoteMarkdown(
+      { ...note, processed_at: null },
+      []
+    );
+    // note.created_at is 2026-05-01T08:00:00.000Z → date portion is 2026-05-01
+    expect(md).toMatch(/^updated: 2026-05-01$/m);
+  });
+
+  it('escapes double quotes in essence for YAML', () => {
+    const md = renderNoteMarkdown(
+      { ...note, essence: 'She said "hello"', processed_at: null },
+      []
+    );
+    expect(md).toMatch(/^essence: "She said \\"hello\\""$/m);
+  });
+});
+
 describe('feedback loop rendering', () => {
   const fbNote: RenderableNote = {
     id: 42, title: 'T', content: 'body', created_at: '2026-06-01T00:00:00.000Z',
