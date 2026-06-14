@@ -67,8 +67,9 @@ function fetchGiftItems(): GiftItem[] {
   // Slot 2: connection — highest-similarity pair (recent source, old target).
   // note_connections is created by the synthesize-topics workflow and may not exist on a
   // cold/fresh DB; failure here is benign and drops only this slot.
+  let conn: { sourceId: number; sourceTitle: string; sourceContent: string; sourceDate: string; targetId: number; targetTitle: string } | undefined;
   try {
-    const conn = db.prepare(`
+    conn = db.prepare(`
       SELECT
         rn1.id AS sourceId, rn1.title AS sourceTitle, rn1.content AS sourceContent, rn1.created_at AS sourceDate,
         rn2.id AS targetId, rn2.title AS targetTitle
@@ -81,10 +82,7 @@ function fetchGiftItems(): GiftItem[] {
         AND rn2.test_run IS NULL
       ORDER BY nc.similarity_score DESC
       LIMIT 1
-    `).get() as {
-      sourceId: number; sourceTitle: string; sourceContent: string; sourceDate: string;
-      targetId: number; targetTitle: string;
-    } | undefined;
+    `).get() as typeof conn;
 
     if (conn) {
       items.push({
@@ -112,7 +110,7 @@ function fetchGiftItems(): GiftItem[] {
       LIMIT 1
     `).get() as { id: number; title: string; content: string; created_at: string } | undefined;
 
-    if (heating && heating.id !== buried?.id) {
+    if (heating && heating.id !== buried?.id && heating.id !== conn?.sourceId) {
       items.push({
         noteId: heating.id,
         title: heating.title,
