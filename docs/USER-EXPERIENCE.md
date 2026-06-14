@@ -47,6 +47,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [Knowledge constellation](guides/features/knowledge-constellation.md) — a fly-through visual map of your notes in Obsidian (via ExcaliBrain), with each note under its topic cluster(s).
 - [PKM browse (iPad dashboard)](guides/features/pkm-browse.md) — a read-only web dashboard at `/pkm/` you open on the iPad: browse by category/concept, skim essences, on-this-day, and spaced review.
 - [Obsidian feedback ("Your note")](guides/features/obsidian-feedback.md) — type what a note *actually* means under its `## ✍️ Your note` section in Obsidian; Selene re-files it with your words as context and stamps a ✓ when applied.
+- [Diagram loop (iPad ⇄ repo)](guides/features/diagram-loop.md) — draw how Selene works/should work in Apple Freeform; Claude reads your exported sketches and turns them into design docs and committed diagrams.
 
 ---
 
