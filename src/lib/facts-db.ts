@@ -73,6 +73,24 @@ export function initFactsSchema(db: DB): void {
     -- least-recently-surfaced ordering scans last_surfaced_at, so mirror the old
     -- idx_pkm_review_last index here (Task 2 omitted it when seeding the schema).
     CREATE INDEX IF NOT EXISTS idx_review_state_last ON review_state(last_surfaced_at);
+
+    -- Act 0 daily gift (2026-06-13): records which surfaced notes the user reacted to
+    -- during their daily worksheet. PRECIOUS — human attention signal; survives rebuild.
+    -- worksheet_id = opaque daily worksheet identifier (e.g. date string or UUID).
+    -- note_id = captured_notes.id (stable in facts.db, never rebuilt).
+    -- slot_role = the role of the note slot in the worksheet (e.g. "highlight", "revisit").
+    -- reaction = the user's reaction token (e.g. "thumbs_up", "dismiss", "save").
+    -- reacted_at = ISO-8601 timestamp of when the reaction was recorded.
+    CREATE TABLE IF NOT EXISTS attention_log (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      worksheet_id TEXT NOT NULL,
+      note_id      INTEGER NOT NULL,
+      slot_role    TEXT NOT NULL,
+      reaction     TEXT NOT NULL,
+      reacted_at   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_attention_log_note ON attention_log(note_id);
+    CREATE INDEX IF NOT EXISTS idx_attention_log_reacted ON attention_log(reacted_at);
   `);
 }
 
