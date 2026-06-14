@@ -109,6 +109,18 @@ describe('note_feedback (obsidian feedback loop)', () => {
   });
 });
 
+describe('attention_log (Act 0 daily gift)', () => {
+  it('creates attention_log table idempotently with correct columns', () => {
+    const db = new Database(':memory:');
+    initFactsSchema(db);
+    initFactsSchema(db); // must not throw
+
+    const cols = (db.prepare(`PRAGMA table_info(attention_log)`).all() as { name: string }[]).map(c => c.name);
+    expect(cols).toEqual(['id', 'worksheet_id', 'note_id', 'slot_role', 'reaction', 'reacted_at']);
+    db.close();
+  });
+});
+
 describe('two-file wiring', () => {
   it('raw_notes view joins facts.captured_notes + note_state, defaulting status to pending', () => {
     const dir = mkdtempSync(join(tmpdir(), 'factstore-'));

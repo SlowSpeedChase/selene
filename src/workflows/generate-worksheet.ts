@@ -10,6 +10,9 @@ import type {
   RelatedNote,
   RelatedNotesGroup,
   ReviewNote,
+  GiftItem,
+  GiftSlotRole,
+  GiftReaction,
 } from '../types/worksheets';
 import { logger } from '../lib/logger';
 
@@ -20,21 +23,36 @@ const log = logger.child({ module: 'generate-worksheet' });
 // ---------------------------------------------------------------------------
 
 export interface BuildDeps {
-  fetchReviewNotes: () => Promise<ReviewNote[]>;
+  fetchReviewNotes?: () => Promise<ReviewNote[]>;
+  fetchGiftItems?: () => Promise<GiftItem[]>;
 }
 
-const defaultBuildDeps: BuildDeps = {
-  fetchReviewNotes: async () => [],
-};
+const defaultBuildDeps: BuildDeps = {};
 
 export async function buildTodayWorksheet(
   now: Date = new Date(),
   deps: BuildDeps = defaultBuildDeps,
 ): Promise<Worksheet> {
   const date = now.toISOString().slice(0, 10);
-  const reviewNotes = await deps.fetchReviewNotes();
 
-  const fields: Worksheet['fields'] = [
+  const [reviewNotes, giftItems] = await Promise.all([
+    deps.fetchReviewNotes?.() ?? Promise.resolve([]),
+    deps.fetchGiftItems?.() ?? Promise.resolve([]),
+  ]);
+
+  const fields: Worksheet['fields'] = [];
+
+  if (giftItems.length > 0) {
+    fields.push({
+      id: 'f_gift',
+      kind: 'gift_surface',
+      prompt: 'things i noticed for you',
+      gifts: giftItems,
+      binding: { action: 'react' },
+    });
+  }
+
+  fields.push(
     {
       id: 'f1',
       kind: 'free_capture',
@@ -47,7 +65,7 @@ export async function buildTodayWorksheet(
       prompt: 'One thing to get done today?',
       binding: { action: 'new_note' },
     },
-  ];
+  );
 
   if (reviewNotes.length > 0) {
     fields.push({
@@ -73,6 +91,13 @@ export async function buildTodayWorksheet(
 export interface ApplyDeps {
   createNote: (text: string) => Promise<number>;
   findRelatedNotes?: (text: string, excludeId: number) => Promise<RelatedNote[]>;
+  logReaction?: (args: {
+    worksheetId: string;
+    noteId: number;
+    slotRole: GiftSlotRole;
+    reaction: GiftReaction;
+    reactedAt: string;
+  }) => Promise<void>;
 }
 
 export async function applyWorksheetAnswers(
@@ -83,6 +108,22 @@ export async function applyWorksheetAnswers(
   const relatedNotes: RelatedNotesGroup[] = [];
 
   for (const answer of submission.answers) {
+    if (answer.chosenAction === 'react') {
+      if (!deps.logReaction) {
+        results.push({ fieldId: answer.fieldId, outcome: 'skipped', reason: 'no_log_dep' });
+        continue;
+      }
+      await deps.logReaction({
+        worksheetId: submission.worksheetId,
+        noteId: answer.noteId,
+        slotRole: answer.slotRole,
+        reaction: answer.reaction,
+        reactedAt: new Date().toISOString(),
+      });
+      results.push({ fieldId: answer.fieldId, outcome: 'reacted', noteId: answer.noteId });
+      continue;
+    }
+
     if (answer.chosenAction === 'acknowledge') {
       results.push({ fieldId: answer.fieldId, outcome: 'acknowledged' });
       continue;
