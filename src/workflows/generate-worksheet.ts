@@ -11,6 +11,8 @@ import type {
   RelatedNotesGroup,
   ReviewNote,
   GiftItem,
+  GiftSlotRole,
+  GiftReaction,
 } from '../types/worksheets';
 import { logger } from '../lib/logger';
 
@@ -89,6 +91,13 @@ export async function buildTodayWorksheet(
 export interface ApplyDeps {
   createNote: (text: string) => Promise<number>;
   findRelatedNotes?: (text: string, excludeId: number) => Promise<RelatedNote[]>;
+  logReaction?: (args: {
+    worksheetId: string;
+    noteId: number;
+    slotRole: GiftSlotRole;
+    reaction: GiftReaction;
+    reactedAt: string;
+  }) => Promise<void>;
 }
 
 export async function applyWorksheetAnswers(
@@ -99,13 +108,27 @@ export async function applyWorksheetAnswers(
   const relatedNotes: RelatedNotesGroup[] = [];
 
   for (const answer of submission.answers) {
+    if (answer.chosenAction === 'react') {
+      if (!deps.logReaction) {
+        results.push({ fieldId: answer.fieldId, outcome: 'skipped', reason: 'no_log_dep' });
+        continue;
+      }
+      await deps.logReaction({
+        worksheetId: submission.worksheetId,
+        noteId: answer.noteId,
+        slotRole: answer.slotRole,
+        reaction: answer.reaction,
+        reactedAt: new Date().toISOString(),
+      });
+      results.push({ fieldId: answer.fieldId, outcome: 'reacted', noteId: answer.noteId });
+      continue;
+    }
+
     if (answer.chosenAction === 'acknowledge') {
       results.push({ fieldId: answer.fieldId, outcome: 'acknowledged' });
       continue;
     }
 
-    // 'react' answers are handled via logReaction in ApplyDeps (Task 4 / Act 0).
-    // Until then they fall through to 'skipped'.
     if (answer.chosenAction !== 'new_note') {
       results.push({ fieldId: answer.fieldId, outcome: 'skipped', reason: 'unsupported_action' });
       continue;

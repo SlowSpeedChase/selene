@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { buildTodayWorksheet, applyWorksheetAnswers } from './generate-worksheet';
+import type { ApplyDeps, } from './generate-worksheet';
 import type { WorksheetSubmission, ReviewNote, GiftItem } from '../types/worksheets';
 
 describe('generate-worksheet', () => {
@@ -175,5 +176,63 @@ describe('buildTodayWorksheet — gift_surface', () => {
     const kinds = ws.fields.map(f => f.kind);
     assert.strictEqual(kinds[0], 'gift_surface');
     assert.ok(kinds.slice(1).includes('free_capture'));
+  });
+});
+
+describe('applyWorksheetAnswers — react', () => {
+  it('calls logReaction for react answers and returns reacted outcome', async () => {
+    const logged: Array<{ noteId: number; reaction: string; slotRole: string }> = [];
+    const deps: ApplyDeps = {
+      createNote: async () => 1,
+      logReaction: async (args) => {
+        logged.push({ noteId: args.noteId, reaction: args.reaction, slotRole: args.slotRole });
+      },
+    };
+    const submission: WorksheetSubmission = {
+      worksheetId: 'ws_2026-06-13',
+      answers: [
+        { fieldId: 'f_gift', chosenAction: 'react', noteId: 42, reaction: 'important', slotRole: 'buried_treasure' },
+      ],
+    };
+
+    const result = await applyWorksheetAnswers(submission, deps);
+
+    assert.deepStrictEqual(logged, [{ noteId: 42, reaction: 'important', slotRole: 'buried_treasure' }]);
+    assert.deepStrictEqual(result.results[0], { fieldId: 'f_gift', outcome: 'reacted', noteId: 42 });
+  });
+
+  it('skips react when logReaction dep is not provided', async () => {
+    const deps: ApplyDeps = { createNote: async () => 1 };
+    const submission: WorksheetSubmission = {
+      worksheetId: 'ws_x',
+      answers: [
+        { fieldId: 'f_gift', chosenAction: 'react', noteId: 7, reaction: 'keep', slotRole: 'heating_up' },
+      ],
+    };
+
+    const result = await applyWorksheetAnswers(submission, deps);
+
+    assert.deepStrictEqual(result.results[0], { fieldId: 'f_gift', outcome: 'skipped', reason: 'no_log_dep' });
+  });
+
+  it('handles multiple react answers in one submission', async () => {
+    const logged: number[] = [];
+    const deps: ApplyDeps = {
+      createNote: async () => 1,
+      logReaction: async (args) => { logged.push(args.noteId); },
+    };
+    const submission: WorksheetSubmission = {
+      worksheetId: 'ws_x',
+      answers: [
+        { fieldId: 'f_gift', chosenAction: 'react', noteId: 1, reaction: 'important', slotRole: 'buried_treasure' },
+        { fieldId: 'f_gift', chosenAction: 'react', noteId: 2, reaction: 'let_go', slotRole: 'connection' },
+      ],
+    };
+
+    const result = await applyWorksheetAnswers(submission, deps);
+
+    assert.deepStrictEqual(logged, [1, 2]);
+    assert.strictEqual(result.results.length, 2);
+    assert.ok(result.results.every(r => r.outcome === 'reacted'));
   });
 });
