@@ -104,6 +104,8 @@ export async function applyWorksheetAnswers(
       continue;
     }
 
+    // 'react' answers are handled via logReaction in ApplyDeps (Task 4 / Act 0).
+    // Until then they fall through to 'skipped'.
     if (answer.chosenAction !== 'new_note') {
       results.push({ fieldId: answer.fieldId, outcome: 'skipped', reason: 'unsupported_action' });
       continue;
