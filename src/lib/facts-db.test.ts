@@ -116,9 +116,7 @@ describe('attention_log (Act 0 daily gift)', () => {
     initFactsSchema(db); // must not throw
 
     const cols = (db.prepare(`PRAGMA table_info(attention_log)`).all() as { name: string }[]).map(c => c.name);
-    expect(cols).toEqual(expect.arrayContaining([
-      'id', 'worksheet_id', 'note_id', 'slot_role', 'reaction', 'reacted_at',
-    ]));
+    expect(cols).toEqual(['id', 'worksheet_id', 'note_id', 'slot_role', 'reaction', 'reacted_at']);
     db.close();
   });
 });
