@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { buildTodayWorksheet, applyWorksheetAnswers } from './generate-worksheet';
-import type { WorksheetSubmission, ReviewNote } from '../types/worksheets';
+import type { WorksheetSubmission, ReviewNote, GiftItem } from '../types/worksheets';
 
 describe('generate-worksheet', () => {
   // -------------------------------------------------------------------------
@@ -135,5 +135,45 @@ describe('generate-worksheet', () => {
 
     assert.strictEqual(result.results[0].outcome, 'applied');
     assert.deepStrictEqual(result.relatedNotes, []);
+  });
+});
+
+describe('buildTodayWorksheet — gift_surface', () => {
+  const gift: GiftItem = {
+    noteId: 7,
+    title: 'improv dinner idea',
+    snippet: 'want to host a dinner',
+    date: '2026-05-20',
+    slotRole: 'buried_treasure',
+  };
+
+  it('includes gift_surface as first field when fetchGiftItems returns items', async () => {
+    const ws = await buildTodayWorksheet(new Date('2026-06-13T09:00:00'), {
+      fetchGiftItems: async () => [gift],
+    });
+    assert.strictEqual(ws.fields[0].kind, 'gift_surface');
+    assert.deepStrictEqual(ws.fields[0].gifts, [gift]);
+    assert.deepStrictEqual(ws.fields[0].binding, { action: 'react' });
+  });
+
+  it('omits gift_surface when fetchGiftItems returns empty array', async () => {
+    const ws = await buildTodayWorksheet(new Date('2026-06-13T09:00:00'), {
+      fetchGiftItems: async () => [],
+    });
+    assert.ok(ws.fields.every(f => f.kind !== 'gift_surface'));
+  });
+
+  it('omits gift_surface when fetchGiftItems is not provided', async () => {
+    const ws = await buildTodayWorksheet(new Date('2026-06-13T09:00:00'));
+    assert.ok(ws.fields.every(f => f.kind !== 'gift_surface'));
+  });
+
+  it('gift_surface field comes before any free_capture fields', async () => {
+    const ws = await buildTodayWorksheet(new Date('2026-06-13T09:00:00'), {
+      fetchGiftItems: async () => [gift],
+    });
+    const kinds = ws.fields.map(f => f.kind);
+    assert.strictEqual(kinds[0], 'gift_surface');
+    assert.ok(kinds.slice(1).includes('free_capture'));
   });
 });
