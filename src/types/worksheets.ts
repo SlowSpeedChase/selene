@@ -1,18 +1,34 @@
-export type WorksheetFieldKind = 'free_capture' | 'note_review';
+export type WorksheetFieldKind = 'free_capture' | 'note_review' | 'gift_surface';
+
+export type GiftSlotRole = 'buried_treasure' | 'connection' | 'heating_up';
+export type GiftReaction = 'important' | 'keep' | 'not_now' | 'let_go';
+
+export interface GiftItem {
+  noteId: number;
+  title: string;
+  snippet: string;
+  date: string;             // YYYY-MM-DD
+  slotRole: GiftSlotRole;
+  connectionNote?: {        // only present when slotRole === 'connection'
+    noteId: number;
+    title: string;
+  };
+}
 
 export interface ReviewNote {
   id: number;
   title: string;
   snippet: string;
-  date: string;  // ISO date string YYYY-MM-DD
+  date: string;
 }
 
 export interface WorksheetField {
   id: string;
   kind: WorksheetFieldKind;
   prompt: string;
-  notes?: ReviewNote[];                      // only on note_review fields
-  binding: { action: 'new_note' | 'acknowledge' };
+  notes?: ReviewNote[];     // note_review fields only
+  gifts?: GiftItem[];       // gift_surface fields only
+  binding: { action: 'new_note' | 'acknowledge' | 'react' };
 }
 
 export interface Worksheet {
@@ -21,12 +37,15 @@ export interface Worksheet {
   fields: WorksheetField[];
 }
 
-export type ChosenAction = 'new_note' | 'acknowledge';
+export type ChosenAction = 'new_note' | 'acknowledge' | 'react';
 
 export interface WorksheetAnswer {
   fieldId: string;
   chosenAction: ChosenAction;
-  text: string;
+  text?: string;             // free_capture
+  noteId?: number;           // react answers — which gift card
+  reaction?: GiftReaction;   // react answers — which tap
+  slotRole?: GiftSlotRole;   // react answers — echoed back from the gift item
 }
 
 export interface WorksheetSubmission {
@@ -34,7 +53,7 @@ export interface WorksheetSubmission {
   answers: WorksheetAnswer[];
 }
 
-export type AnswerOutcome = 'applied' | 'skipped' | 'failed' | 'acknowledged';
+export type AnswerOutcome = 'applied' | 'skipped' | 'failed' | 'acknowledged' | 'reacted';
 
 export interface AnswerResult {
   fieldId: string;
@@ -48,7 +67,7 @@ export interface RelatedNote {
   title: string;
   snippet: string;
   date: string;
-  score: number;    // 0–1, derived from L2 distance
+  score: number;
 }
 
 export interface RelatedNotesGroup {
