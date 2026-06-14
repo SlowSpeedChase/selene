@@ -163,6 +163,7 @@ export async function notesRoutes(fastify: FastifyInstance): Promise<void> {
           createdAt: note.created_at,
           tags: note.tags,
           captureType: note.capture_type,
+          sourceNoteId: note.source_note_id,
           essence: note.essence,
           concepts: note.concepts,
           primaryTheme: note.primary_theme,
