@@ -22,13 +22,15 @@ export interface ReviewNote {
   date: string;
 }
 
+export type ChosenAction = 'new_note' | 'acknowledge' | 'react';
+
 export interface WorksheetField {
   id: string;
   kind: WorksheetFieldKind;
   prompt: string;
   notes?: ReviewNote[];     // note_review fields only
   gifts?: GiftItem[];       // gift_surface fields only
-  binding: { action: 'new_note' | 'acknowledge' | 'react' };
+  binding: { action: ChosenAction };
 }
 
 export interface Worksheet {
@@ -37,16 +39,9 @@ export interface Worksheet {
   fields: WorksheetField[];
 }
 
-export type ChosenAction = 'new_note' | 'acknowledge' | 'react';
-
-export interface WorksheetAnswer {
-  fieldId: string;
-  chosenAction: ChosenAction;
-  text?: string;             // free_capture
-  noteId?: number;           // react answers — which gift card
-  reaction?: GiftReaction;   // react answers — which tap
-  slotRole?: GiftSlotRole;   // react answers — echoed back from the gift item
-}
+export type WorksheetAnswer =
+  | { fieldId: string; chosenAction: 'new_note' | 'acknowledge'; text?: string }
+  | { fieldId: string; chosenAction: 'react'; noteId: number; reaction: GiftReaction; slotRole: GiftSlotRole };
 
 export interface WorksheetSubmission {
   worksheetId: string;
