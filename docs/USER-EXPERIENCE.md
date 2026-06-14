@@ -48,6 +48,7 @@ Each feature has its own guide — how you use it, how it works, and how to fix 
 - [PKM browse (iPad dashboard)](guides/features/pkm-browse.md) — a read-only web dashboard at `/pkm/` you open on the iPad: browse by category/concept, skim essences, on-this-day, and spaced review.
 - [Obsidian feedback ("Your note")](guides/features/obsidian-feedback.md) — type what a note *actually* means under its `## ✍️ Your note` section in Obsidian; Selene re-files it with your words as context and stamps a ✓ when applied.
 - [Diagram loop (iPad ⇄ repo)](guides/features/diagram-loop.md) — draw how Selene works/should work in Apple Freeform; Claude reads your exported sketches and turns them into design docs and committed diagrams.
+- [Daily gift](guides/features/daily-gift.md) — the "things I noticed for you" section at the top of every worksheet: ≤3 surfaced notes (buried treasures, connections, heating-up) with four guilt-free reaction taps that build your attention history over time.
 
 ---
 
