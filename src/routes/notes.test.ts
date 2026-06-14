@@ -1,6 +1,6 @@
 import { makeTwoFileTestDb } from '../lib/test-two-file-db';
 import type { Database as DatabaseType } from 'better-sqlite3';
-import { buildNotesDb } from './notes';
+import { buildNotesDb, noteObsidianFilename } from './notes';
 
 describe('notes route helpers', () => {
   let db: DatabaseType;
@@ -108,5 +108,17 @@ describe('notes route helpers', () => {
     expect(note!.source_note_id).toBe(1);
     expect(note!.content).toBe('My annotation ink');
     expect(note!.capture_type).toBe('annotation');
+  });
+});
+
+describe('noteObsidianFilename', () => {
+  it('returns date-slug.md', () => {
+    expect(noteObsidianFilename('My Great Idea', '2026-01-15T10:00:00.000Z'))
+      .toBe('2026-01-15-my-great-idea.md');
+  });
+
+  it('handles special characters in title', () => {
+    expect(noteObsidianFilename('Hello, World!', '2026-03-01T00:00:00.000Z'))
+      .toBe('2026-03-01-hello-world.md');
   });
 });

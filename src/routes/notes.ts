@@ -3,6 +3,15 @@ import type { Database as DatabaseType } from 'better-sqlite3';
 import { db as prodDb } from '../lib/db';
 import { requireAuth } from '../lib/auth';
 import crypto from 'crypto';
+import { createSlug, noteDateStr } from '../lib/obsidian-render';
+
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+export function noteObsidianFilename(title: string, createdAt: string): string {
+  return `${noteDateStr(createdAt)}-${createSlug(title)}.md`;
+}
 
 // ---------------------------------------------------------------------------
 // DB helpers — extracted so tests can inject an in-memory database
@@ -146,7 +155,20 @@ export async function notesRoutes(fastify: FastifyInstance): Promise<void> {
         reply.status(404);
         return { error: 'Note not found' };
       }
-      return { note };
+      return {
+        note: {
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          createdAt: note.created_at,
+          tags: note.tags,
+          captureType: note.capture_type,
+          essence: note.essence,
+          concepts: note.concepts,
+          primaryTheme: note.primary_theme,
+          obsidianFilename: noteObsidianFilename(note.title, note.created_at),
+        },
+      };
     }
   );
 
