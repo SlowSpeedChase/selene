@@ -1,8 +1,8 @@
 # Selene as Executive Assistant — Coalescing Fragments into Wants
 
-**Status:** Vision
+**Status:** Vision (Act 0 → Ready — see `2026-06-13-act0-daily-gift-design.md`)
 **Created:** 2026-06-07
-**Updated:** 2026-06-07
+**Updated:** 2026-06-13
 **Topic:** executive-function, wants, intentions, coalescence, habit, note-relationships, eventkit
 
 ---
