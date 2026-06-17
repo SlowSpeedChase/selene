@@ -37,6 +37,7 @@ That's it. You capture, the system does the rest.
 Each feature has its own guide — how you use it, how it works, and how to fix it when something breaks.
 
 - [Capturing notes](guides/features/capturing-notes.md) — every way a thought gets into Selene (Drafts, iOS shortcut, e-ink notebook).
+- [Recipe → KitchenOS](guides/features/recipe-to-kitchenos.md) — paste an AI-written recipe into Drafts and it lands in your KitchenOS recipe vault, from any machine.
 - [Obsidian library](guides/features/obsidian-library.md) — your curated, browsable vault: notes, Maps of Content, and the dashboard.
 - [Daily digest](guides/features/daily-digest.md) — the 6am "Selene Daily" note in Apple Notes.
 - [Folio delivery](guides/features/folio-delivery.md) — read and annotate Selene documents on your iPad.

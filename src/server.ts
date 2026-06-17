@@ -7,6 +7,7 @@ import { dashboardRoutes } from './routes/dashboard';
 import { notesRoutes } from './routes/notes';
 import { worksheetRoutes } from './routes/worksheets';
 import { pkmRoutes } from './routes/pkm';
+import { recipeRoutes } from './routes/recipe';
 import type { IngestInput, WebhookResponse } from './types';
 
 const server = Fastify({
@@ -86,6 +87,7 @@ server.register(agentRoutes);
 server.register(dashboardRoutes);
 server.register(notesRoutes);
 server.register(worksheetRoutes);
+server.register(recipeRoutes);
 // PKM browse dashboard — LAN-only HTML pages under /pkm/* (registered after /health + /webhook).
 server.register(pkmRoutes(db), { prefix: '/pkm' });
 

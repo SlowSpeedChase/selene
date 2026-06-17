@@ -196,4 +196,5 @@ export const config = {
   whisperThreads: parseInt(process.env.WHISPER_THREADS || '6', 10),
   seleneWebhookUrl:
     process.env.SELENE_WEBHOOK_URL || 'http://localhost:5678/webhook/api/drafts',
+  kitchenosApiUrl: process.env.KITCHENOS_API_URL || 'http://localhost:5001',
 };
