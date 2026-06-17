@@ -5,6 +5,7 @@ import { exportObsidian } from './workflows/export-obsidian';
 import { agentRoutes } from './routes/agents';
 import { dashboardRoutes } from './routes/dashboard';
 import { notesRoutes } from './routes/notes';
+import { searchRoutes } from './routes/search';
 import { worksheetRoutes } from './routes/worksheets';
 import { pkmRoutes } from './routes/pkm';
 import { recipeRoutes } from './routes/recipe';
@@ -86,6 +87,7 @@ server.post<{ Body: { noteId?: number } }>('/webhook/api/export-obsidian', async
 server.register(agentRoutes);
 server.register(dashboardRoutes);
 server.register(notesRoutes);
+server.register(searchRoutes);
 server.register(worksheetRoutes);
 server.register(recipeRoutes);
 // PKM browse dashboard — LAN-only HTML pages under /pkm/* (registered after /health + /webhook).
