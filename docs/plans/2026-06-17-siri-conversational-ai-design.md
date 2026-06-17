@@ -144,34 +144,36 @@ No external/Claude call by default. This is a simplified version of the archived
 `PrivacyRouter` tiering (on-device → PCC → external), collapsed to on-device + optional
 PCC.
 
-### Backend dependency (built in *this* repo when the slice ships — not now)
+### Backend dependency (the one change in *this* repo — ✅ SHIPPED on the design branch)
 
-The live Fastify server has **no semantic-search HTTP endpoint**. Semantic retrieval
-exists only as a *private* helper inside the worksheet route
-(`findRelatedNotes()` in `src/routes/worksheets.ts`). `SearchNotesTool` needs a public
-seam.
-
-When Phase 1 is implemented, add:
+The live Fastify server previously had **no semantic-search HTTP endpoint** — semantic
+retrieval existed only as a *private* helper (`findRelatedNotes()` in
+`src/routes/worksheets.ts`). `SearchNotesTool` needs a public seam, so it was built
+alongside this design:
 
 ```
-GET /api/search?q=<text>&limit=<n>   (authenticated)
+GET /api/search?q=<text>&limit=<n>   (authenticated; limit clamped 1..50, default 10)
   → embed(q)                      // src/lib/ollama.ts  (nomic-embed-text, 768-D)
-  → searchSimilarNotes(vector)    // src/lib/lancedb.ts (cosine distance)
-  → fall back / merge with
-    searchNotesKeyword(q)         // src/lib/db.ts (LIKE on title+content)
-  → [{ id, source_uuid, title, essence, similarity }]
+  → searchSimilarNotes(vector)    // src/lib/lancedb.ts (cosine distance) — best-effort
+  → merge with / fall back to
+    keyword LIKE on title+content  // SQLite — always runs
+  → { query, hits: [{ id, sourceUuid, title, essence, snippet, date, similarity }] }
 ```
 
-This reuses existing, tested primitives — it is a thin endpoint, not new retrieval
-logic. **It is the only change required in the `slowspeedchase/selene` backend repo;**
-all other work is Swift in `~/SeleneApp`.
+Implemented in **`src/routes/search.ts`** (registered in `src/server.ts`), tests in
+`src/routes/search.test.ts`. Semantic search is best-effort: if Ollama/LanceDB are
+unavailable it logs a warning and returns keyword-only hits (`similarity: null`) — the
+endpoint never fails on a missing model (mirrors the worksheets route). It reuses
+existing, tested primitives — a thin endpoint, not new retrieval logic. **This is the
+only change required in the `slowspeedchase/selene` backend repo;** all remaining work
+(the App Intent, the FM session, the tools, the chat UI) is Swift in `~/SeleneApp`.
 
 ### Phasing
 
 - **Phase 1 — prove the RAG loop.** In-app chat screen + `SeleneChatEngine` + two core
-  tools (`SearchNotesTool`, `GetClusterSynthesisTool`) against the Fastify seam.
-  Backend prereq: the `/api/search` endpoint above. Deliverable: typing a question in
-  the app returns a grounded, cited answer on-device.
+  tools (`SearchNotesTool`, `GetClusterSynthesisTool`) against the Fastify seam. Backend
+  prereq `/api/search` is ✅ **done** (`src/routes/search.ts`). Remaining Phase 1 work is
+  all Swift: typing a question in the app returns a grounded, cited answer on-device.
 - **Phase 2 — Siri surface.** `AskSeleneIntent` returning spoken dialog +
   `AppShortcutsProvider` phrases. Reuses the Phase 1 engine unchanged.
 - **Phase 3 — ADHD-moat tools.** Add `GetWantsTool`, `GetDailyGiftTool`,
