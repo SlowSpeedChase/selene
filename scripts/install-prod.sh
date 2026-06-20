@@ -116,10 +116,13 @@ trap cleanup_tmp EXIT
 for src in "${LAUNCHD_DIR}"/com.selene.*.plist; do
     base="$(basename "$src")"          # com.selene.<name>.plist
 
-    # Skip any source already carrying the prod prefix to avoid double-transform.
-    if [[ "$base" == com.selene.prod.* ]]; then
-        continue
-    fi
+    # Skip sources already carrying the prod prefix (avoid double-transform) AND the
+    # dev-only agents (com.selene.dev.*). Prefixing com.selene.dev.server would mint a
+    # nonsensical com.selene.prod.dev.server: a prod-env server pointed at the DEV DB on
+    # :5679 (it crash-loops under keepalive). Mirrors install-launchd.sh's skip-guard.
+    case "$base" in
+        com.selene.prod.*|com.selene.dev.*) continue ;;
+    esac
 
     name="${base#com.selene.}"         # <name>.plist
     name="${name%.plist}"              # <name>
