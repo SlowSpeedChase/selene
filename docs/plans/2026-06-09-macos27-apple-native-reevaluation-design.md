@@ -1,7 +1,7 @@
 # macOS 27 Re-evaluation — Apple-Native Direction (Path B)
 
-**Date:** 2026-06-09
-**Status:** Vision (needs refinement → the near-term validation spike can be promoted to Ready)
+**Date:** 2026-06-09 (validation spike run **2026-06-19**)
+**Status:** Vision for the broader Path B direction; the **validation spike is Ready → Done** — results in [Spike results (2026-06-19)](#spike-results-2026-06-19) below.
 **Topic:** strategy, apple-intelligence, foundation-models, private-cloud-compute, app-intents, lumen, product-direction
 
 ---
@@ -97,19 +97,68 @@ The trigger for this whole discussion was "wipe the Mac, install the macOS 27 be
 
 ## Open questions
 
-1. **~~Does Foundation Models expose an embedding API?~~ — RESOLVED (2026-06-09).** Foundation Models itself does **not**; its built-in **Spotlight Search Tool** does local RAG "with no embeddings, no vector DB, no setup." But Apple's **NaturalLanguage framework** provides **`NLContextualEmbedding`** — BERT sentence embeddings, **512-dim, ≤256 tokens, on-device, privacy-preserving** — a genuine native replacement candidate for `nomic-embed`. *Remaining sub-question (for the spike):* does 512-dim / 256-token output cluster Selene's notes at parity with `nomic-embed` (768-dim)? **Apple/Swift-only → Lumen-side**, not the TS pipeline.
-2. **Does the on-device model match `mistral:7b`** on *the user's own* concept-extraction/essence output? **The keystone measurement** — on-device is historically smaller (~3B) so this is a real risk, not a formality. Run via the `fm` CLI on a macOS 27 separate volume against the **dev showcase corpus** (`test_run='dev-seed'`) — **never real prod notes** (prod-data guard + keeps a model-capability test clean of the privacy boundary). De-risks the entire direction.
+1. **~~Does Foundation Models expose an embedding API?~~ — RESOLVED (2026-06-09).** Foundation Models itself does **not**; its built-in **Spotlight Search Tool** does local RAG "with no embeddings, no vector DB, no setup." But Apple's **NaturalLanguage framework** provides **`NLContextualEmbedding`** — BERT sentence embeddings, **512-dim, ≤256 tokens, on-device, privacy-preserving** — a genuine native replacement candidate for `nomic-embed`. *Remaining sub-question (for the spike):* does 512-dim / 256-token output cluster Selene's notes at parity with `nomic-embed` (768-dim)? **Apple/Swift-only → Lumen-side**, not the TS pipeline. **— ANSWERED (2026-06-19): not yet at parity.** Confirmed 512-dim on-device; it captures real structure (**6.6× better than random** at finding the same neighbors) but only **42% top-5 nearest-neighbor recall** vs `nomic` → a noticeably different "related-notes" graph. Validates Guardrail 2: **embeddings stay on `nomic`.** (Caveat: naive mean-pooling of token vectors — a floor, not a ceiling.) Note since clustering is now category-based, embeddings only drive **connections**, so the spike measured neighbor-graph agreement, not partition parity. See [Spike results](#spike-results-2026-06-19).
+2. **~~Does the on-device model match `mistral:7b`~~ — ANSWERED (2026-06-19): partially.** Measured on the dev showcase corpus (n=81). **Essence/summary holds (0.81 vs a 0.90 mistral-self-consistency ceiling — gap 0.09).** **Categorization does NOT hold out-of-the-box (0.68 vs 0.95 — gap 0.27, far beyond the ~0.05 sampling-noise floor).** First read as the predicted ~3B-vs-7B capability gap. The leading hypothesis — that it was an artifact of the free-text prompt ported from mistral, fixable with `@Generable` guided generation constraining output to the 8-category taxonomy — was **tested 2026-06-19 and FALSIFIED**: guided generation moved agreement only 0.68 → 0.69. The disagreements are systematic boundary calls (the on-device model draws broader categories: work/systems → *Projects & Tech*, health/relationships/daily → *Personal Growth*), and are NOT explained by cross-refs. So the gap is a **semantic taxonomy-boundary disagreement, not a formatting/capability problem** — and it is measured against mistral-as-oracle, not ground truth, so part of it is arguable labelings. Next lever: category **definitions + few-shot** targeting the confusable pairs, plus a **human-judged** sample to see whether on-device is *wrong* or merely *different*. See [Spike results](#spike-results-2026-06-19). *(Implemented via the FoundationModels Swift API in `LumenKit`, not the `fm` CLI — same on-device model, but the API is Lumen's real shipping path.)*
 
 ---
 
-## Near-term next step (a spike, not a rewrite)
+## Near-term next step (a spike, not a rewrite) — ✅ DONE 2026-06-19
 
 Stand up **macOS 27 on a separate volume** and run the validation spike — **the one part of this design promotable to Ready first**:
 
-1. **Keystone (Q2):** on-device model vs `mistral:7b` on the **dev showcase corpus** via the `fm` CLI — does extraction/essence quality hold?
-2. **Embedding parity (Q1 sub-question):** does `NLContextualEmbedding` cluster the same corpus at parity with `nomic-embed`?
+1. **Keystone (Q2):** on-device model vs `mistral:7b` on the **dev showcase corpus** — does extraction/essence quality hold?
+2. **Embedding parity (Q1 sub-question):** does `NLContextualEmbedding` match `nomic-embed` on the same corpus?
 
 A few hours of work, zero threat to prod (separate volume + dev corpus only). **Both results inform *Lumen's* design** — neither is a near-term change to the Selene pipeline on the stable mini.
+
+---
+
+## Spike results (2026-06-19)
+
+Run on the rebuilt macOS 27 mini (the wipe described in the migration runbook), inside `LumenKit` via the **FoundationModels Swift API** (the real Lumen shipping path) + `NLContextualEmbedding`, **not** the `fm` CLI. Measured against the **dev-seed showcase corpus only** (`test_run='dev-seed'`, 81 processed notes / 80 embedded), exported read-only from `~/selene-data-dev` — **zero prod notes**, per the data guard.
+
+### Q2 keystone — on-device generation vs `mistral:7b`
+
+| metric | mistral re-extracting its own oracle (noise ceiling) | Apple on-device | gap |
+|---|---|---|---|
+| category match | **0.95** (n=81) | **0.68** | **−0.27** |
+| essence similarity | **0.90** (n=61) | **0.81** | **−0.09** |
+
+- **Essence/summary: good enough.** 0.81 against a 0.90 ceiling — on-device summarizes ~as well as mistral.
+- **Categorization: a real gap, not sampling noise.** The mistral-vs-itself ceiling (0.95) bounds temperature noise at ~5%; on-device's 0.68 is a genuine gap.
+- **Guided-generation follow-up (2026-06-19b) — the format hypothesis FAILED.** Re-ran categorization with `@Generable` + `@Guide(.anyOf(Prompts.categories))` (decode-constrained to the exact 8-item taxonomy), temperature 0, taxonomy in `instructions`, schema auto-injected — **0.68 → 0.69 (+0.01).** It eliminated invalid-label/JSON-parse errors (1 failure in 81) but did **not** improve agreement, so output formatting was never the bottleneck. The misses are **systematic boundary calls** — the on-device model collapses toward broad attractors (work/systems → *Projects & Tech*; health/relationships/daily → *Personal Growth*) — and are **not** the oracle's cross-ref categories (only 6/81 notes even have one; 0/12 sampled matched). **The gap is taxonomy-boundary judgment, measured against mistral-as-oracle (not truth).** Keep guided generation for reliability; it is not the parity lever.
+- **⚠️ CORPUS-VALIDITY FINDING (2026-06-19c) — the headline semantic numbers are measuring the wrong thing.** A human eval (the operator) of disagreement notes revealed the **dev-seed corpus is synthetic STRUCTURAL-test data, not semantically realistic** — templated noise ("Meeting note #282", thrice-repeated sentences, fictional projects) seeded to exercise content-hash/tags/clustering-determinism, never written to *mean* anything. So categorization "agreement" is two models filing gibberish, graded against a third arbitrary opinion. On the **4 of 6 sampled notes the operator could actually judge, on-device matched the human 3×, mistral 1×** — i.e. on-device was the *better* categorizer on meaningful notes; the "gap" was an artifact of mistral-as-oracle + an unreal corpus. **The 0.68/0.69 categorization and 0.42 neighbor numbers are not trustworthy quality signals; essence 0.81 is less affected but softer than presented.** What stays valid: the mechanical parity this corpus was built for (hash/tags/clustering determinism) and the architecture mapping.
+- **Real next lever (revised):** rebuild a **small, genuinely realistic showcase corpus with the operator's OWN category labels as ground truth** (deletes the mistral-as-oracle problem), then re-run keystone + embedding parity against it. Category definitions/few-shot become meaningful only once the corpus and labels are real.
+
+### Q1 embedding parity — `NLContextualEmbedding` (512-d) vs `nomic-embed` (768-d)
+
+| metric | value |
+|---|---|
+| NL dimension | **512** (confirmed) |
+| top-5 neighbor recall vs nomic | **0.42** |
+| top-5 neighbor Jaccard | **0.30** |
+| random-chance baseline | 0.063 → **6.6× lift** |
+
+- NL **captures real semantic structure** (6.6× better than random at finding the same neighbors) but only **moderately agrees** with nomic on specific neighbors (42% of nomic's top-5 retained) → a noticeably different "related-notes" graph.
+- **Not a drop-in replacement.** Confirms **Guardrail 2: embeddings stay on `nomic`.**
+- Metric choice: Selene retired embedding-*clustering* for category-clustering, so embeddings now only feed **connections** (nearest-neighbor related notes). Neighbor-graph recall is the faithful, scale-invariant metric (the two models' cosine ranges differ; nomic's absolute 0.65/0.75 thresholds don't transfer). Caveat: NL sentence embedding is a naive mean-pool of token vectors — better pooling/normalization could lift agreement; treat 0.42 as a floor.
+
+### Net read
+
+The Path B bet holds, but the categorization verdict is **not yet earned** — it was measured on an unrealistic corpus against mistral-as-oracle, and the one human spot-check put on-device *ahead* of mistral on meaningful notes. Defensible reads today: **essence/summary is promising on-device; embeddings stay on nomic; categorization is UNDETERMINED pending a realistic, human-labeled corpus.** The biggest lesson of the spike is methodological: **a structural-parity corpus cannot evaluate semantic quality** — that needs real notes with the operator's own labels. None of this touches the stable-mini Selene pipeline — it is input to *Lumen's* engine design.
+
+### Reproducibility (in the `~/Dev/Lumen` repo)
+
+- `Tools/export-oracle-migrated.mjs` — two-DB read-only corpus exporter for the post-migration Selene schema (`facts.db` raw notes ⋈ `selene.db` processed/embeddings); regenerates `Tests/LumenKitTests/Fixtures/oracle-corpus.json` (gitignored).
+- `Sources/LumenKit/Inference/NLEmbeddingProvider.swift` — `NLContextualEmbedding` `TextEmbedder` (actor, mean-pooled).
+- `Tests/LumenKitTests/Phase5SpikeTests.swift` — keystone (on-device + mistral-ceiling).
+- `Tests/LumenKitTests/Phase5EmbeddingParityTests.swift` — neighbor-graph parity.
+
+### Follow-ups promotable to their own plans
+
+1. ~~**`@Generable` categorization**~~ — DONE 2026-06-19, no lift (0.68 → 0.69). Superseded by: **category-definitions + few-shot** targeting the confusable pairs, and a **human eval** of disagreements (on-device wrong vs merely different). That eval is now the single highest-leverage open question — it decides whether the categorization gap is even real or just mistral-flavored.
+2. **Better NL pooling** — try normalized / non-mean pooling; re-measure neighbor recall before concluding nomic is irreplaceable.
+3. **PCC tier** — `fm`'s `pcc` model was unavailable in this headless context; re-check for the heavy "wants" synthesis escalation.
 
 ---
 
